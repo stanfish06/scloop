@@ -12,3 +12,7 @@ wheels/
 # emacs
 *~
 \#*
+
+.claude/
+.specify/
+todo/

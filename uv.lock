@@ -2579,16 +2579,6 @@ wheels = [
 ]
 
 [[package]]
-name = "scikit-sparse"
-version = "0.4.16"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "numpy", marker = "sys_platform == 'linux'" },
-    { name = "scipy", marker = "sys_platform == 'linux'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/33/f2/b391faf6120b72b994b574caef9dac5ea2b7667de59fbd3c8336c07403b3/scikit_sparse-0.4.16.tar.gz", hash = "sha256:3baf49ac98ae8cc4357005af49a0df93a6a53f4e61708705da2942ea4fa61a56", size = 214435, upload-time = "2025-04-27T18:20:37.052Z" }
-
-[[package]]
 name = "scipy"
 version = "1.15.3"
 source = { registry = "https://pypi.org/simple" }
@@ -2640,7 +2630,6 @@ dependencies = [
     { name = "pytest" },
     { name = "rich" },
     { name = "scanpy", extra = ["leiden"] },
-    { name = "scikit-sparse", marker = "sys_platform == 'linux'" },
     { name = "statsmodels" },
     { name = "tensorflow", version = "2.18.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13'" },
     { name = "tensorflow", version = "2.20.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.13'" },
@@ -2664,7 +2653,6 @@ requires-dist = [
     { name = "pytest", specifier = ">=8.4.0" },
     { name = "rich", specifier = ">=14.0.0" },
     { name = "scanpy", extras = ["leiden"], specifier = ">=1.11.2" },
-    { name = "scikit-sparse", marker = "sys_platform == 'linux'", specifier = ">=0.4.16" },
     { name = "statsmodels", specifier = "==0.14.4" },
     { name = "tensorflow", specifier = ">=2.18.1" },
     { name = "torch", marker = "sys_platform != 'linux'" },
