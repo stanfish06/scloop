@@ -47,12 +47,18 @@ typedef compressed_distance_matrix<LOWER_TRIANGULAR> compressed_lower_distance_m
 template <typename ValueType>
 class compressed_sparse_matrix;
 
+/*
+ These are the default results returned from ripser
+*/
 typedef struct {
     std::vector<std::vector<value_t>> births_and_deaths_by_dim;
     std::vector<std::vector<std::vector<int>>> cocycles_by_dim;
     int num_edges;
 } ripserResults;
 
+/*
+  Main data structure
+*/
 template <typename DistanceMatrix>
 class ripser {
     const DistanceMatrix dist;
@@ -137,10 +143,22 @@ public:
 // main api
 ripserResults rips_dm(float* D, int N, int modulus, int dim_max,
                       float threshold, int do_cocycles);
+/**
+ * @brief compute PH with sparse distance matrix
+ * @details diagonal should probably be 0, but it appears that vertex can have nonzero birth as well
+ * @param I row idx
+ * @param J col idx
+ * @param V value
+ * @param NEdges number of nonzero edges
+ * @param N number of vertices
+ * @param modulus 2 if F2
+ * @param dim_max 1 if want only H0 and H1
+ * @param threshold edge threshold
+ * @param do_cycles 1 if want to return cocycles
+ */
 ripserResults rips_dm_sparse(int* I, int* J, float* V, int NEdges, int N,
                              int modulus, int dim_max, float threshold,
                              int do_cocycles);
 // TODO: need function to extract cocycles
 // TODO: need function to extract coboundary matrix
-
 #endif
