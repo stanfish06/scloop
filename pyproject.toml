@@ -50,3 +50,9 @@ indent-style = "space"
 
 [tool.setuptools]
 package-dir = { "" = "src" }
+ext-modules = [
+  { name = "scloop.data.ripser_lib", sources = [
+    "./src/scloop/data/ripser_lib/ripser_lib.pyx",
+    "./src/scloop/data/ripser_lib/ripser.cpp",
+  ], language = "c++", optional = false }
+]
