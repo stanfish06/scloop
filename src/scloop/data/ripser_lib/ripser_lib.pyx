@@ -1,10 +1,17 @@
 cimport cython
-from ripser cimport ripserResults, rips_dm_sparse, value_t
+from libcpp.vector cimport vector 
 from scipy.sparse import coo_matrix
 import numpy as np
-cimport numpy as np
 import typing
 import dataclasses
+
+ctypedef float value_t
+cdef extern from "ripser.hpp":
+    cdef cppclass ripserResults:
+        vector[vector[value_t]] births_and_deaths_by_dim
+        vector[vector[vector[int]]] cocycles_by_dim
+        int num_edges
+    cdef ripserResults rips_dm_sparse(int* I, int* J, float* V, int NEdges, int N, int modulus, int dim_max, float threshold, int do_cocycles)
 
 @dataclasses.dataclass
 class RipserResults:
@@ -28,20 +35,28 @@ cdef list converting_cocycles_to_numpy(vector[vector[vector[int]]] cocycles_by_d
     representative cocycle
     '''
     cdef list cocycle_representatives = []
-    cdef vector[vector[int]]& cocycles = cocycles_by_dim[dim]
-    cdef Py_ssize_t nc = (Py_ssize_t) cocycles.size() 
+    cdef vector[vector[int]]* cocycles = &cocycles_by_dim[dim]
+    cdef int nc = cocycles.size() 
+    cdef vector[int]* rep_i
+    cdef int chunk_size
+    cdef int n_simplices
+    cdef list cocycle_rep_members
+    cdef list simplex
+    cdef int start_idx
+    cdef int end_idx
+
     for i in range(nc):
-        cdef vector[int]& rep_i = cocycles[i]
-        cdef int chunk_size = dim + 2
-        cdef Py_ssize_t n_simplices = rep_i.size() // chunk_size
-        cdef list cocycle_rep_members = []
+        rep_i = &cocycles[0][i]
+        chunk_size = dim + 2
+        n_simplices = rep_i.size() // chunk_size
+        cocycle_rep_members = []
         for j in range(n_simplices):
-            cdef list simplex = []
-            cdef int start_idx = j * chunk_size
-            cdef int end_idx = start_idx + chunk_size - 1
+            simplex = []
+            start_idx = j * chunk_size
+            end_idx = start_idx + chunk_size - 1
             for k in range(start_idx, end_idx):
-                simplex.append(int(rep_i[k]))
-            cocycle_rep_members.append([simplex, int(rep_i[end_idx])])
+                simplex.append(int(rep_i[0][k]))
+            cocycle_rep_members.append([simplex, int(rep_i[0][end_idx])])
         cocycle_representatives.append(cocycle_rep_members)
     return cocycle_representatives
 
@@ -55,29 +70,32 @@ cdef list converting_birth_death_to_numpy(vector[vector[value_t]] births_and_dea
     '''
     cdef list birth = []
     cdef list death = []
-    cdef vector[value_t]& birth_death = births_and_deaths_by_dim[dim]
-    cdef Py_ssize_t n_pairs = (Py_ssize_t) birth_death.size() // 2
+    cdef vector[value_t]* birth_death = &births_and_deaths_by_dim[dim]
+    cdef int n_pairs = birth_death.size() // 2
     for i in range(n_pairs):
-        birth.append(birth_death[i * 2])
-        death.append(birth_death[i * 2 + 1])
+        birth.append(birth_death[0][i * 2])
+        death.append(birth_death[0][i * 2 + 1])
     return np.stack((birth, death), axis=1)
 
 def ripser(
-    coo_matrix distance_matrix,
+    distance_matrix: coo_matrix,
     int modulus,
     int dim_max,
     float threshold,
     bool do_cocycles,
 ) -> RipserResults:
-    cdef np.ndarray[np.intc_t, ndim=1, mode='c'] row = distance_matrix.row.astype(np.intc, copy=True)
-    cdef int* I = (int*) row.data
-    cdef np.ndarray[np.intc_t, ndim=1, mode='c'] col = distance_matrix.col.astype(np.intc, copy=True)
-    cdef int* J = (int*) col.data
-    cdef np.ndarray[np.float32_t, ndim=1, mode='c'] data = distance_matrix.data.astype(np.float32, copy=True)
-    cdef float* V = (float*) data.data
+    # I, J, and V need to be contiguous array
+    cdef int[::1] _I = np.ascontiguousarray(distance_matrix.row, dtype = np.intc)
+    cdef int[::1] _J = np.ascontiguousarray(distance_matrix.col, dtype = np.intc)
+    cdef float[::1] _V = np.ascontiguousarray(distance_matrix.data, dtype = np.float32)
+
+    cdef int* I = &_I[0]
+    cdef int* J = &_J[0]
+    cdef float* V = &_V[0]
+    
     cdef int NEdges = distance_matrix.nnz
     cdef int N = distance_matrix.shape[0]
-    cdef ripserResults res = rips_dm_sparse(I, J, V, NEdges, N, modulus, dim_max, threshold, (int)do_cocycles)
+    cdef ripserResults res = rips_dm_sparse(I, J, V, NEdges, N, modulus, dim_max, threshold, int(do_cocycles))
     cdef list persistence_diagrams = [converting_birth_death_to_numpy(res.births_and_deaths_by_dim, i) for i in range(dim_max)]
     cdef list cocycle_representatives = [converting_cocycles_to_numpy(res.cocycles_by_dim, i) for i in range(1, dim_max)]
     return RipserResults(

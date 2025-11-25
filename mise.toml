@@ -1,6 +1,9 @@
 [tools]
 uv = "latest"
 
+[env]
+CPLUS_INCLUDE_PATH = "{{config_root}}/src/scloop/data/ripser_lib"
+
 [settings]
 python.uv_venv_auto = true
 
@@ -13,7 +16,8 @@ run = [
 [tasks.info]
 run = [
     "uv --version",
-    "python --version"
+    "python --version",
+	"echo $CPLUS_INCLUDE_PATH"
 ]
 
 [tasks.kernel]
