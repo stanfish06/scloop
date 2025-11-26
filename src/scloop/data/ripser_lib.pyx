@@ -15,7 +15,7 @@ cdef extern from "ripser.hpp":
 
 @dataclasses.dataclass
 class RipserResults:
-    births_and_deaths_by_dim: list[np.ndarray]
+    births_and_deaths_by_dim: list
     cocycles_by_dim: list
     num_edges: int
 
@@ -75,7 +75,7 @@ cdef list converting_birth_death_to_numpy(vector[vector[value_t]] births_and_dea
     for i in range(n_pairs):
         birth.append(birth_death[0][i * 2])
         death.append(birth_death[0][i * 2 + 1])
-    return np.stack((birth, death), axis=1)
+    return [birth, death]
 
 def ripser(
     distance_matrix: coo_matrix,

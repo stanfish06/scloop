@@ -91,8 +91,8 @@ def plot_tracks(
     if n_tracks > 0:
         # cmap = glasbey.create_palette(palette_size=n_tracks)
         block_size = 5
-        cmap = glasbey.create_block_palette(block_sizes=[block_size]*n_tracks)
-        cmap = [cmap[i:i+block_size] for i in range(0, len(cmap), block_size)]
+        cmap = glasbey.create_block_palette(block_sizes=[block_size] * n_tracks)
+        cmap = [cmap[i : i + block_size] for i in range(0, len(cmap), block_size)]
     if ax is None:
         fig, ax = plt.subplots(figsize=kwargs.pop("figsize", (5, 5)))
         created_fig = True
@@ -122,7 +122,7 @@ def plot_tracks(
                     ax.scatter(
                         data.persistence_diagram[tid[1], 0],
                         data.persistence_diagram[tid[1], 1],
-                        color=cmap[i][int(np.floor(block_size/2))],
+                        color=cmap[i][int(np.floor(block_size / 2))],
                         s=s,
                         **kwargs,
                     )
@@ -130,7 +130,7 @@ def plot_tracks(
                     ax.scatter(
                         data.persistence_diagram_boot[tid[0] - 1][tid[1], 0],
                         data.persistence_diagram_boot[tid[0] - 1][tid[1], 1],
-                        color=cmap[i][int(np.floor(block_size/2))],
+                        color=cmap[i][int(np.floor(block_size / 2))],
                         s=s,
                         **kwargs,
                     )
@@ -149,8 +149,7 @@ def plot_tracks(
         num_ticks = 6
         ticks = np.linspace(max(min_val, 0), max_val, num_ticks)
         tick_labs = [
-            round(i, 3)
-            for i in np.linspace(max(min_val, 0), max_val, num_ticks)
+            round(i, 3) for i in np.linspace(max(min_val, 0), max_val, num_ticks)
         ]
         ax.set_xticks(ticks, tick_labs)
         ax.set_yticks(ticks, tick_labs)
@@ -204,7 +203,7 @@ def plot_tracks(
             ax.barh(
                 sort_idx[loc_idx],
                 lifetime_full[loc_idx],
-                color=cmap[i][int(np.floor(block_size/2))],
+                color=cmap[i][int(np.floor(block_size / 2))],
                 linewidth=0,
                 **kwargs,
             )
@@ -224,7 +223,9 @@ def plot_tracks(
                 if tid[0] == 0:
                     loops_plot.extend(data.loops_coords_visualization[tid[1]])
                 else:
-                    loops_plot.extend(data.loops_coords_visualization_boot[tid[0]-1][tid[1]])
+                    loops_plot.extend(
+                        data.loops_coords_visualization_boot[tid[0] - 1][tid[1]]
+                    )
             for j, loop in enumerate(loops_plot):
                 ax.plot(
                     loop[:, components[0]],
@@ -239,4 +240,4 @@ def plot_tracks(
     return ax
 
 
-#TODO: a thought, draw confidence bands for each track
+# TODO: a thought, draw confidence bands for each track

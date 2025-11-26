@@ -4,16 +4,16 @@
 {
     "distutils": {
         "depends": [
-            "src/scloop/data/ripser_lib/ripser.hpp"
+            "src/scloop/data/ripser.hpp"
         ],
         "include_dirs": [
-            "./src/scloop/data/ripser_lib"
+            "./src/scloop/data"
         ],
         "language": "c++",
         "name": "scloop.data.ripser_lib",
         "sources": [
-            "./src/scloop/data/ripser_lib/ripser_lib.pyx",
-            "./src/scloop/data/ripser_lib/ripser.cpp"
+            "./src/scloop/data/ripser_lib.pyx",
+            "./src/scloop/data/ripser.cpp"
         ]
     },
     "module_name": "scloop.data.ripser_lib"
@@ -1365,7 +1365,7 @@ static const char *__pyx_filename;
 /* #### Code section: filename_table ### */
 
 static const char* const __pyx_f[] = {
-  "src/scloop/data/ripser_lib/ripser_lib.pyx",
+  "src/scloop/data/ripser_lib.pyx",
   "<stringsource>",
 };
 /* #### Code section: utility_code_proto_before_types ### */
@@ -1618,7 +1618,7 @@ typedef struct {
 
 /* #### Code section: numeric_typedefs ### */
 
-/* "src/scloop/data/ripser_lib/ripser_lib.pyx":8
+/* "scloop/data/ripser_lib.pyx":8
  * import dataclasses
  * 
  * ctypedef float value_t             # <<<<<<<<<<<<<<
@@ -3105,7 +3105,7 @@ typedef struct {
   PyObject *__pyx_slice[1];
   PyObject *__pyx_tuple[2];
   PyObject *__pyx_codeobj_tab[1];
-  PyObject *__pyx_string_tab[162];
+  PyObject *__pyx_string_tab[159];
   PyObject *__pyx_number_tab[5];
 /* #### Code section: module_state_contents ### */
 /* CommonTypesMetaclass.module_state_decls */
@@ -3184,131 +3184,128 @@ static __pyx_mstatetype * const __pyx_mstate_global = &__pyx_mstate_global_stati
 #define __pyx_kp_u_got_differing_extents_in_dimensi __pyx_string_tab[34]
 #define __pyx_kp_u_isenabled __pyx_string_tab[35]
 #define __pyx_kp_u_itemsize_0_for_cython_array __pyx_string_tab[36]
-#define __pyx_kp_u_list_np_ndarray __pyx_string_tab[37]
-#define __pyx_kp_u_no_default___reduce___due_to_non __pyx_string_tab[38]
-#define __pyx_kp_u_object __pyx_string_tab[39]
-#define __pyx_kp_u_self_name_is_not_None __pyx_string_tab[40]
-#define __pyx_kp_u_src_scloop_data_ripser_lib_ripse __pyx_string_tab[41]
-#define __pyx_kp_u_strided_and_direct __pyx_string_tab[42]
-#define __pyx_kp_u_strided_and_direct_or_indirect __pyx_string_tab[43]
-#define __pyx_kp_u_strided_and_indirect __pyx_string_tab[44]
-#define __pyx_kp_u_unable_to_allocate_array_data __pyx_string_tab[45]
-#define __pyx_kp_u_unable_to_allocate_shape_and_str __pyx_string_tab[46]
-#define __pyx_n_u_ASCII __pyx_string_tab[47]
-#define __pyx_n_u_Ellipsis __pyx_string_tab[48]
-#define __pyx_n_u_I __pyx_string_tab[49]
-#define __pyx_n_u_I_2 __pyx_string_tab[50]
-#define __pyx_n_u_J __pyx_string_tab[51]
-#define __pyx_n_u_J_2 __pyx_string_tab[52]
-#define __pyx_n_u_N __pyx_string_tab[53]
-#define __pyx_n_u_NEdges __pyx_string_tab[54]
-#define __pyx_n_u_Pyx_PyDict_NextRef __pyx_string_tab[55]
-#define __pyx_n_u_RipserResults __pyx_string_tab[56]
-#define __pyx_n_u_Sequence __pyx_string_tab[57]
-#define __pyx_n_u_V __pyx_string_tab[58]
-#define __pyx_n_u_V_2 __pyx_string_tab[59]
-#define __pyx_n_u_View_MemoryView __pyx_string_tab[60]
-#define __pyx_n_u_abc __pyx_string_tab[61]
-#define __pyx_n_u_allocate_buffer __pyx_string_tab[62]
-#define __pyx_n_u_annotations __pyx_string_tab[63]
-#define __pyx_n_u_ascontiguousarray __pyx_string_tab[64]
-#define __pyx_n_u_asyncio_coroutines __pyx_string_tab[65]
-#define __pyx_n_u_axis __pyx_string_tab[66]
-#define __pyx_n_u_base __pyx_string_tab[67]
-#define __pyx_n_u_births_and_deaths_by_dim __pyx_string_tab[68]
-#define __pyx_n_u_c __pyx_string_tab[69]
-#define __pyx_n_u_class __pyx_string_tab[70]
-#define __pyx_n_u_class_getitem __pyx_string_tab[71]
-#define __pyx_n_u_cline_in_traceback __pyx_string_tab[72]
-#define __pyx_n_u_cocycle_representatives __pyx_string_tab[73]
-#define __pyx_n_u_cocycles_by_dim __pyx_string_tab[74]
-#define __pyx_n_u_col __pyx_string_tab[75]
-#define __pyx_n_u_coo_matrix __pyx_string_tab[76]
-#define __pyx_n_u_count __pyx_string_tab[77]
-#define __pyx_n_u_data __pyx_string_tab[78]
-#define __pyx_n_u_dataclass __pyx_string_tab[79]
-#define __pyx_n_u_dataclasses __pyx_string_tab[80]
-#define __pyx_n_u_dict __pyx_string_tab[81]
-#define __pyx_n_u_dim_max __pyx_string_tab[82]
-#define __pyx_n_u_distance_matrix __pyx_string_tab[83]
-#define __pyx_n_u_do_cocycles __pyx_string_tab[84]
-#define __pyx_n_u_doc __pyx_string_tab[85]
-#define __pyx_n_u_dtype __pyx_string_tab[86]
-#define __pyx_n_u_dtype_is_object __pyx_string_tab[87]
-#define __pyx_n_u_encode __pyx_string_tab[88]
-#define __pyx_n_u_enumerate __pyx_string_tab[89]
-#define __pyx_n_u_error __pyx_string_tab[90]
-#define __pyx_n_u_flags __pyx_string_tab[91]
-#define __pyx_n_u_float32 __pyx_string_tab[92]
-#define __pyx_n_u_format __pyx_string_tab[93]
-#define __pyx_n_u_fortran __pyx_string_tab[94]
-#define __pyx_n_u_func __pyx_string_tab[95]
-#define __pyx_n_u_getstate __pyx_string_tab[96]
-#define __pyx_n_u_i __pyx_string_tab[97]
-#define __pyx_n_u_id __pyx_string_tab[98]
-#define __pyx_n_u_import __pyx_string_tab[99]
-#define __pyx_n_u_index __pyx_string_tab[100]
-#define __pyx_n_u_int __pyx_string_tab[101]
-#define __pyx_n_u_intc __pyx_string_tab[102]
-#define __pyx_n_u_is_coroutine __pyx_string_tab[103]
-#define __pyx_n_u_items __pyx_string_tab[104]
-#define __pyx_n_u_itemsize __pyx_string_tab[105]
-#define __pyx_n_u_list __pyx_string_tab[106]
-#define __pyx_n_u_main __pyx_string_tab[107]
-#define __pyx_n_u_memview __pyx_string_tab[108]
-#define __pyx_n_u_metaclass __pyx_string_tab[109]
-#define __pyx_n_u_mode __pyx_string_tab[110]
-#define __pyx_n_u_module __pyx_string_tab[111]
-#define __pyx_n_u_modulus __pyx_string_tab[112]
-#define __pyx_n_u_name __pyx_string_tab[113]
-#define __pyx_n_u_name_2 __pyx_string_tab[114]
-#define __pyx_n_u_ndim __pyx_string_tab[115]
-#define __pyx_n_u_new __pyx_string_tab[116]
-#define __pyx_n_u_nnz __pyx_string_tab[117]
-#define __pyx_n_u_np __pyx_string_tab[118]
-#define __pyx_n_u_num_edges __pyx_string_tab[119]
-#define __pyx_n_u_numpy __pyx_string_tab[120]
-#define __pyx_n_u_obj __pyx_string_tab[121]
-#define __pyx_n_u_pack __pyx_string_tab[122]
-#define __pyx_n_u_persistence_diagrams __pyx_string_tab[123]
-#define __pyx_n_u_pop __pyx_string_tab[124]
-#define __pyx_n_u_prepare __pyx_string_tab[125]
-#define __pyx_n_u_pyx_checksum __pyx_string_tab[126]
-#define __pyx_n_u_pyx_state __pyx_string_tab[127]
-#define __pyx_n_u_pyx_type __pyx_string_tab[128]
-#define __pyx_n_u_pyx_unpickle_Enum __pyx_string_tab[129]
-#define __pyx_n_u_pyx_vtable __pyx_string_tab[130]
-#define __pyx_n_u_qualname __pyx_string_tab[131]
-#define __pyx_n_u_reduce __pyx_string_tab[132]
-#define __pyx_n_u_reduce_cython __pyx_string_tab[133]
-#define __pyx_n_u_reduce_ex __pyx_string_tab[134]
-#define __pyx_n_u_register __pyx_string_tab[135]
-#define __pyx_n_u_res __pyx_string_tab[136]
-#define __pyx_n_u_return __pyx_string_tab[137]
-#define __pyx_n_u_ripser __pyx_string_tab[138]
-#define __pyx_n_u_row __pyx_string_tab[139]
-#define __pyx_n_u_scipy_sparse __pyx_string_tab[140]
-#define __pyx_n_u_scloop_data_ripser_lib __pyx_string_tab[141]
-#define __pyx_n_u_set_name __pyx_string_tab[142]
-#define __pyx_n_u_setdefault __pyx_string_tab[143]
-#define __pyx_n_u_setstate __pyx_string_tab[144]
-#define __pyx_n_u_setstate_cython __pyx_string_tab[145]
-#define __pyx_n_u_shape __pyx_string_tab[146]
-#define __pyx_n_u_size __pyx_string_tab[147]
-#define __pyx_n_u_stack __pyx_string_tab[148]
-#define __pyx_n_u_start __pyx_string_tab[149]
-#define __pyx_n_u_step __pyx_string_tab[150]
-#define __pyx_n_u_stop __pyx_string_tab[151]
-#define __pyx_n_u_struct __pyx_string_tab[152]
-#define __pyx_n_u_test __pyx_string_tab[153]
-#define __pyx_n_u_threshold __pyx_string_tab[154]
-#define __pyx_n_u_typing __pyx_string_tab[155]
-#define __pyx_n_u_unpack __pyx_string_tab[156]
-#define __pyx_n_u_update __pyx_string_tab[157]
-#define __pyx_n_u_values __pyx_string_tab[158]
-#define __pyx_n_u_x __pyx_string_tab[159]
-#define __pyx_kp_b_iso88591_r_1O6_1_r_1O6_1_QoWHBa_2Qa_2Qa __pyx_string_tab[160]
-#define __pyx_n_b_O __pyx_string_tab[161]
+#define __pyx_kp_u_no_default___reduce___due_to_non __pyx_string_tab[37]
+#define __pyx_kp_u_object __pyx_string_tab[38]
+#define __pyx_kp_u_self_name_is_not_None __pyx_string_tab[39]
+#define __pyx_kp_u_src_scloop_data_ripser_lib_pyx __pyx_string_tab[40]
+#define __pyx_kp_u_strided_and_direct __pyx_string_tab[41]
+#define __pyx_kp_u_strided_and_direct_or_indirect __pyx_string_tab[42]
+#define __pyx_kp_u_strided_and_indirect __pyx_string_tab[43]
+#define __pyx_kp_u_unable_to_allocate_array_data __pyx_string_tab[44]
+#define __pyx_kp_u_unable_to_allocate_shape_and_str __pyx_string_tab[45]
+#define __pyx_n_u_ASCII __pyx_string_tab[46]
+#define __pyx_n_u_Ellipsis __pyx_string_tab[47]
+#define __pyx_n_u_I __pyx_string_tab[48]
+#define __pyx_n_u_I_2 __pyx_string_tab[49]
+#define __pyx_n_u_J __pyx_string_tab[50]
+#define __pyx_n_u_J_2 __pyx_string_tab[51]
+#define __pyx_n_u_N __pyx_string_tab[52]
+#define __pyx_n_u_NEdges __pyx_string_tab[53]
+#define __pyx_n_u_Pyx_PyDict_NextRef __pyx_string_tab[54]
+#define __pyx_n_u_RipserResults __pyx_string_tab[55]
+#define __pyx_n_u_Sequence __pyx_string_tab[56]
+#define __pyx_n_u_V __pyx_string_tab[57]
+#define __pyx_n_u_V_2 __pyx_string_tab[58]
+#define __pyx_n_u_View_MemoryView __pyx_string_tab[59]
+#define __pyx_n_u_abc __pyx_string_tab[60]
+#define __pyx_n_u_allocate_buffer __pyx_string_tab[61]
+#define __pyx_n_u_annotations __pyx_string_tab[62]
+#define __pyx_n_u_ascontiguousarray __pyx_string_tab[63]
+#define __pyx_n_u_asyncio_coroutines __pyx_string_tab[64]
+#define __pyx_n_u_base __pyx_string_tab[65]
+#define __pyx_n_u_births_and_deaths_by_dim __pyx_string_tab[66]
+#define __pyx_n_u_c __pyx_string_tab[67]
+#define __pyx_n_u_class __pyx_string_tab[68]
+#define __pyx_n_u_class_getitem __pyx_string_tab[69]
+#define __pyx_n_u_cline_in_traceback __pyx_string_tab[70]
+#define __pyx_n_u_cocycle_representatives __pyx_string_tab[71]
+#define __pyx_n_u_cocycles_by_dim __pyx_string_tab[72]
+#define __pyx_n_u_col __pyx_string_tab[73]
+#define __pyx_n_u_coo_matrix __pyx_string_tab[74]
+#define __pyx_n_u_count __pyx_string_tab[75]
+#define __pyx_n_u_data __pyx_string_tab[76]
+#define __pyx_n_u_dataclass __pyx_string_tab[77]
+#define __pyx_n_u_dataclasses __pyx_string_tab[78]
+#define __pyx_n_u_dict __pyx_string_tab[79]
+#define __pyx_n_u_dim_max __pyx_string_tab[80]
+#define __pyx_n_u_distance_matrix __pyx_string_tab[81]
+#define __pyx_n_u_do_cocycles __pyx_string_tab[82]
+#define __pyx_n_u_doc __pyx_string_tab[83]
+#define __pyx_n_u_dtype __pyx_string_tab[84]
+#define __pyx_n_u_dtype_is_object __pyx_string_tab[85]
+#define __pyx_n_u_encode __pyx_string_tab[86]
+#define __pyx_n_u_enumerate __pyx_string_tab[87]
+#define __pyx_n_u_error __pyx_string_tab[88]
+#define __pyx_n_u_flags __pyx_string_tab[89]
+#define __pyx_n_u_float32 __pyx_string_tab[90]
+#define __pyx_n_u_format __pyx_string_tab[91]
+#define __pyx_n_u_fortran __pyx_string_tab[92]
+#define __pyx_n_u_func __pyx_string_tab[93]
+#define __pyx_n_u_getstate __pyx_string_tab[94]
+#define __pyx_n_u_i __pyx_string_tab[95]
+#define __pyx_n_u_id __pyx_string_tab[96]
+#define __pyx_n_u_import __pyx_string_tab[97]
+#define __pyx_n_u_index __pyx_string_tab[98]
+#define __pyx_n_u_int __pyx_string_tab[99]
+#define __pyx_n_u_intc __pyx_string_tab[100]
+#define __pyx_n_u_is_coroutine __pyx_string_tab[101]
+#define __pyx_n_u_items __pyx_string_tab[102]
+#define __pyx_n_u_itemsize __pyx_string_tab[103]
+#define __pyx_n_u_list __pyx_string_tab[104]
+#define __pyx_n_u_main __pyx_string_tab[105]
+#define __pyx_n_u_memview __pyx_string_tab[106]
+#define __pyx_n_u_metaclass __pyx_string_tab[107]
+#define __pyx_n_u_mode __pyx_string_tab[108]
+#define __pyx_n_u_module __pyx_string_tab[109]
+#define __pyx_n_u_modulus __pyx_string_tab[110]
+#define __pyx_n_u_name __pyx_string_tab[111]
+#define __pyx_n_u_name_2 __pyx_string_tab[112]
+#define __pyx_n_u_ndim __pyx_string_tab[113]
+#define __pyx_n_u_new __pyx_string_tab[114]
+#define __pyx_n_u_nnz __pyx_string_tab[115]
+#define __pyx_n_u_np __pyx_string_tab[116]
+#define __pyx_n_u_num_edges __pyx_string_tab[117]
+#define __pyx_n_u_numpy __pyx_string_tab[118]
+#define __pyx_n_u_obj __pyx_string_tab[119]
+#define __pyx_n_u_pack __pyx_string_tab[120]
+#define __pyx_n_u_persistence_diagrams __pyx_string_tab[121]
+#define __pyx_n_u_pop __pyx_string_tab[122]
+#define __pyx_n_u_prepare __pyx_string_tab[123]
+#define __pyx_n_u_pyx_checksum __pyx_string_tab[124]
+#define __pyx_n_u_pyx_state __pyx_string_tab[125]
+#define __pyx_n_u_pyx_type __pyx_string_tab[126]
+#define __pyx_n_u_pyx_unpickle_Enum __pyx_string_tab[127]
+#define __pyx_n_u_pyx_vtable __pyx_string_tab[128]
+#define __pyx_n_u_qualname __pyx_string_tab[129]
+#define __pyx_n_u_reduce __pyx_string_tab[130]
+#define __pyx_n_u_reduce_cython __pyx_string_tab[131]
+#define __pyx_n_u_reduce_ex __pyx_string_tab[132]
+#define __pyx_n_u_register __pyx_string_tab[133]
+#define __pyx_n_u_res __pyx_string_tab[134]
+#define __pyx_n_u_return __pyx_string_tab[135]
+#define __pyx_n_u_ripser __pyx_string_tab[136]
+#define __pyx_n_u_row __pyx_string_tab[137]
+#define __pyx_n_u_scipy_sparse __pyx_string_tab[138]
+#define __pyx_n_u_scloop_data_ripser_lib __pyx_string_tab[139]
+#define __pyx_n_u_set_name __pyx_string_tab[140]
+#define __pyx_n_u_setdefault __pyx_string_tab[141]
+#define __pyx_n_u_setstate __pyx_string_tab[142]
+#define __pyx_n_u_setstate_cython __pyx_string_tab[143]
+#define __pyx_n_u_shape __pyx_string_tab[144]
+#define __pyx_n_u_size __pyx_string_tab[145]
+#define __pyx_n_u_start __pyx_string_tab[146]
+#define __pyx_n_u_step __pyx_string_tab[147]
+#define __pyx_n_u_stop __pyx_string_tab[148]
+#define __pyx_n_u_struct __pyx_string_tab[149]
+#define __pyx_n_u_test __pyx_string_tab[150]
+#define __pyx_n_u_threshold __pyx_string_tab[151]
+#define __pyx_n_u_typing __pyx_string_tab[152]
+#define __pyx_n_u_unpack __pyx_string_tab[153]
+#define __pyx_n_u_update __pyx_string_tab[154]
+#define __pyx_n_u_values __pyx_string_tab[155]
+#define __pyx_n_u_x __pyx_string_tab[156]
+#define __pyx_kp_b_iso88591_r_1O6_1_r_1O6_1_QoWHBa_2Qa_2Qa __pyx_string_tab[157]
+#define __pyx_n_b_O __pyx_string_tab[158]
 #define __pyx_int_0 __pyx_number_tab[0]
 #define __pyx_int_neg_1 __pyx_number_tab[1]
 #define __pyx_int_1 __pyx_number_tab[2]
@@ -3339,7 +3336,7 @@ static CYTHON_SMALL_CODE int __pyx_m_clear(PyObject *m) {
   for (int i=0; i<1; ++i) { Py_CLEAR(clear_module_state->__pyx_slice[i]); }
   for (int i=0; i<2; ++i) { Py_CLEAR(clear_module_state->__pyx_tuple[i]); }
   for (int i=0; i<1; ++i) { Py_CLEAR(clear_module_state->__pyx_codeobj_tab[i]); }
-  for (int i=0; i<162; ++i) { Py_CLEAR(clear_module_state->__pyx_string_tab[i]); }
+  for (int i=0; i<159; ++i) { Py_CLEAR(clear_module_state->__pyx_string_tab[i]); }
   for (int i=0; i<5; ++i) { Py_CLEAR(clear_module_state->__pyx_number_tab[i]); }
 /* #### Code section: module_state_clear_contents ### */
 /* CommonTypesMetaclass.module_state_clear */
@@ -3374,7 +3371,7 @@ static CYTHON_SMALL_CODE int __pyx_m_traverse(PyObject *m, visitproc visit, void
   for (int i=0; i<1; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_slice[i]); }
   for (int i=0; i<2; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_tuple[i]); }
   for (int i=0; i<1; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_codeobj_tab[i]); }
-  for (int i=0; i<162; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_string_tab[i]); }
+  for (int i=0; i<159; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_string_tab[i]); }
   for (int i=0; i<5; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_number_tab[i]); }
 /* #### Code section: module_state_traverse_contents ### */
 /* CommonTypesMetaclass.module_state_traverse */
@@ -16656,7 +16653,7 @@ static PyObject *__pyx_unpickle_Enum__set_state(struct __pyx_MemviewEnum_obj *__
   return __pyx_r;
 }
 
-/* "src/scloop/data/ripser_lib/ripser_lib.pyx":22
+/* "scloop/data/ripser_lib.pyx":22
  *     num_edges: int
  * 
  * cdef list converting_cocycles_to_numpy(vector[vector[vector[int]]] cocycles_by_dim, int dim):             # <<<<<<<<<<<<<<
@@ -16699,7 +16696,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("converting_cocycles_to_numpy", 0);
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":37
+  /* "scloop/data/ripser_lib.pyx":37
  *     representative cocycle
  *     '''
  *     cdef list cocycle_representatives = []             # <<<<<<<<<<<<<<
@@ -16711,7 +16708,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
   __pyx_v_cocycle_representatives = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":38
+  /* "scloop/data/ripser_lib.pyx":38
  *     '''
  *     cdef list cocycle_representatives = []
  *     cdef vector[vector[int]]* cocycles = &cocycles_by_dim[dim]             # <<<<<<<<<<<<<<
@@ -16720,7 +16717,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
 */
   __pyx_v_cocycles = (&(__pyx_v_cocycles_by_dim[__pyx_v_dim]));
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":39
+  /* "scloop/data/ripser_lib.pyx":39
  *     cdef list cocycle_representatives = []
  *     cdef vector[vector[int]]* cocycles = &cocycles_by_dim[dim]
  *     cdef int nc = cocycles.size()             # <<<<<<<<<<<<<<
@@ -16729,7 +16726,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
 */
   __pyx_v_nc = __pyx_v_cocycles->size();
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":48
+  /* "scloop/data/ripser_lib.pyx":48
  *     cdef int end_idx
  * 
  *     for i in range(nc):             # <<<<<<<<<<<<<<
@@ -16741,7 +16738,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
   for (__pyx_t_4 = 0; __pyx_t_4 < __pyx_t_3; __pyx_t_4+=1) {
     __pyx_v_i = __pyx_t_4;
 
-    /* "src/scloop/data/ripser_lib/ripser_lib.pyx":49
+    /* "scloop/data/ripser_lib.pyx":49
  * 
  *     for i in range(nc):
  *         rep_i = &cocycles[0][i]             # <<<<<<<<<<<<<<
@@ -16750,7 +16747,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
 */
     __pyx_v_rep_i = (&((__pyx_v_cocycles[0])[__pyx_v_i]));
 
-    /* "src/scloop/data/ripser_lib/ripser_lib.pyx":50
+    /* "scloop/data/ripser_lib.pyx":50
  *     for i in range(nc):
  *         rep_i = &cocycles[0][i]
  *         chunk_size = dim + 2             # <<<<<<<<<<<<<<
@@ -16759,7 +16756,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
 */
     __pyx_v_chunk_size = (__pyx_v_dim + 2);
 
-    /* "src/scloop/data/ripser_lib/ripser_lib.pyx":51
+    /* "scloop/data/ripser_lib.pyx":51
  *         rep_i = &cocycles[0][i]
  *         chunk_size = dim + 2
  *         n_simplices = rep_i.size() // chunk_size             # <<<<<<<<<<<<<<
@@ -16773,7 +16770,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
     }
     __pyx_v_n_simplices = (__pyx_t_5 / __pyx_v_chunk_size);
 
-    /* "src/scloop/data/ripser_lib/ripser_lib.pyx":52
+    /* "scloop/data/ripser_lib.pyx":52
  *         chunk_size = dim + 2
  *         n_simplices = rep_i.size() // chunk_size
  *         cocycle_rep_members = []             # <<<<<<<<<<<<<<
@@ -16785,7 +16782,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
     __Pyx_XDECREF_SET(__pyx_v_cocycle_rep_members, ((PyObject*)__pyx_t_1));
     __pyx_t_1 = 0;
 
-    /* "src/scloop/data/ripser_lib/ripser_lib.pyx":53
+    /* "scloop/data/ripser_lib.pyx":53
  *         n_simplices = rep_i.size() // chunk_size
  *         cocycle_rep_members = []
  *         for j in range(n_simplices):             # <<<<<<<<<<<<<<
@@ -16824,7 +16821,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
       __Pyx_XDECREF_SET(__pyx_v_j, __pyx_t_1);
       __pyx_t_1 = 0;
 
-      /* "src/scloop/data/ripser_lib/ripser_lib.pyx":54
+      /* "scloop/data/ripser_lib.pyx":54
  *         cocycle_rep_members = []
  *         for j in range(n_simplices):
  *             simplex = []             # <<<<<<<<<<<<<<
@@ -16836,7 +16833,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
       __Pyx_XDECREF_SET(__pyx_v_simplex, ((PyObject*)__pyx_t_1));
       __pyx_t_1 = 0;
 
-      /* "src/scloop/data/ripser_lib/ripser_lib.pyx":55
+      /* "scloop/data/ripser_lib.pyx":55
  *         for j in range(n_simplices):
  *             simplex = []
  *             start_idx = j * chunk_size             # <<<<<<<<<<<<<<
@@ -16852,7 +16849,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
       __pyx_v_start_idx = __pyx_t_10;
 
-      /* "src/scloop/data/ripser_lib/ripser_lib.pyx":56
+      /* "scloop/data/ripser_lib.pyx":56
  *             simplex = []
  *             start_idx = j * chunk_size
  *             end_idx = start_idx + chunk_size - 1             # <<<<<<<<<<<<<<
@@ -16861,7 +16858,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
 */
       __pyx_v_end_idx = ((__pyx_v_start_idx + __pyx_v_chunk_size) - 1);
 
-      /* "src/scloop/data/ripser_lib/ripser_lib.pyx":57
+      /* "scloop/data/ripser_lib.pyx":57
  *             start_idx = j * chunk_size
  *             end_idx = start_idx + chunk_size - 1
  *             for k in range(start_idx, end_idx):             # <<<<<<<<<<<<<<
@@ -16873,7 +16870,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
       for (__pyx_t_12 = __pyx_v_start_idx; __pyx_t_12 < __pyx_t_11; __pyx_t_12+=1) {
         __pyx_v_k = __pyx_t_12;
 
-        /* "src/scloop/data/ripser_lib/ripser_lib.pyx":58
+        /* "scloop/data/ripser_lib.pyx":58
  *             end_idx = start_idx + chunk_size - 1
  *             for k in range(start_idx, end_idx):
  *                 simplex.append(int(rep_i[0][k]))             # <<<<<<<<<<<<<<
@@ -16896,7 +16893,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
         __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
       }
 
-      /* "src/scloop/data/ripser_lib/ripser_lib.pyx":59
+      /* "scloop/data/ripser_lib.pyx":59
  *             for k in range(start_idx, end_idx):
  *                 simplex.append(int(rep_i[0][k]))
  *             cocycle_rep_members.append([simplex, int(rep_i[0][end_idx])])             # <<<<<<<<<<<<<<
@@ -16926,7 +16923,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
       __pyx_t_14 = __Pyx_PyList_Append(__pyx_v_cocycle_rep_members, __pyx_t_1); if (unlikely(__pyx_t_14 == ((int)-1))) __PYX_ERR(0, 59, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-      /* "src/scloop/data/ripser_lib/ripser_lib.pyx":53
+      /* "scloop/data/ripser_lib.pyx":53
  *         n_simplices = rep_i.size() // chunk_size
  *         cocycle_rep_members = []
  *         for j in range(n_simplices):             # <<<<<<<<<<<<<<
@@ -16936,7 +16933,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
     }
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
 
-    /* "src/scloop/data/ripser_lib/ripser_lib.pyx":60
+    /* "scloop/data/ripser_lib.pyx":60
  *                 simplex.append(int(rep_i[0][k]))
  *             cocycle_rep_members.append([simplex, int(rep_i[0][end_idx])])
  *         cocycle_representatives.append(cocycle_rep_members)             # <<<<<<<<<<<<<<
@@ -16946,7 +16943,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
     __pyx_t_14 = __Pyx_PyList_Append(__pyx_v_cocycle_representatives, __pyx_v_cocycle_rep_members); if (unlikely(__pyx_t_14 == ((int)-1))) __PYX_ERR(0, 60, __pyx_L1_error)
   }
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":61
+  /* "scloop/data/ripser_lib.pyx":61
  *             cocycle_rep_members.append([simplex, int(rep_i[0][end_idx])])
  *         cocycle_representatives.append(cocycle_rep_members)
  *     return cocycle_representatives             # <<<<<<<<<<<<<<
@@ -16958,7 +16955,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
   __pyx_r = __pyx_v_cocycle_representatives;
   goto __pyx_L0;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":22
+  /* "scloop/data/ripser_lib.pyx":22
  *     num_edges: int
  * 
  * cdef list converting_cocycles_to_numpy(vector[vector[vector[int]]] cocycles_by_dim, int dim):             # <<<<<<<<<<<<<<
@@ -16984,7 +16981,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
   return __pyx_r;
 }
 
-/* "src/scloop/data/ripser_lib/ripser_lib.pyx":63
+/* "scloop/data/ripser_lib.pyx":63
  *     return cocycle_representatives
  * 
  * cdef list converting_birth_death_to_numpy(vector[vector[value_t]] births_and_deaths_by_dim, int dim):             # <<<<<<<<<<<<<<
@@ -17007,14 +17004,12 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_birth_death_to_nu
   PyObject *(*__pyx_t_5)(PyObject *);
   std::vector<__pyx_t_6scloop_4data_10ripser_lib_value_t> ::size_type __pyx_t_6;
   int __pyx_t_7;
-  PyObject *__pyx_t_8 = NULL;
-  PyObject *__pyx_t_9 = NULL;
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("converting_birth_death_to_numpy", 0);
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":71
+  /* "scloop/data/ripser_lib.pyx":71
  *     and likewise for d-dimensional persistence in births_and_deaths_by_dim[d]
  *     '''
  *     cdef list birth = []             # <<<<<<<<<<<<<<
@@ -17026,7 +17021,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_birth_death_to_nu
   __pyx_v_birth = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":72
+  /* "scloop/data/ripser_lib.pyx":72
  *     '''
  *     cdef list birth = []
  *     cdef list death = []             # <<<<<<<<<<<<<<
@@ -17038,7 +17033,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_birth_death_to_nu
   __pyx_v_death = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":73
+  /* "scloop/data/ripser_lib.pyx":73
  *     cdef list birth = []
  *     cdef list death = []
  *     cdef vector[value_t]* birth_death = &births_and_deaths_by_dim[dim]             # <<<<<<<<<<<<<<
@@ -17047,7 +17042,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_birth_death_to_nu
 */
   __pyx_v_birth_death = (&(__pyx_v_births_and_deaths_by_dim[__pyx_v_dim]));
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":74
+  /* "scloop/data/ripser_lib.pyx":74
  *     cdef list death = []
  *     cdef vector[value_t]* birth_death = &births_and_deaths_by_dim[dim]
  *     cdef int n_pairs = birth_death.size() // 2             # <<<<<<<<<<<<<<
@@ -17056,7 +17051,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_birth_death_to_nu
 */
   __pyx_v_n_pairs = (__pyx_v_birth_death->size() / 2);
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":75
+  /* "scloop/data/ripser_lib.pyx":75
  *     cdef vector[value_t]* birth_death = &births_and_deaths_by_dim[dim]
  *     cdef int n_pairs = birth_death.size() // 2
  *     for i in range(n_pairs):             # <<<<<<<<<<<<<<
@@ -17095,12 +17090,12 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_birth_death_to_nu
     __Pyx_XDECREF_SET(__pyx_v_i, __pyx_t_1);
     __pyx_t_1 = 0;
 
-    /* "src/scloop/data/ripser_lib/ripser_lib.pyx":76
+    /* "scloop/data/ripser_lib.pyx":76
  *     cdef int n_pairs = birth_death.size() // 2
  *     for i in range(n_pairs):
  *         birth.append(birth_death[0][i * 2])             # <<<<<<<<<<<<<<
  *         death.append(birth_death[0][i * 2 + 1])
- *     return np.stack((birth, death), axis=1)
+ *     return [birth, death]
 */
     __pyx_t_1 = __Pyx_PyLong_MultiplyObjC(__pyx_v_i, __pyx_mstate_global->__pyx_int_2, 2, 0, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 76, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
@@ -17111,11 +17106,11 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_birth_death_to_nu
     __pyx_t_7 = __Pyx_PyList_Append(__pyx_v_birth, __pyx_t_1); if (unlikely(__pyx_t_7 == ((int)-1))) __PYX_ERR(0, 76, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "src/scloop/data/ripser_lib/ripser_lib.pyx":77
+    /* "scloop/data/ripser_lib.pyx":77
  *     for i in range(n_pairs):
  *         birth.append(birth_death[0][i * 2])
  *         death.append(birth_death[0][i * 2 + 1])             # <<<<<<<<<<<<<<
- *     return np.stack((birth, death), axis=1)
+ *     return [birth, death]
  * 
 */
     __pyx_t_1 = __Pyx_PyLong_MultiplyObjC(__pyx_v_i, __pyx_mstate_global->__pyx_int_2, 2, 0, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 77, __pyx_L1_error)
@@ -17130,7 +17125,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_birth_death_to_nu
     __pyx_t_7 = __Pyx_PyList_Append(__pyx_v_death, __pyx_t_2); if (unlikely(__pyx_t_7 == ((int)-1))) __PYX_ERR(0, 77, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-    /* "src/scloop/data/ripser_lib/ripser_lib.pyx":75
+    /* "scloop/data/ripser_lib.pyx":75
  *     cdef vector[value_t]* birth_death = &births_and_deaths_by_dim[dim]
  *     cdef int n_pairs = birth_death.size() // 2
  *     for i in range(n_pairs):             # <<<<<<<<<<<<<<
@@ -17140,59 +17135,27 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_birth_death_to_nu
   }
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":78
+  /* "scloop/data/ripser_lib.pyx":78
  *         birth.append(birth_death[0][i * 2])
  *         death.append(birth_death[0][i * 2 + 1])
- *     return np.stack((birth, death), axis=1)             # <<<<<<<<<<<<<<
+ *     return [birth, death]             # <<<<<<<<<<<<<<
  * 
  * def ripser(
 */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_2 = NULL;
-  __Pyx_GetModuleGlobalName(__pyx_t_1, __pyx_mstate_global->__pyx_n_u_np); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 78, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_8 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_mstate_global->__pyx_n_u_stack); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 78, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_8);
-  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = PyTuple_New(2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 78, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_t_3 = PyList_New(2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 78, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_3);
   __Pyx_INCREF(__pyx_v_birth);
   __Pyx_GIVEREF(__pyx_v_birth);
-  if (__Pyx_PyTuple_SET_ITEM(__pyx_t_1, 0, __pyx_v_birth) != (0)) __PYX_ERR(0, 78, __pyx_L1_error);
+  if (__Pyx_PyList_SET_ITEM(__pyx_t_3, 0, __pyx_v_birth) != (0)) __PYX_ERR(0, 78, __pyx_L1_error);
   __Pyx_INCREF(__pyx_v_death);
   __Pyx_GIVEREF(__pyx_v_death);
-  if (__Pyx_PyTuple_SET_ITEM(__pyx_t_1, 1, __pyx_v_death) != (0)) __PYX_ERR(0, 78, __pyx_L1_error);
-  __pyx_t_4 = 1;
-  #if CYTHON_UNPACK_METHODS
-  if (unlikely(PyMethod_Check(__pyx_t_8))) {
-    __pyx_t_2 = PyMethod_GET_SELF(__pyx_t_8);
-    assert(__pyx_t_2);
-    PyObject* __pyx__function = PyMethod_GET_FUNCTION(__pyx_t_8);
-    __Pyx_INCREF(__pyx_t_2);
-    __Pyx_INCREF(__pyx__function);
-    __Pyx_DECREF_SET(__pyx_t_8, __pyx__function);
-    __pyx_t_4 = 0;
-  }
-  #endif
-  {
-    PyObject *__pyx_callargs[2 + ((CYTHON_VECTORCALL) ? 1 : 0)] = {__pyx_t_2, __pyx_t_1};
-    __pyx_t_9 = __Pyx_MakeVectorcallBuilderKwds(1); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 78, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_9);
-    if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_axis, __pyx_mstate_global->__pyx_int_1, __pyx_t_9, __pyx_callargs+2, 0) < (0)) __PYX_ERR(0, 78, __pyx_L1_error)
-    __pyx_t_3 = __Pyx_Object_Vectorcall_CallFromBuilder((PyObject*)__pyx_t_8, __pyx_callargs+__pyx_t_4, (2-__pyx_t_4) | (__pyx_t_4*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET), __pyx_t_9);
-    __Pyx_XDECREF(__pyx_t_2); __pyx_t_2 = 0;
-    __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-    __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
-    __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-    if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 78, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_3);
-  }
-  if (!(likely(PyList_CheckExact(__pyx_t_3))||((__pyx_t_3) == Py_None) || __Pyx_RaiseUnexpectedTypeError("list", __pyx_t_3))) __PYX_ERR(0, 78, __pyx_L1_error)
+  if (__Pyx_PyList_SET_ITEM(__pyx_t_3, 1, __pyx_v_death) != (0)) __PYX_ERR(0, 78, __pyx_L1_error);
   __pyx_r = ((PyObject*)__pyx_t_3);
   __pyx_t_3 = 0;
   goto __pyx_L0;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":63
+  /* "scloop/data/ripser_lib.pyx":63
  *     return cocycle_representatives
  * 
  * cdef list converting_birth_death_to_numpy(vector[vector[value_t]] births_and_deaths_by_dim, int dim):             # <<<<<<<<<<<<<<
@@ -17205,8 +17168,6 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_birth_death_to_nu
   __Pyx_XDECREF(__pyx_t_1);
   __Pyx_XDECREF(__pyx_t_2);
   __Pyx_XDECREF(__pyx_t_3);
-  __Pyx_XDECREF(__pyx_t_8);
-  __Pyx_XDECREF(__pyx_t_9);
   __Pyx_AddTraceback("scloop.data.ripser_lib.converting_birth_death_to_numpy", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = 0;
   __pyx_L0:;
@@ -17218,8 +17179,8 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_birth_death_to_nu
   return __pyx_r;
 }
 
-/* "src/scloop/data/ripser_lib/ripser_lib.pyx":80
- *     return np.stack((birth, death), axis=1)
+/* "scloop/data/ripser_lib.pyx":80
+ *     return [birth, death]
  * 
  * def ripser(             # <<<<<<<<<<<<<<
  *     distance_matrix: coo_matrix,
@@ -17388,7 +17349,7 @@ static PyObject *__pyx_pf_6scloop_4data_10ripser_lib_ripser(CYTHON_UNUSED PyObje
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("ripser", 0);
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":88
+  /* "scloop/data/ripser_lib.pyx":88
  * ) -> RipserResults:
  *     # I, J, and V need to be contiguous array
  *     cdef int[::1] _I = np.ascontiguousarray(distance_matrix.row, dtype = np.intc)             # <<<<<<<<<<<<<<
@@ -17440,7 +17401,7 @@ static PyObject *__pyx_pf_6scloop_4data_10ripser_lib_ripser(CYTHON_UNUSED PyObje
   __pyx_t_8.memview = NULL;
   __pyx_t_8.data = NULL;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":89
+  /* "scloop/data/ripser_lib.pyx":89
  *     # I, J, and V need to be contiguous array
  *     cdef int[::1] _I = np.ascontiguousarray(distance_matrix.row, dtype = np.intc)
  *     cdef int[::1] _J = np.ascontiguousarray(distance_matrix.col, dtype = np.intc)             # <<<<<<<<<<<<<<
@@ -17492,7 +17453,7 @@ static PyObject *__pyx_pf_6scloop_4data_10ripser_lib_ripser(CYTHON_UNUSED PyObje
   __pyx_t_8.memview = NULL;
   __pyx_t_8.data = NULL;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":90
+  /* "scloop/data/ripser_lib.pyx":90
  *     cdef int[::1] _I = np.ascontiguousarray(distance_matrix.row, dtype = np.intc)
  *     cdef int[::1] _J = np.ascontiguousarray(distance_matrix.col, dtype = np.intc)
  *     cdef float[::1] _V = np.ascontiguousarray(distance_matrix.data, dtype = np.float32)             # <<<<<<<<<<<<<<
@@ -17544,7 +17505,7 @@ static PyObject *__pyx_pf_6scloop_4data_10ripser_lib_ripser(CYTHON_UNUSED PyObje
   __pyx_t_9.memview = NULL;
   __pyx_t_9.data = NULL;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":92
+  /* "scloop/data/ripser_lib.pyx":92
  *     cdef float[::1] _V = np.ascontiguousarray(distance_matrix.data, dtype = np.float32)
  * 
  *     cdef int* I = &_I[0]             # <<<<<<<<<<<<<<
@@ -17563,7 +17524,7 @@ static PyObject *__pyx_pf_6scloop_4data_10ripser_lib_ripser(CYTHON_UNUSED PyObje
   }
   __pyx_v_I = (&(*((int *) ( /* dim=0 */ ((char *) (((int *) __pyx_v__I.data) + __pyx_t_10)) ))));
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":93
+  /* "scloop/data/ripser_lib.pyx":93
  * 
  *     cdef int* I = &_I[0]
  *     cdef int* J = &_J[0]             # <<<<<<<<<<<<<<
@@ -17582,7 +17543,7 @@ static PyObject *__pyx_pf_6scloop_4data_10ripser_lib_ripser(CYTHON_UNUSED PyObje
   }
   __pyx_v_J = (&(*((int *) ( /* dim=0 */ ((char *) (((int *) __pyx_v__J.data) + __pyx_t_10)) ))));
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":94
+  /* "scloop/data/ripser_lib.pyx":94
  *     cdef int* I = &_I[0]
  *     cdef int* J = &_J[0]
  *     cdef float* V = &_V[0]             # <<<<<<<<<<<<<<
@@ -17601,7 +17562,7 @@ static PyObject *__pyx_pf_6scloop_4data_10ripser_lib_ripser(CYTHON_UNUSED PyObje
   }
   __pyx_v_V = (&(*((float *) ( /* dim=0 */ ((char *) (((float *) __pyx_v__V.data) + __pyx_t_10)) ))));
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":96
+  /* "scloop/data/ripser_lib.pyx":96
  *     cdef float* V = &_V[0]
  * 
  *     cdef int NEdges = distance_matrix.nnz             # <<<<<<<<<<<<<<
@@ -17614,7 +17575,7 @@ static PyObject *__pyx_pf_6scloop_4data_10ripser_lib_ripser(CYTHON_UNUSED PyObje
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_v_NEdges = __pyx_t_11;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":97
+  /* "scloop/data/ripser_lib.pyx":97
  * 
  *     cdef int NEdges = distance_matrix.nnz
  *     cdef int N = distance_matrix.shape[0]             # <<<<<<<<<<<<<<
@@ -17630,7 +17591,7 @@ static PyObject *__pyx_pf_6scloop_4data_10ripser_lib_ripser(CYTHON_UNUSED PyObje
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_v_N = __pyx_t_11;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":98
+  /* "scloop/data/ripser_lib.pyx":98
  *     cdef int NEdges = distance_matrix.nnz
  *     cdef int N = distance_matrix.shape[0]
  *     cdef ripserResults res = rips_dm_sparse(I, J, V, NEdges, N, modulus, dim_max, threshold, int(do_cocycles))             # <<<<<<<<<<<<<<
@@ -17643,7 +17604,7 @@ static PyObject *__pyx_pf_6scloop_4data_10ripser_lib_ripser(CYTHON_UNUSED PyObje
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_v_res = rips_dm_sparse(__pyx_v_I, __pyx_v_J, __pyx_v_V, __pyx_v_NEdges, __pyx_v_N, __pyx_v_modulus, __pyx_v_dim_max, __pyx_v_threshold, __pyx_t_11);
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":99
+  /* "scloop/data/ripser_lib.pyx":99
  *     cdef int N = distance_matrix.shape[0]
  *     cdef ripserResults res = rips_dm_sparse(I, J, V, NEdges, N, modulus, dim_max, threshold, int(do_cocycles))
  *     cdef list persistence_diagrams = [converting_birth_death_to_numpy(res.births_and_deaths_by_dim, i) for i in range(dim_max)]             # <<<<<<<<<<<<<<
@@ -17666,7 +17627,7 @@ static PyObject *__pyx_pf_6scloop_4data_10ripser_lib_ripser(CYTHON_UNUSED PyObje
   __pyx_v_persistence_diagrams = ((PyObject*)__pyx_t_2);
   __pyx_t_2 = 0;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":100
+  /* "scloop/data/ripser_lib.pyx":100
  *     cdef ripserResults res = rips_dm_sparse(I, J, V, NEdges, N, modulus, dim_max, threshold, int(do_cocycles))
  *     cdef list persistence_diagrams = [converting_birth_death_to_numpy(res.births_and_deaths_by_dim, i) for i in range(dim_max)]
  *     cdef list cocycle_representatives = [converting_cocycles_to_numpy(res.cocycles_by_dim, i) for i in range(1, dim_max)]             # <<<<<<<<<<<<<<
@@ -17689,7 +17650,7 @@ static PyObject *__pyx_pf_6scloop_4data_10ripser_lib_ripser(CYTHON_UNUSED PyObje
   __pyx_v_cocycle_representatives = ((PyObject*)__pyx_t_2);
   __pyx_t_2 = 0;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":101
+  /* "scloop/data/ripser_lib.pyx":101
  *     cdef list persistence_diagrams = [converting_birth_death_to_numpy(res.births_and_deaths_by_dim, i) for i in range(dim_max)]
  *     cdef list cocycle_representatives = [converting_cocycles_to_numpy(res.cocycles_by_dim, i) for i in range(1, dim_max)]
  *     return RipserResults(             # <<<<<<<<<<<<<<
@@ -17701,7 +17662,7 @@ static PyObject *__pyx_pf_6scloop_4data_10ripser_lib_ripser(CYTHON_UNUSED PyObje
   __Pyx_GetModuleGlobalName(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_RipserResults); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 101, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":104
+  /* "scloop/data/ripser_lib.pyx":104
  *         persistence_diagrams,
  *         cocycle_representatives,
  *         NEdges             # <<<<<<<<<<<<<<
@@ -17734,8 +17695,8 @@ static PyObject *__pyx_pf_6scloop_4data_10ripser_lib_ripser(CYTHON_UNUSED PyObje
   __pyx_t_2 = 0;
   goto __pyx_L0;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":80
- *     return np.stack((birth, death), axis=1)
+  /* "scloop/data/ripser_lib.pyx":80
+ *     return [birth, death]
  * 
  * def ripser(             # <<<<<<<<<<<<<<
  *     distance_matrix: coo_matrix,
@@ -19603,7 +19564,7 @@ __Pyx_RefNannySetupContext("PyInit_ripser_lib", 0);
   if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_pyx_unpickle_Enum, __pyx_t_4) < (0)) __PYX_ERR(1, 4, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":3
+  /* "scloop/data/ripser_lib.pyx":3
  * cimport cython
  * from libcpp.vector cimport vector
  * from scipy.sparse import coo_matrix             # <<<<<<<<<<<<<<
@@ -19627,7 +19588,7 @@ __Pyx_RefNannySetupContext("PyInit_ripser_lib", 0);
   }
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":4
+  /* "scloop/data/ripser_lib.pyx":4
  * from libcpp.vector cimport vector
  * from scipy.sparse import coo_matrix
  * import numpy as np             # <<<<<<<<<<<<<<
@@ -19640,7 +19601,7 @@ __Pyx_RefNannySetupContext("PyInit_ripser_lib", 0);
   if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_np, __pyx_t_4) < (0)) __PYX_ERR(0, 4, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":5
+  /* "scloop/data/ripser_lib.pyx":5
  * from scipy.sparse import coo_matrix
  * import numpy as np
  * import typing             # <<<<<<<<<<<<<<
@@ -19653,7 +19614,7 @@ __Pyx_RefNannySetupContext("PyInit_ripser_lib", 0);
   if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_typing, __pyx_t_4) < (0)) __PYX_ERR(0, 5, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":6
+  /* "scloop/data/ripser_lib.pyx":6
  * import numpy as np
  * import typing
  * import dataclasses             # <<<<<<<<<<<<<<
@@ -19666,29 +19627,29 @@ __Pyx_RefNannySetupContext("PyInit_ripser_lib", 0);
   if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_dataclasses, __pyx_t_4) < (0)) __PYX_ERR(0, 6, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":17
+  /* "scloop/data/ripser_lib.pyx":17
  * 
  * @dataclasses.dataclass
  * class RipserResults:             # <<<<<<<<<<<<<<
- *     births_and_deaths_by_dim: list[np.ndarray]
+ *     births_and_deaths_by_dim: list
  *     cocycles_by_dim: list
 */
   __pyx_t_4 = __Pyx_Py3MetaclassPrepare((PyObject *) NULL, __pyx_mstate_global->__pyx_empty_tuple, __pyx_mstate_global->__pyx_n_u_RipserResults, __pyx_mstate_global->__pyx_n_u_RipserResults, (PyObject *) NULL, __pyx_mstate_global->__pyx_n_u_scloop_data_ripser_lib, (PyObject *) NULL); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 17, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __pyx_t_5 = __Pyx_PyDict_NewPresized(3); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 17, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  if (PyDict_SetItem(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_births_and_deaths_by_dim, __pyx_mstate_global->__pyx_kp_u_list_np_ndarray) < (0)) __PYX_ERR(0, 17, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_births_and_deaths_by_dim, __pyx_mstate_global->__pyx_n_u_list) < (0)) __PYX_ERR(0, 17, __pyx_L1_error)
   if (PyDict_SetItem(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_cocycles_by_dim, __pyx_mstate_global->__pyx_n_u_list) < (0)) __PYX_ERR(0, 17, __pyx_L1_error)
   if (PyDict_SetItem(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_num_edges, __pyx_mstate_global->__pyx_n_u_int) < (0)) __PYX_ERR(0, 17, __pyx_L1_error)
   if (__Pyx_SetNameInClass(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_annotations, __pyx_t_5) < (0)) __PYX_ERR(0, 17, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":16
+  /* "scloop/data/ripser_lib.pyx":16
  *     cdef ripserResults rips_dm_sparse(int* I, int* J, float* V, int NEdges, int N, int modulus, int dim_max, float threshold, int do_cocycles)
  * 
  * @dataclasses.dataclass             # <<<<<<<<<<<<<<
  * class RipserResults:
- *     births_and_deaths_by_dim: list[np.ndarray]
+ *     births_and_deaths_by_dim: list
 */
   __pyx_t_10 = NULL;
   __Pyx_GetModuleGlobalName(__pyx_t_11, __pyx_mstate_global->__pyx_n_u_dataclasses); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 16, __pyx_L1_error)
@@ -19697,11 +19658,11 @@ __Pyx_RefNannySetupContext("PyInit_ripser_lib", 0);
   __Pyx_GOTREF(__pyx_t_12);
   __Pyx_DECREF(__pyx_t_11); __pyx_t_11 = 0;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":17
+  /* "scloop/data/ripser_lib.pyx":17
  * 
  * @dataclasses.dataclass
  * class RipserResults:             # <<<<<<<<<<<<<<
- *     births_and_deaths_by_dim: list[np.ndarray]
+ *     births_and_deaths_by_dim: list
  *     cocycles_by_dim: list
 */
   __pyx_t_11 = __Pyx_Py3ClassCreate(((PyObject*)&PyType_Type), __pyx_mstate_global->__pyx_n_u_RipserResults, __pyx_mstate_global->__pyx_empty_tuple, __pyx_t_4, NULL, 0, 0); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 17, __pyx_L1_error)
@@ -19723,8 +19684,8 @@ __Pyx_RefNannySetupContext("PyInit_ripser_lib", 0);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":80
- *     return np.stack((birth, death), axis=1)
+  /* "scloop/data/ripser_lib.pyx":80
+ *     return [birth, death]
  * 
  * def ripser(             # <<<<<<<<<<<<<<
  *     distance_matrix: coo_matrix,
@@ -19744,7 +19705,7 @@ __Pyx_RefNannySetupContext("PyInit_ripser_lib", 0);
   if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_ripser, __pyx_t_5) < (0)) __PYX_ERR(0, 80, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":1
+  /* "scloop/data/ripser_lib.pyx":1
  * cimport cython             # <<<<<<<<<<<<<<
  * from libcpp.vector cimport vector
  * from scipy.sparse import coo_matrix
@@ -19887,34 +19848,34 @@ static int __Pyx_InitCachedConstants(__pyx_mstatetype *__pyx_mstate) {
 static int __Pyx_InitConstants(__pyx_mstatetype *__pyx_mstate) {
   CYTHON_UNUSED_VAR(__pyx_mstate);
   {
-    const struct { const unsigned int length: 8; } index[] = {{2},{68},{35},{54},{37},{60},{24},{52},{26},{34},{29},{33},{45},{22},{15},{179},{37},{30},{32},{1},{1},{1},{1},{1},{8},{5},{6},{15},{23},{25},{7},{6},{2},{6},{35},{9},{30},{16},{50},{8},{21},{41},{20},{32},{22},{30},{37},{5},{8},{2},{1},{2},{1},{1},{6},{20},{13},{8},{2},{1},{15},{3},{15},{15},{17},{18},{4},{4},{24},{1},{9},{17},{18},{23},{15},{3},{10},{5},{4},{9},{11},{8},{7},{15},{11},{7},{5},{15},{6},{9},{5},{5},{7},{6},{7},{8},{12},{1},{2},{10},{5},{3},{4},{13},{5},{8},{4},{8},{7},{13},{4},{10},{7},{4},{8},{4},{7},{3},{2},{9},{5},{3},{4},{20},{3},{11},{14},{11},{10},{19},{14},{12},{10},{17},{13},{8},{3},{6},{6},{3},{12},{22},{12},{10},{12},{19},{5},{4},{5},{5},{4},{4},{6},{8},{9},{6},{6},{6},{6},{1},{239},{1}};
-    #if (CYTHON_COMPRESS_STRINGS) == 2 /* compression: bz2 (1500 bytes) */
-const char* const cstring = "BZh91AY&SY5\3432!\000\000\223\177\377\345\3707\352\353\357\375W\277s\373\313\377\377\377\360@@@@@@@@@@@@@\000@\000P\005~\271\023\001\020\001J\006\006\251\246\217T\364\231L\000\006\202h\006\215\006\2324i\350\200\320b\000i\246\023&\232\032f\241\303@4\000\032\003@h\000\000\006\2324\320\006@\000\003F\231\006\032\230&\210&T\374T=\023C\324bh\032\036P\000\320\000\000\000\003@b\001\303@4\000\032\003@h\000\000\006\2324\320\006@\000\003F\231\006\022\232@@&\200\224\366\215F\246\2316\241\240\321\240\031\000h\000\000\0004\032bS\333\003\372\356\177\013\274w\320\204\305?\313\240\330\177\310\360b\035\362\327\232\332\212\036\001\346\357\336\363\2761\013@\370\217\204\326\332\372p\243G*)\213\213\226\025\020\272\002l\021\214`\321\301OY0\344'\3609Oj4\203E_\234\216\262\256\005\314\331\322\350\254\255\326\2132\322\014\365\354\244-l\206\237\225B\2640\330\333P\244\024\222\312\350\n'jm;\026\304\336\243\246Dh\341q!\032$\003\263\252\243\263\270C\013\224\003H\031\242\001&TIU\335\020\000\240\270|8\003\n[P\"\2348F\201\001c\220\211\036\t\261\313X\307:p\037\215\264\264\207d`\362\307ScN\343\220\273\"Y\273\233\234\300J\272ht\313\337\210\344\310\226\210Q\212]\353\216\347<\262\346\201Z-C\231V\020\374\345v\033\367GQQ\314\253\341\356\242\242 Q\340\250,\277\221\301\177n:tp\257\353\270\"\\\325\327\214\333\\\365\277\024\010\014\270\245>\0031\000\t\031\000\005\250\240e-\272\334\334\324\221#\276F\t\247\026\001\323)\240)\325\225g2\023\254)\210\244:\360\211z\211\254E\320y!\326/\223B\260\234\006\2655\225vi \265\027:F\257\353+\033\233K\321\222\265Rx\347\246\2116\002\374\277\336\326\227\357\226\233;?\274rc\036\327Y\314,`\335\020\362\336S\014\347\267\302\332\361\266\273!\251\232\273\325\246\373\206\335\254W3\254H\355\224Y\316\240\277\002\325\235b\203\253\335\347<\356F\276\276\251\312^K\241=!0$\034I\035\330{\034\2327\360\325n\330\273VY2I\362\307\213\022Y\316h\232\222\370U\242\336\321\241\336w\263\036\247\236l\222\350S\232q1f23q\323ih\224<\303\t0\230\374\350\234u\010\031\216F<\312\373?Ze\273\304\206&73\326j\005\241""\330\303\205I\311\331\330\214\007d\310\354\336\244\312\301S\003\001i\032\270\265?\326\004)\036\206z^\304\\4\206{\253\343x\357FC\241\034ET$\214\330\210\\\246\316\003\244\222\262\207\364\200\"\016n\2079C\013\350\\\016S\230\025$\3371\204f*\326\347\205\203d\024\016\005lq\\\301\204\024\324\246\013\251\252d\031&\236\270]*\317F\315\320!\221\342\303I\245\351\221I\312\032\356\277^\233L\325\211*\323\224\013V&\324q\235\225\2447\352\326\333\030\320\026\341\215\207s\237D2\320\327h!\317\016\211}\017+\244Y\020\263\222\346\304\023q\247@G\223[\034\237\344u\304\265\330\231\351\244\231J\313\003V\330\205\251\210f\322\321\010\t\005\361%v\0061\360\336\366\202\022\\&\025\225F3\250Z\026\\J1\241\tr\352\266w\355\245;\004I\264\032\366\232\301\267&\273<7\305\233\224\325P\362\026\331R\014\345\332\331aq\031\365\245\352\337\317F\320\262\253XC\003\221:\334\327i\271\311\311\226Z\223n\201c\016\304 4\236\t\246\315\034e\214Z\224|-#WHO\033\241\010\202wJ\247\3753\310\256\254\t\310\263S\270\305:W5\035\302\202\301\027\311\330v\240\320\364diI\t\t\241\351T\352\353\261\214\006\265]8\203\303_\033\347\221<-\336\016\202\316Yk\314\317\\\242\334M\325\022!0\207\214\257\264\214^\367\007\347\217\272A\212\ri\201\247*r\212\367\241!\314Y\234\344\304\022\022f\303G@\256\340\272\346\354z\334V\322C\216i\235)\325\272\201\r2\322$\221\2067\276\363\223h\321\241Vp\201YDT\367\374G\0014B\272\261\364n\212d\006\3764\316ncN\314\316\"\334\3064b\312Qu\302\3130\274k\372\346\255\335Y4\367S\205\261\026\226\"\311\0203D(\354\333\010\234\330\271h\211\273\225\250\242m\025\202\021#\"\251\203\260\032\241\007C\254\354*\243P\310\231\245\033\240\036\026\341\203l\335\006\205'\230\325\257\033J\231\276\350\322\r\213\004\260 .=\206\n\t_wa\220\350\245\035\354\350\243Y\255f\233x\202:r#\022\251\344\231\270Q\361U\205\220z\321\247\344\3061g\032\303KF0BCR\307*\305#o^\020Z\246L\311\216f#d\257\014r\036\026\254]\354\002\353,!\001\272r\036\264\266\306\255_S\333\300w|\374\027\020\n\250Y\323;\250\216%\035b\0349:W\2341w\r\374\266(\206<\037\266\216\246\314M\273""\335\033\215\355fU\337Q\211\265\274 TI\217\226\335\312#\260\203=\020B\315\367\231\366\344ph\300\314\244d\023\265\222J\241\000\204\225X\311\006\003\203A\231v\365\361\214`hR\312>i\342\026\347z\343\373\2557\004\236\216\277\321\221*/fM\311\262\033\316\245\2247X9\031\205\271\201\272\232\340\345\232xf\305\230\276\222(r\325\025w\352\357\006\232\326|\270\320\007c\246(\202\010\315\355\177\213\271\"\234(H\032\361\231\020\200";
-    PyObject *data = __Pyx_DecompressString(cstring, 1500, 2);
+    const struct { const unsigned int length: 8; } index[] = {{2},{68},{35},{54},{37},{60},{24},{52},{26},{34},{29},{33},{45},{22},{15},{179},{37},{30},{32},{1},{1},{1},{1},{1},{8},{5},{6},{15},{23},{25},{7},{6},{2},{6},{35},{9},{30},{50},{8},{21},{30},{20},{32},{22},{30},{37},{5},{8},{2},{1},{2},{1},{1},{6},{20},{13},{8},{2},{1},{15},{3},{15},{15},{17},{18},{4},{24},{1},{9},{17},{18},{23},{15},{3},{10},{5},{4},{9},{11},{8},{7},{15},{11},{7},{5},{15},{6},{9},{5},{5},{7},{6},{7},{8},{12},{1},{2},{10},{5},{3},{4},{13},{5},{8},{4},{8},{7},{13},{4},{10},{7},{4},{8},{4},{7},{3},{2},{9},{5},{3},{4},{20},{3},{11},{14},{11},{10},{19},{14},{12},{10},{17},{13},{8},{3},{6},{6},{3},{12},{22},{12},{10},{12},{19},{5},{4},{5},{4},{4},{6},{8},{9},{6},{6},{6},{6},{1},{239},{1}};
+    #if (CYTHON_COMPRESS_STRINGS) == 2 /* compression: bz2 (1477 bytes) */
+const char* const cstring = "BZh91AY&SY*\325\211\365\000\000\222\177\377\345\3707\352\353\357\375W\277s\373\313\377\377\377\360@@@@@@@@@@@@@\000@\000P\005fB\365m\221\002\205J\207\273\302U=L\"b\n~&\247\245<L\240f\243F\21544\033\321@\003@\003\324\364\324\017Si\r7\2248h\006\200\003@h\r\000\000\000\323F\232\000\310\000\000h\323 \303M\010\321#\021\241M\032hd&\003@\032\001\240&\215\001\200\000\002f\211\202*\000\006\200\000\006\232\000\000\006\200\000\000\000\000\320hi\246\202SH#@L\211\222oS*cSh@\332\2154\006@\r\000\000\000\000\000{\306\007\016\237\332q\224\240\2028=\375\205NW\377\241U\200\244\201\326\244\310<T:\327]\343\371~\016\003(\256\005hL\324iyt)\275\227L\360\267B\337\205\361\330\232\210\205\n\033\263Y\322\001\337J\322\277Y\342\n\316\376\312-\246\324;\033[\376\233\323&\314\345'\304\025}\327\342\017l\231[\376v9\004\207\323-\216C\226\276\333\003\212\344o\254H\375+\030\327\025\n\264\007\271\212\263 \211C\027eO?\024-\225/\024\316\032\270'\301\275a\2406\333\321\235\302%\346X\377{Rd\226Z\312i=\333|8k\"\322Y\r\2475\217O,\265\352\363\324k\347\200\206\371\205=\265lD9\274\353\366/\362\2777[|\302\374\327\033\207\357\236\316\305\257\\\033m\312\334JFD\374\212o\333RK\n[\017\023#7\326\302qv\214e\231:\330\236\372\317\017:Z\372&D_^\274\351\372Lzk\016\033U\336\217Y\214@\021LP\t\256\260\345\035\017\204\271\355B\321\032\262\r\372N@CrU\201\256>S\326\244V\320\352&\311\313g\027(\233D[\007\222\035`\370\220\256\023\200\326&\245n\315$\026\"\327H\327\373cT\326\301a\t\260\304\356\313\200\204\264\037V\326\316\013\367\026\r\035_{\336\202\355\235u\026\325\000\322p\350yL2\236\336%\nU\262\031\263U\242\241\246\203n\330+Y\326\004v\312,\3478\267\310\021\345#\230\270\272'b\361\014\333\245\362!\230\033\0304\006\004\350\207\022\274\027\255]\325\222\t\235R\222\275\t+}\333{\204\262\316ffG\3716\003\271G\201\377\252\326\356\006\300\321#\274\215i\304\301\230\304\311\307M\233D\250\361\313\344\302c\356\2518\352\0202\034\214z\227S\360\253\035\336\01400\265\236\271\250\026\207r\376\025\223\223\263\261\030\016\311\221\336\327\025(\310\2146(""\017\210k\335\301\374^\030\321u4\3334\211\3422i\303\306\336'\274\032\253c@\233\270j*\310\221\203\254\240\010j5\245>\344\002D,2\326\211\2375\217\235iZ\201\215\253\034\265\r)\033_\010K\306\320(\250rN\354$$\021\325\315A\353k\251\022$O;b\225'\253\213t\010bu\341\231\233\325\211T\345\r\226\335\263;\014\225\022U\325\274\013\026\006\324r\035\345\230i\257cq1\250,\277\n\037\257gT1\324\326\352!\331\207L\272\243\265\314R!N[[\000M\310\235\001\036]\201\313\374GdK\035\211\236rI\224\251@\327\266!bb\0314\265B\002AtI[y\204z\257sA\t.\023j\345X\306U\205\201KIB\247\216\375vN\355\265U\334\"M\240\3274\325\355\271\026\345~\221f\336k\254<E\266UA\234\267X\257\264\214\343\335\267\2616\305aSVB\343D\353k[\225\256NL\260\3156\330\024a\3203\004\222\261I\242=\322\271\322!m\260=\024\220U\36138\005T\232\017\264\317\016\274\357'\"\235\247q\216kZn\3411^\213\244\354;LhW#$\220\220\232\025\034\371\326\305\243QY8\203\303>7\303\002wY\322\007AM%\226\243VR\213mnq\"\023\010v\025\326\021\213\334\340\375x\373\004\030\250k\013\314\361\253A\\\365\022\034\301\231\316L\001!&k\365o+\334\026\332\335\277G\217Sx\267C\245].\321\221\314\272\245\250\242K\031\263-%\255f\246=\302\003}\223u\325\341\300\r\221\251\232\355\214NP\242nt\312)\2703\342\310\343,\310cV\014\245\027\\)K\356\032\356\215{\271\344\323\335W\013\",\302,Ha\224\206\205D\320\034k\\\242\300D\325E1\231\254\246\350\304\264\231\335B\336\025\330\210kM\347\034\361\215V\344\326x\001\t\223>t\321\244\310\321<\241)M4\224e]'\252\r\203\004\257\202[\013\224\022\266\316\333!\321=\035\351\323F\303b\3116\202\010\347xw\024+\"\211\2737\030\245Yi\t>328J\214\021\335\210$$UE\030\2526tB\013\\\311\230\261\324b4\225\301\206#\302\305\203\275\000\266\224!\001\272\322\036\272\254\243W[\353{8\016\357\227\375i\000\255B\235c\372Dp*u\200p\345\346\270\341\203\270i\276\212!\207\007\357\243\237\213\003n\216\215\306\215Lk\322\261\211\265\234 V$\307\301f\345\021\301\006Z\240\205\223\350e\337\224\016A\367\265o<h\315\335\230V\322\242a0!6\270^\\\372\001 E\020\232Xw\037\300o\205\260\237V\206!\265""\233\277\000\243S\025\n1Q\200\301'\226\006yH\nL\334\302\254}1M\247d\277\227-\317\235\355\277\016C&\346N\321E\035(\3419\342\242\363\\-\215O\363\017\027rE8P\220*\325\211\365";
+    PyObject *data = __Pyx_DecompressString(cstring, 1477, 2);
     if (unlikely(!data)) __PYX_ERR(0, 1, __pyx_L1_error)
     const char* const bytes = __Pyx_PyBytes_AsString(data);
     #if !CYTHON_ASSUME_SAFE_MACROS
     if (likely(bytes)); else { Py_DECREF(data); __PYX_ERR(0, 1, __pyx_L1_error) }
     #endif
-    #elif (CYTHON_COMPRESS_STRINGS) != 0 /* compression: zlib (1348 bytes) */
-const char* const cstring = "x\332}UKo\034E\020\306\222\025^'\"\010D\010\321\010\205MD\274y\020!\204\034\243\3041b#\341\304\266\010HQ\322\351\351\256\335m\334\323=\356\356Y\357\344\304\221\343\036}\364\321\307\034s\364\321\3079\3561?\201\237@U\317\354#$B\332\231\255\351\251\347W_\325\374\310\356\030\303\224\316\301\006\355l`\205\007\tJ\333\301\342\220]R,/Cd\0310m\025\214A1a\025\263.\262`4\252\337-\373}\360l\244\341\220)\007!\275\202q\341\002\260\020\275V\0206\205e\316\232\212I\017\"\002\023,k\214\342PD\246\003\223\316F=(]\0310\010\313!w\276\352\242\025\271\022!\350\201e\32114Vk\311O\243A![\245\326\361\241\327Qd\006Z\205&\251\276w\371\377\331\246\262\330\241\216C\026\253\002X\247=\217^\330\220\312X\2304jh\241\021\252\270\204\335\275e\300t\003B\243\264\225\027\261ba(\320u,\013L\256\357<\223U\034:\333\025\336\213\252\227\022ped\256\3172WZ\025\330e1F/\227\324\225\336\233\261\032\360\313\242p>\202\352\331\2210\032\273\344\024\\%\340Q\031\233\324\221\035\206q:\030\214\n\351\\e\003\264\232)7\351 \326)\314\372\257\251\300GT \246\260\355\020\312\324\232\315\224%\325\243\300\350\014<\202\214\020R[1H\352\237e\017\267\036\256\335\372\341V\242\205\207?1|\300\3542i\260sH\007\252\251\324&b0\2027tY\257\317*W2\013\230&\266\265@\275e\2038\004\313\002D\022X'\365BD\254\233\2439r\263\323\342\252G@\326?\013\023\240\373\3405\3600\345\226`BJ\01034\367\"\024,\027U\302\017\371\374\034\274[\000\375\233M\314A\227\310\306\021x$F\204\234\236]FEu7:W~\022JqK\360P\261\014\021\272>\226\316\030J\007\033\323\025\231\\_\3422)5\311n\374\367xF\241\r\245\003\305\205\024} \331ej\323 \261\207*\240a\204q\004\033\323h,\346R\207\306DQ\226A?\007\266~\233]\177\203[F\207\370\330\026]\253\322\343\023\353\260\225}Q\232\3108\367\240J\t\2343U\246\302\255\263k\330\332\221\026\006\337Jmu\304\227M\371\033\001L\277kE\0163zo;\013\301\313kA\032\347\212kJDq\315\353\"\200\347\310\225%\261[T\343\365f\025\250\3270y\363\214(;\207\346\265\367\363\323r\336'a\214\223i\237Pi\214\022\350\276\345m\303u\362\321\256\243\356\235\275\315^o\313\030\314P\007\336\353""\361\373\367\267\267\267\324\000\002\347\017\2531^\367\220\337|\033\201\337\205\376n*d\027\002\202\026\366\340\240\004\213\240=zD\343\322]L\016\366~\026\2227\354\343|A^\364,\302\202\003)c\021*+\265\353J\347q\3705\242I\\\314D\200L\3738\014h\256\270\302\305\206bVq\354\275\304\256\320\224p>\023\006\020\211\000\364\210\016\270\306)\361BB&\344\276t\262\222\006\260\313\270\327\221-\224\310\010B{<w\351\214t\216\347\002\261A.\2276\022\216t\245\000s\201\260Q\204\n\031\241\372\030\211\033\005!\321\230*\307\347\236\271r\230\251\242qO7\216(7,B\350pM\201-\363\264K\300{\347\373F\014B\3378\021\277\273\211\364Ew\355\316\342\274_ZI\265b\225\030\014\201\345Z+\274\345\264\372\360\237\026\247FLm\224\024c\016d3\023\355`\320\010p\314\022\261\341\270\311i\215\223\320\326\205\"f\224\356\245\231\375\227\201\210\316y{\247\212\271%3k\237\333\002\263\347@lA\241\250\260\260\002\321.\300#\231b\342\206\322b\340E\216\037\217\202s\004\277\020\036\250\014\234\003.\207 \367\003zHOmU$&\240\222T\332B\313}Lf\313\316\364F\351\263F>\016Ja\232\264\026\363;\227\232\311_:\2001\211\003J\314#\t<\304\322\333f2\275;\014R\027U7`z\330\3364\305\3354D\213\321\345\034\027q\013\003J\355\352Hr\233\372\222<\213\236\006\216\220\307c\2545\n\217\nP\204\350\360\362%q(\002\365$\0161\247\2413\252\331\354X7\352\227\005\346\000\370\231*!\214\377Z\231~r\341\237\017\3369\367\356\253\325O'\276\276\370\355\311\215\223\007/\277?\375\354\354\374\331\215\351[\317.\036\235\257?_;\3319q/\177?\375\345\354\356\231x\265z~\362\325\344\346dg\"\246\313\342\307\223;\223\335\311\301\321\312\253\325\013\023w\2743]\375h\362\345\361\271cq|0]\375\342\350)\372\335<\t/\276~\361\307\313\275\323\367\317.\326\273O\352'\317\352g\242\026\331t\365\322\361N\375\315\326\351\316\251\254{\252V\203z\260_\357\027uQ\326\345\250\036\035NW/\237\254\324WZ\205\307\365\343\247\365\323\254\316P\315\324&\257s\324\304(\037\376}\373he\372\336\373\315\357\301\277ZZ\275=";
-    PyObject *data = __Pyx_DecompressString(cstring, 1348, 1);
+    #elif (CYTHON_COMPRESS_STRINGS) != 0 /* compression: zlib (1332 bytes) */
+const char* const cstring = "x\332}UKo\034E\020\306\222\025^'\"\010D\010\321\010\205MD\274y\020!\204\034\243\3041b#\341\304\266\010HQ\322\351\351\256\335m\334\323=\356\356Y\357\344\304\221\343\036}\364\321\307\034s\364\321\3079\3561?\201\237@U\317\354#$B\332\231\255\351\251\347W_\325\374\310\356\030\303\224\316\301\006\355l`\205\007\tJ\333\301\342\220]R,/Cd\0310m\025\214A1a\025\263.\262`4\252\337-\373}\360l\244\341\220)\007!\275\202q\341\002\260\020\275V\0206\205e\316\232\212I\017\"\002\023,k\214\342PD\246\003\223\316F=(]\0310\010\313!w\276\352\242\025\271\022!\350\201e\32114Vk\311O\243A![\245\326\361\241\327Qd\006Z\205&\251\276w\371\377\331\246\262\330\241\216C\026\253\002X\247=\217^\330\220\312X\2304jh\241\021\252\270\204\335\275e\300t\003B\243\264\225\027\261ba(\320u,\013L\256\357<\223U\034:\333\025\336\213\252\227\022ped\256\3172WZ\025\330e1F/\227\324\225\336\233\261\032\360\313\242p>\202\352\331\2210\032\273\344\024\\%\340Q\031\233\324\221\035\206q:\030\214\n\351\\e\003\264\232)7\351 \326)\314\372\257\251\300GT \246\260\355\020\312\324\232\315\224%\325\243\300\350\014<\202\214\020R[1H\352\237e\017\267\036\256\335\372\341V\242\205\207?1|\300\3542i\260sH\007\252\251\324&b0\2027tY\257\317*W2\013\230&\266\265@\275e\2038\004\313\002D\022X'\365BD\254\233\2439r\263\323\342\252G@\326?\013\023\240\373\3405\3600\345\226`BJ\01034\367\"\024,\027U\302\017\371\374\034\274[\000\375\233M\314A\227\310\306\021x$F\204\234\236]FEu7:W~\022JqK\360P\261\014\021\272>\226\316\030J\007\033\323\025\231\\_\3422)5\311n\374\367xF\241\r\245\003\305\205\024} \331ej\323 \261\207*\240a\204q\004\033\323h,\346R\207\306DQ\226A?\007\266~\233]\177\203[\326a\353\372\2424\221q\356A\225\0228g\252L\205Zg\327\260\225#-\014\276\225\332\352\210/\233r7\002\230~\327\212\034ft\336v\026\202\227\327\2024\316\025\327\224\210\342\232\327E\000\317\221\033\335\242\032\2577\363\256^+\374\3153\342\345\274\376\327\336\317O\313y3\2041N\246\245A\3450\212\332}\313\333\206\320\344\243\3359\335;{\233\275\336\2261\230\241\016\274\327\343\367\357ooo""\251\001\004\316\037Vc\274\356!\211\3716\242\273\013\375\335T\310.\004D*\354\301A\t\026\221z\364\210f\242\273\030\017l\360,$o(\306\371\202\241\350Y\204E\243S\306\"TVj\327\225\316\343\204k\2040\023\0012\355\3430\240\251\342\n7\027\212Y\305\261\271\022\333@c\300\371L\030@\244\016\323#\032s\215c\340\205\204L\310}\351d%\r`[qq#\035(\211\021\204\366x\356\322\031\351\034\317\005\342\202d-m$\014\351J\001\346\002\341\242\010\0212B\365123\nB\2411U\216\317=s\3450SE\363\234n\034\021nh\203\260\341\036\002[\346iY\200\367\316\367\215\030\204\276q\"~w\023\371\211\356\332\245\304y\277\264\222j\305*1\030\202\312\265Vx\313i\267\341?mF\215x\332()\306\034\304\206\364-\363\r&\3121K\304\206\343\252\246=MB[\027\212\230Q\272\227f\366_\006b6\347\355\235*\346\226\314\254}n\013\314\236\0031\005\205\242\302\302\nD\273\000\217D\212\211\027J\213\201\0279~\035\n\316\021\374Bx\2402p\006\270\034\202\334\017\350!=\265U\221\230\200JRi\013-\3671\231-;\323\033\245\357\026\3718(\205i\322Z\014\354\\jF{\351\000\306$\016(1\217$\360\020Ko\233\251\364\3560H]T\335\200\351a{\323\330v\323\000-\306\226s\334\264-\014(\265\273\"\311m\352K\362,z\0326B\036\217=\276\203\"D\207\227/\211>\021\250\035q\210\351\014\235Q\315\326\306\222\021\303\262\300\360\200\237\240\022\302\370\257\225\351'\027\376\371\340\235s\357\276Z\375t\342\353\213\337\236\3348y\360\362\373\323\317\316\316\237\335\230\276\365\354\342\321\371\372\363\265\223\235\023\367\362\367\323_\316\356\236\211W\253\347'_MnNv&b\272,~<\2713\331\235\034\034\255\274Z\2750q\307;\323\325\217&_\036\237;\026\307\007\323\325/\216\236\242\337\315\223\360\342\353\027\177\274\334;}\377\354b\275\373\244~\362\254~&j\221MW/\035\357\324\337l\235\356\234\312\272\247j5\250\007\373\365~Q\027e]\216\352\321\341t\365\362\311J}\245Ux\\?~Z?\315\352\014\325Lm\362:GM\214\362\341\337\267\217V\246\357\275\337\374\036\374\013\325G\256\247";
+    PyObject *data = __Pyx_DecompressString(cstring, 1332, 1);
     if (unlikely(!data)) __PYX_ERR(0, 1, __pyx_L1_error)
     const char* const bytes = __Pyx_PyBytes_AsString(data);
     #if !CYTHON_ASSUME_SAFE_MACROS
     if (likely(bytes)); else { Py_DECREF(data); __PYX_ERR(0, 1, __pyx_L1_error) }
     #endif
-    #else /* compression: none (2451 bytes) */
-const char* const bytes = ": All dimensions preceding dimension %d must be indexed and not slicedBuffer view does not expose stridesCan only create a buffer that is contiguous in memory.Cannot assign to read-only memoryviewCannot create writable memory view from read-only memoryviewCannot index with type 'Cannot transpose memoryview with indirect dimensionsDimension %d is not directEmpty shape tuple for cython.arrayIndex out of bounds (axis %d)Indirect dimensions not supportedInvalid mode, expected 'c' or 'fortran', got Invalid shape in axis <MemoryView of Note that Cython is deliberately stricter than PEP-484 and rejects subclasses of builtin types. If you need to pass subclasses then set the 'annotation_typing' directive to False.Out of bounds on buffer access (axis Step may not be zero (axis %d)Unable to convert item to object.>')?add_note and  at 0xcollections.abc<contiguous and direct><contiguous and indirect>disableenablegc (got got differing extents in dimension isenableditemsize <= 0 for cython.arraylist[np.ndarray]no default __reduce__ due to non-trivial __cinit__ object>self.name is not Nonesrc/scloop/data/ripser_lib/ripser_lib.pyx<strided and direct><strided and direct or indirect><strided and indirect>unable to allocate array data.unable to allocate shape and strides.ASCIIEllipsis_II_JJNNEdges__Pyx_PyDict_NextRefRipserResultsSequence_VVView.MemoryViewabcallocate_buffer__annotations__ascontiguousarrayasyncio.coroutinesaxisbasebirths_and_deaths_by_dimc__class____class_getitem__cline_in_tracebackcocycle_representativescocycles_by_dimcolcoo_matrixcountdatadataclassdataclasses__dict__dim_maxdistance_matrixdo_cocycles__doc__dtypedtype_is_objectencodeenumerateerrorflagsfloat32formatfortran__func____getstate__iid__import__indexintintc_is_coroutineitemsitemsizelist__main__memview__metaclass__mode__module__modulusname__name__ndim__new__nnznpnum_edgesnumpyobjpackpersistence_diagramspop__prepare____pyx_checksum__pyx_state__pyx_type__pyx_unpickle_Enum__pyx_vtable____qualname____reduce____reduc""e_cython____reduce_ex__registerresreturnripserrowscipy.sparsescloop.data.ripser_lib__set_name__setdefault__setstate____setstate_cython__shapesizestackstartstepstopstruct__test__thresholdtypingunpackupdatevaluesx\200\001\330\025\026\360\n\000\006\007\340\004\027\220r\320\031+\2501\250O\2706\300\030\310\022\3101\330\004\027\220r\320\031+\2501\250O\2706\300\030\310\022\3101\330\004\031\230\022\320\033-\250Q\250o\270W\300H\310B\310a\340\004\022\220!\2202\220Q\220a\330\004\022\220!\2202\220Q\220a\330\004\024\220A\220R\220q\230\001\340\004\026\220o\240Q\330\004\021\220\037\240\006\240a\240q\330\004\035\230^\2501\250C\250s\260#\260X\270S\300\t\310\031\320R]\320]`\320`a\320ab\330\004%\240Q\320&E\300Q\300c\320Id\320dg\320gk\320kp\320pu\320uv\320vw\330\004(\250\001\320)E\300Q\300c\320I[\320[^\320^b\320bg\320gl\320lm\320mp\320pq\330\004\013\210=\230\001\330\010\t\330\010\t\330\010\tO";
+    #else /* compression: none (2415 bytes) */
+const char* const bytes = ": All dimensions preceding dimension %d must be indexed and not slicedBuffer view does not expose stridesCan only create a buffer that is contiguous in memory.Cannot assign to read-only memoryviewCannot create writable memory view from read-only memoryviewCannot index with type 'Cannot transpose memoryview with indirect dimensionsDimension %d is not directEmpty shape tuple for cython.arrayIndex out of bounds (axis %d)Indirect dimensions not supportedInvalid mode, expected 'c' or 'fortran', got Invalid shape in axis <MemoryView of Note that Cython is deliberately stricter than PEP-484 and rejects subclasses of builtin types. If you need to pass subclasses then set the 'annotation_typing' directive to False.Out of bounds on buffer access (axis Step may not be zero (axis %d)Unable to convert item to object.>')?add_note and  at 0xcollections.abc<contiguous and direct><contiguous and indirect>disableenablegc (got got differing extents in dimension isenableditemsize <= 0 for cython.arrayno default __reduce__ due to non-trivial __cinit__ object>self.name is not Nonesrc/scloop/data/ripser_lib.pyx<strided and direct><strided and direct or indirect><strided and indirect>unable to allocate array data.unable to allocate shape and strides.ASCIIEllipsis_II_JJNNEdges__Pyx_PyDict_NextRefRipserResultsSequence_VVView.MemoryViewabcallocate_buffer__annotations__ascontiguousarrayasyncio.coroutinesbasebirths_and_deaths_by_dimc__class____class_getitem__cline_in_tracebackcocycle_representativescocycles_by_dimcolcoo_matrixcountdatadataclassdataclasses__dict__dim_maxdistance_matrixdo_cocycles__doc__dtypedtype_is_objectencodeenumerateerrorflagsfloat32formatfortran__func____getstate__iid__import__indexintintc_is_coroutineitemsitemsizelist__main__memview__metaclass__mode__module__modulusname__name__ndim__new__nnznpnum_edgesnumpyobjpackpersistence_diagramspop__prepare____pyx_checksum__pyx_state__pyx_type__pyx_unpickle_Enum__pyx_vtable____qualname____reduce____reduce_cython____reduce_ex__register""resreturnripserrowscipy.sparsescloop.data.ripser_lib__set_name__setdefault__setstate____setstate_cython__shapesizestartstepstopstruct__test__thresholdtypingunpackupdatevaluesx\200\001\330\025\026\360\n\000\006\007\340\004\027\220r\320\031+\2501\250O\2706\300\030\310\022\3101\330\004\027\220r\320\031+\2501\250O\2706\300\030\310\022\3101\330\004\031\230\022\320\033-\250Q\250o\270W\300H\310B\310a\340\004\022\220!\2202\220Q\220a\330\004\022\220!\2202\220Q\220a\330\004\024\220A\220R\220q\230\001\340\004\026\220o\240Q\330\004\021\220\037\240\006\240a\240q\330\004\035\230^\2501\250C\250s\260#\260X\270S\300\t\310\031\320R]\320]`\320`a\320ab\330\004%\240Q\320&E\300Q\300c\320Id\320dg\320gk\320kp\320pu\320uv\320vw\330\004(\250\001\320)E\300Q\300c\320I[\320[^\320^b\320bg\320gl\320lm\320mp\320pq\330\004\013\210=\230\001\330\010\t\330\010\t\330\010\tO";
     PyObject *data = NULL;
     CYTHON_UNUSED_VAR(__Pyx_DecompressString);
     #endif
     PyObject **stringtab = __pyx_mstate->__pyx_string_tab;
     Py_ssize_t pos = 0;
-    for (int i = 0; i < 160; i++) {
+    for (int i = 0; i < 157; i++) {
       Py_ssize_t bytes_length = index[i].length;
       PyObject *string = PyUnicode_DecodeUTF8(bytes + pos, bytes_length, NULL);
-      if (likely(string) && i >= 47) PyUnicode_InternInPlace(&string);
+      if (likely(string) && i >= 46) PyUnicode_InternInPlace(&string);
       if (unlikely(!string)) {
         Py_XDECREF(data);
         __PYX_ERR(0, 1, __pyx_L1_error)
@@ -19922,7 +19883,7 @@ const char* const bytes = ": All dimensions preceding dimension %d must be index
       stringtab[i] = string;
       pos += bytes_length;
     }
-    for (int i = 160; i < 162; i++) {
+    for (int i = 157; i < 159; i++) {
       Py_ssize_t bytes_length = index[i].length;
       PyObject *string = PyBytes_FromStringAndSize(bytes + pos, bytes_length);
       stringtab[i] = string;
@@ -19933,14 +19894,14 @@ const char* const bytes = ": All dimensions preceding dimension %d must be index
       }
     }
     Py_XDECREF(data);
-    for (Py_ssize_t i = 0; i < 162; i++) {
+    for (Py_ssize_t i = 0; i < 159; i++) {
       if (unlikely(PyObject_Hash(stringtab[i]) == -1)) {
         __PYX_ERR(0, 1, __pyx_L1_error)
       }
     }
     #if CYTHON_IMMORTAL_CONSTANTS
     {
-      PyObject **table = stringtab + 160;
+      PyObject **table = stringtab + 157;
       for (Py_ssize_t i=0; i<2; ++i) {
         #if CYTHON_COMPILING_IN_CPYTHON_FREETHREADING
         Py_SET_REFCNT(table[i], _Py_IMMORTAL_REFCNT_LOCAL);
@@ -20002,7 +19963,7 @@ static int __Pyx_CreateCodeObjects(__pyx_mstatetype *__pyx_mstate) {
   {
     const __Pyx_PyCode_New_function_description descr = {5, 0, 0, 18, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 80};
     PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_distance_matrix, __pyx_mstate->__pyx_n_u_modulus, __pyx_mstate->__pyx_n_u_dim_max, __pyx_mstate->__pyx_n_u_threshold, __pyx_mstate->__pyx_n_u_do_cocycles, __pyx_mstate->__pyx_n_u_I, __pyx_mstate->__pyx_n_u_J, __pyx_mstate->__pyx_n_u_V, __pyx_mstate->__pyx_n_u_I_2, __pyx_mstate->__pyx_n_u_J_2, __pyx_mstate->__pyx_n_u_V_2, __pyx_mstate->__pyx_n_u_NEdges, __pyx_mstate->__pyx_n_u_N, __pyx_mstate->__pyx_n_u_res, __pyx_mstate->__pyx_n_u_persistence_diagrams, __pyx_mstate->__pyx_n_u_cocycle_representatives, __pyx_mstate->__pyx_n_u_i, __pyx_mstate->__pyx_n_u_i};
-    __pyx_mstate_global->__pyx_codeobj_tab[0] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_src_scloop_data_ripser_lib_ripse, __pyx_mstate->__pyx_n_u_ripser, __pyx_mstate->__pyx_kp_b_iso88591_r_1O6_1_r_1O6_1_QoWHBa_2Qa_2Qa, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[0])) goto bad;
+    __pyx_mstate_global->__pyx_codeobj_tab[0] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_src_scloop_data_ripser_lib_pyx, __pyx_mstate->__pyx_n_u_ripser, __pyx_mstate->__pyx_kp_b_iso88591_r_1O6_1_r_1O6_1_QoWHBa_2Qa_2Qa, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[0])) goto bad;
   }
   Py_DECREF(tuple_dedup_map);
   return 0;

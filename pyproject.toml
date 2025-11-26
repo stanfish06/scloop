@@ -1,29 +1,51 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = [ "cython", "setuptools>74.1" ]
+
 [project]
 name = "scloop"
 version = "0.1.0"
 description = "single-cell loop analysis"
 readme = "README.md"
 authors = [
-    { name = "Stan", email = "zyyu@umich.edu" }
+  { name = "Stan", email = "zyyu@umich.edu" },
 ]
 requires-python = ">=3.12"
-dependencies = [
-  "numpy<2.0.0",
-  "pandas",
-  "scanpy[leiden]>=1.11.2",
-  "torch",
-  "torchvision",
-  "cython>=3.0.12",
-  "pydantic>=2.11.4",
-  "statsmodels==0.14.4",
-  "umap-learn>=0.5.7",
-  "pytest>=8.4.0",
-  "pip>=25.2",
-  "rich>=14.0.0",
-  "torchdyn>=1.0.6",
-  "tensorflow>=2.18.1",
-]
 # tensorflow hasn't supported 3.13 yet
+classifiers = [
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+  "cython>=3.0.12",
+  "numpy<2",
+  "pandas",
+  "pip>=25.2",
+  "pydantic>=2.11.4",
+  "pytest>=8.4",
+  "rich>=14",
+  "scanpy[leiden]>=1.11.2",
+  "statsmodels==0.14.4",
+  "tensorflow>=2.18.1",
+  "torch",
+  "torchdyn>=1.0.6",
+  "torchvision",
+  "umap-learn>=0.5.7",
+]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+ext-modules = [
+  { name = "scloop.data.ripser_lib", sources = [
+    "./src/scloop/data/ripser_lib.pyx",
+    "./src/scloop/data/ripser.cpp",
+  ], language = "c++", optional = false },
+]
+
+[tool.uv]
+package = true
 
 [tool.uv.sources]
 torch = [
@@ -39,19 +61,6 @@ name = "pytorch-cu128"
 url = "https://download.pytorch.org/whl/cu128"
 explicit = true
 
-[build-system]
-requires = ["setuptools>74.1", "Cython"]
-build-backend = "setuptools.build_meta"
-
-[tool.ruff.format]
-quote-style = "double"
-indent-style = "space"
-
-[tool.setuptools]
-package-dir = { "" = "src" }
-ext-modules = [
-  { name = "scloop.data.ripser_lib", sources = [
-    "./src/scloop/data/ripser_lib.pyx",
-    "./src/scloop/data/ripser.cpp",
-  ], language = "c++", optional = false }
-]
+[tool.ruff]
+format.indent-style = "space"
+format.quote-style = "double"
