@@ -7,7 +7,6 @@
             "src/scloop/data/ripser_lib/ripser.hpp"
         ],
         "include_dirs": [
-            "src/scloop/data/ripser_lib",
             "./src/scloop/data/ripser_lib"
         ],
         "language": "c++",
@@ -1619,7 +1618,7 @@ typedef struct {
 
 /* #### Code section: numeric_typedefs ### */
 
-/* "src/scloop/data/ripser_lib/ripser_lib.pyx":11
+/* "src/scloop/data/ripser_lib/ripser_lib.pyx":8
  * import dataclasses
  * 
  * ctypedef float value_t             # <<<<<<<<<<<<<<
@@ -16657,7 +16656,7 @@ static PyObject *__pyx_unpickle_Enum__set_state(struct __pyx_MemviewEnum_obj *__
   return __pyx_r;
 }
 
-/* "src/scloop/data/ripser_lib/ripser_lib.pyx":25
+/* "src/scloop/data/ripser_lib/ripser_lib.pyx":22
  *     num_edges: int
  * 
  * cdef list converting_cocycles_to_numpy(vector[vector[vector[int]]] cocycles_by_dim, int dim):             # <<<<<<<<<<<<<<
@@ -16700,19 +16699,19 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("converting_cocycles_to_numpy", 0);
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":40
+  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":37
  *     representative cocycle
  *     '''
  *     cdef list cocycle_representatives = []             # <<<<<<<<<<<<<<
  *     cdef vector[vector[int]]* cocycles = &cocycles_by_dim[dim]
  *     cdef int nc = cocycles.size()
 */
-  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 40, __pyx_L1_error)
+  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 37, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_cocycle_representatives = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":41
+  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":38
  *     '''
  *     cdef list cocycle_representatives = []
  *     cdef vector[vector[int]]* cocycles = &cocycles_by_dim[dim]             # <<<<<<<<<<<<<<
@@ -16721,7 +16720,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
 */
   __pyx_v_cocycles = (&(__pyx_v_cocycles_by_dim[__pyx_v_dim]));
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":42
+  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":39
  *     cdef list cocycle_representatives = []
  *     cdef vector[vector[int]]* cocycles = &cocycles_by_dim[dim]
  *     cdef int nc = cocycles.size()             # <<<<<<<<<<<<<<
@@ -16730,7 +16729,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
 */
   __pyx_v_nc = __pyx_v_cocycles->size();
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":51
+  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":48
  *     cdef int end_idx
  * 
  *     for i in range(nc):             # <<<<<<<<<<<<<<
@@ -16742,7 +16741,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
   for (__pyx_t_4 = 0; __pyx_t_4 < __pyx_t_3; __pyx_t_4+=1) {
     __pyx_v_i = __pyx_t_4;
 
-    /* "src/scloop/data/ripser_lib/ripser_lib.pyx":52
+    /* "src/scloop/data/ripser_lib/ripser_lib.pyx":49
  * 
  *     for i in range(nc):
  *         rep_i = &cocycles[0][i]             # <<<<<<<<<<<<<<
@@ -16751,7 +16750,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
 */
     __pyx_v_rep_i = (&((__pyx_v_cocycles[0])[__pyx_v_i]));
 
-    /* "src/scloop/data/ripser_lib/ripser_lib.pyx":53
+    /* "src/scloop/data/ripser_lib/ripser_lib.pyx":50
  *     for i in range(nc):
  *         rep_i = &cocycles[0][i]
  *         chunk_size = dim + 2             # <<<<<<<<<<<<<<
@@ -16760,7 +16759,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
 */
     __pyx_v_chunk_size = (__pyx_v_dim + 2);
 
-    /* "src/scloop/data/ripser_lib/ripser_lib.pyx":54
+    /* "src/scloop/data/ripser_lib/ripser_lib.pyx":51
  *         rep_i = &cocycles[0][i]
  *         chunk_size = dim + 2
  *         n_simplices = rep_i.size() // chunk_size             # <<<<<<<<<<<<<<
@@ -16770,23 +16769,23 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
     __pyx_t_5 = __pyx_v_rep_i->size();
     if (unlikely(__pyx_v_chunk_size == 0)) {
       PyErr_SetString(PyExc_ZeroDivisionError, "integer division or modulo by zero");
-      __PYX_ERR(0, 54, __pyx_L1_error)
+      __PYX_ERR(0, 51, __pyx_L1_error)
     }
     __pyx_v_n_simplices = (__pyx_t_5 / __pyx_v_chunk_size);
 
-    /* "src/scloop/data/ripser_lib/ripser_lib.pyx":55
+    /* "src/scloop/data/ripser_lib/ripser_lib.pyx":52
  *         chunk_size = dim + 2
  *         n_simplices = rep_i.size() // chunk_size
  *         cocycle_rep_members = []             # <<<<<<<<<<<<<<
  *         for j in range(n_simplices):
  *             simplex = []
 */
-    __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 55, __pyx_L1_error)
+    __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 52, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_XDECREF_SET(__pyx_v_cocycle_rep_members, ((PyObject*)__pyx_t_1));
     __pyx_t_1 = 0;
 
-    /* "src/scloop/data/ripser_lib/ripser_lib.pyx":56
+    /* "src/scloop/data/ripser_lib/ripser_lib.pyx":53
  *         n_simplices = rep_i.size() // chunk_size
  *         cocycle_rep_members = []
  *         for j in range(n_simplices):             # <<<<<<<<<<<<<<
@@ -16794,7 +16793,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
  *             start_idx = j * chunk_size
 */
     __pyx_t_6 = NULL;
-    __pyx_t_7 = __Pyx_PyLong_From_int(__pyx_v_n_simplices); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 56, __pyx_L1_error)
+    __pyx_t_7 = __Pyx_PyLong_From_int(__pyx_v_n_simplices); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 53, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_7);
     __pyx_t_8 = 1;
     {
@@ -16802,12 +16801,12 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
       __pyx_t_1 = __Pyx_PyObject_FastCall((PyObject*)(&PyRange_Type), __pyx_callargs+__pyx_t_8, (2-__pyx_t_8) | (__pyx_t_8*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
       __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
       __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
-      if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 56, __pyx_L1_error)
+      if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 53, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
     }
-    __pyx_t_7 = PyObject_GetIter(__pyx_t_1); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 56, __pyx_L1_error)
+    __pyx_t_7 = PyObject_GetIter(__pyx_t_1); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 53, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_7);
-    __pyx_t_9 = (CYTHON_COMPILING_IN_LIMITED_API) ? PyIter_Next : __Pyx_PyObject_GetIterNextFunc(__pyx_t_7); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 56, __pyx_L1_error)
+    __pyx_t_9 = (CYTHON_COMPILING_IN_LIMITED_API) ? PyIter_Next : __Pyx_PyObject_GetIterNextFunc(__pyx_t_7); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 53, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     for (;;) {
       {
@@ -16815,7 +16814,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
         if (unlikely(!__pyx_t_1)) {
           PyObject* exc_type = PyErr_Occurred();
           if (exc_type) {
-            if (unlikely(!__Pyx_PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) __PYX_ERR(0, 56, __pyx_L1_error)
+            if (unlikely(!__Pyx_PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) __PYX_ERR(0, 53, __pyx_L1_error)
             PyErr_Clear();
           }
           break;
@@ -16825,35 +16824,35 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
       __Pyx_XDECREF_SET(__pyx_v_j, __pyx_t_1);
       __pyx_t_1 = 0;
 
-      /* "src/scloop/data/ripser_lib/ripser_lib.pyx":57
+      /* "src/scloop/data/ripser_lib/ripser_lib.pyx":54
  *         cocycle_rep_members = []
  *         for j in range(n_simplices):
  *             simplex = []             # <<<<<<<<<<<<<<
  *             start_idx = j * chunk_size
  *             end_idx = start_idx + chunk_size - 1
 */
-      __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 57, __pyx_L1_error)
+      __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 54, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
       __Pyx_XDECREF_SET(__pyx_v_simplex, ((PyObject*)__pyx_t_1));
       __pyx_t_1 = 0;
 
-      /* "src/scloop/data/ripser_lib/ripser_lib.pyx":58
+      /* "src/scloop/data/ripser_lib/ripser_lib.pyx":55
  *         for j in range(n_simplices):
  *             simplex = []
  *             start_idx = j * chunk_size             # <<<<<<<<<<<<<<
  *             end_idx = start_idx + chunk_size - 1
  *             for k in range(start_idx, end_idx):
 */
-      __pyx_t_1 = __Pyx_PyLong_From_int(__pyx_v_chunk_size); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 58, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyLong_From_int(__pyx_v_chunk_size); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 55, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
-      __pyx_t_6 = PyNumber_Multiply(__pyx_v_j, __pyx_t_1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 58, __pyx_L1_error)
+      __pyx_t_6 = PyNumber_Multiply(__pyx_v_j, __pyx_t_1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 55, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_6);
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-      __pyx_t_10 = __Pyx_PyLong_As_int(__pyx_t_6); if (unlikely((__pyx_t_10 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 58, __pyx_L1_error)
+      __pyx_t_10 = __Pyx_PyLong_As_int(__pyx_t_6); if (unlikely((__pyx_t_10 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 55, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
       __pyx_v_start_idx = __pyx_t_10;
 
-      /* "src/scloop/data/ripser_lib/ripser_lib.pyx":59
+      /* "src/scloop/data/ripser_lib/ripser_lib.pyx":56
  *             simplex = []
  *             start_idx = j * chunk_size
  *             end_idx = start_idx + chunk_size - 1             # <<<<<<<<<<<<<<
@@ -16862,7 +16861,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
 */
       __pyx_v_end_idx = ((__pyx_v_start_idx + __pyx_v_chunk_size) - 1);
 
-      /* "src/scloop/data/ripser_lib/ripser_lib.pyx":60
+      /* "src/scloop/data/ripser_lib/ripser_lib.pyx":57
  *             start_idx = j * chunk_size
  *             end_idx = start_idx + chunk_size - 1
  *             for k in range(start_idx, end_idx):             # <<<<<<<<<<<<<<
@@ -16874,7 +16873,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
       for (__pyx_t_12 = __pyx_v_start_idx; __pyx_t_12 < __pyx_t_11; __pyx_t_12+=1) {
         __pyx_v_k = __pyx_t_12;
 
-        /* "src/scloop/data/ripser_lib/ripser_lib.pyx":61
+        /* "src/scloop/data/ripser_lib/ripser_lib.pyx":58
  *             end_idx = start_idx + chunk_size - 1
  *             for k in range(start_idx, end_idx):
  *                 simplex.append(int(rep_i[0][k]))             # <<<<<<<<<<<<<<
@@ -16882,7 +16881,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
  *         cocycle_representatives.append(cocycle_rep_members)
 */
         __pyx_t_1 = NULL;
-        __pyx_t_13 = __Pyx_PyLong_From_int(((__pyx_v_rep_i[0])[__pyx_v_k])); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 61, __pyx_L1_error)
+        __pyx_t_13 = __Pyx_PyLong_From_int(((__pyx_v_rep_i[0])[__pyx_v_k])); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 58, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_13);
         __pyx_t_8 = 1;
         {
@@ -16890,14 +16889,14 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
           __pyx_t_6 = __Pyx_PyObject_FastCall((PyObject*)(&PyLong_Type), __pyx_callargs+__pyx_t_8, (2-__pyx_t_8) | (__pyx_t_8*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
           __Pyx_XDECREF(__pyx_t_1); __pyx_t_1 = 0;
           __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
-          if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 61, __pyx_L1_error)
+          if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 58, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_6);
         }
-        __pyx_t_14 = __Pyx_PyList_Append(__pyx_v_simplex, __pyx_t_6); if (unlikely(__pyx_t_14 == ((int)-1))) __PYX_ERR(0, 61, __pyx_L1_error)
+        __pyx_t_14 = __Pyx_PyList_Append(__pyx_v_simplex, __pyx_t_6); if (unlikely(__pyx_t_14 == ((int)-1))) __PYX_ERR(0, 58, __pyx_L1_error)
         __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
       }
 
-      /* "src/scloop/data/ripser_lib/ripser_lib.pyx":62
+      /* "src/scloop/data/ripser_lib/ripser_lib.pyx":59
  *             for k in range(start_idx, end_idx):
  *                 simplex.append(int(rep_i[0][k]))
  *             cocycle_rep_members.append([simplex, int(rep_i[0][end_idx])])             # <<<<<<<<<<<<<<
@@ -16905,7 +16904,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
  *     return cocycle_representatives
 */
       __pyx_t_13 = NULL;
-      __pyx_t_1 = __Pyx_PyLong_From_int(((__pyx_v_rep_i[0])[__pyx_v_end_idx])); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 62, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyLong_From_int(((__pyx_v_rep_i[0])[__pyx_v_end_idx])); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 59, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
       __pyx_t_8 = 1;
       {
@@ -16913,21 +16912,21 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
         __pyx_t_6 = __Pyx_PyObject_FastCall((PyObject*)(&PyLong_Type), __pyx_callargs+__pyx_t_8, (2-__pyx_t_8) | (__pyx_t_8*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
         __Pyx_XDECREF(__pyx_t_13); __pyx_t_13 = 0;
         __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-        if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 62, __pyx_L1_error)
+        if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 59, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_6);
       }
-      __pyx_t_1 = PyList_New(2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 62, __pyx_L1_error)
+      __pyx_t_1 = PyList_New(2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 59, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
       __Pyx_INCREF(__pyx_v_simplex);
       __Pyx_GIVEREF(__pyx_v_simplex);
-      if (__Pyx_PyList_SET_ITEM(__pyx_t_1, 0, __pyx_v_simplex) != (0)) __PYX_ERR(0, 62, __pyx_L1_error);
+      if (__Pyx_PyList_SET_ITEM(__pyx_t_1, 0, __pyx_v_simplex) != (0)) __PYX_ERR(0, 59, __pyx_L1_error);
       __Pyx_GIVEREF(__pyx_t_6);
-      if (__Pyx_PyList_SET_ITEM(__pyx_t_1, 1, __pyx_t_6) != (0)) __PYX_ERR(0, 62, __pyx_L1_error);
+      if (__Pyx_PyList_SET_ITEM(__pyx_t_1, 1, __pyx_t_6) != (0)) __PYX_ERR(0, 59, __pyx_L1_error);
       __pyx_t_6 = 0;
-      __pyx_t_14 = __Pyx_PyList_Append(__pyx_v_cocycle_rep_members, __pyx_t_1); if (unlikely(__pyx_t_14 == ((int)-1))) __PYX_ERR(0, 62, __pyx_L1_error)
+      __pyx_t_14 = __Pyx_PyList_Append(__pyx_v_cocycle_rep_members, __pyx_t_1); if (unlikely(__pyx_t_14 == ((int)-1))) __PYX_ERR(0, 59, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-      /* "src/scloop/data/ripser_lib/ripser_lib.pyx":56
+      /* "src/scloop/data/ripser_lib/ripser_lib.pyx":53
  *         n_simplices = rep_i.size() // chunk_size
  *         cocycle_rep_members = []
  *         for j in range(n_simplices):             # <<<<<<<<<<<<<<
@@ -16937,17 +16936,17 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
     }
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
 
-    /* "src/scloop/data/ripser_lib/ripser_lib.pyx":63
+    /* "src/scloop/data/ripser_lib/ripser_lib.pyx":60
  *                 simplex.append(int(rep_i[0][k]))
  *             cocycle_rep_members.append([simplex, int(rep_i[0][end_idx])])
  *         cocycle_representatives.append(cocycle_rep_members)             # <<<<<<<<<<<<<<
  *     return cocycle_representatives
  * 
 */
-    __pyx_t_14 = __Pyx_PyList_Append(__pyx_v_cocycle_representatives, __pyx_v_cocycle_rep_members); if (unlikely(__pyx_t_14 == ((int)-1))) __PYX_ERR(0, 63, __pyx_L1_error)
+    __pyx_t_14 = __Pyx_PyList_Append(__pyx_v_cocycle_representatives, __pyx_v_cocycle_rep_members); if (unlikely(__pyx_t_14 == ((int)-1))) __PYX_ERR(0, 60, __pyx_L1_error)
   }
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":64
+  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":61
  *             cocycle_rep_members.append([simplex, int(rep_i[0][end_idx])])
  *         cocycle_representatives.append(cocycle_rep_members)
  *     return cocycle_representatives             # <<<<<<<<<<<<<<
@@ -16959,7 +16958,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
   __pyx_r = __pyx_v_cocycle_representatives;
   goto __pyx_L0;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":25
+  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":22
  *     num_edges: int
  * 
  * cdef list converting_cocycles_to_numpy(vector[vector[vector[int]]] cocycles_by_dim, int dim):             # <<<<<<<<<<<<<<
@@ -16985,7 +16984,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy
   return __pyx_r;
 }
 
-/* "src/scloop/data/ripser_lib/ripser_lib.pyx":66
+/* "src/scloop/data/ripser_lib/ripser_lib.pyx":63
  *     return cocycle_representatives
  * 
  * cdef list converting_birth_death_to_numpy(vector[vector[value_t]] births_and_deaths_by_dim, int dim):             # <<<<<<<<<<<<<<
@@ -17015,31 +17014,31 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_birth_death_to_nu
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("converting_birth_death_to_numpy", 0);
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":74
+  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":71
  *     and likewise for d-dimensional persistence in births_and_deaths_by_dim[d]
  *     '''
  *     cdef list birth = []             # <<<<<<<<<<<<<<
  *     cdef list death = []
  *     cdef vector[value_t]* birth_death = &births_and_deaths_by_dim[dim]
 */
-  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 74, __pyx_L1_error)
+  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 71, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_birth = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":75
+  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":72
  *     '''
  *     cdef list birth = []
  *     cdef list death = []             # <<<<<<<<<<<<<<
  *     cdef vector[value_t]* birth_death = &births_and_deaths_by_dim[dim]
  *     cdef int n_pairs = birth_death.size() // 2
 */
-  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 75, __pyx_L1_error)
+  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 72, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_death = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":76
+  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":73
  *     cdef list birth = []
  *     cdef list death = []
  *     cdef vector[value_t]* birth_death = &births_and_deaths_by_dim[dim]             # <<<<<<<<<<<<<<
@@ -17048,7 +17047,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_birth_death_to_nu
 */
   __pyx_v_birth_death = (&(__pyx_v_births_and_deaths_by_dim[__pyx_v_dim]));
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":77
+  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":74
  *     cdef list death = []
  *     cdef vector[value_t]* birth_death = &births_and_deaths_by_dim[dim]
  *     cdef int n_pairs = birth_death.size() // 2             # <<<<<<<<<<<<<<
@@ -17057,7 +17056,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_birth_death_to_nu
 */
   __pyx_v_n_pairs = (__pyx_v_birth_death->size() / 2);
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":78
+  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":75
  *     cdef vector[value_t]* birth_death = &births_and_deaths_by_dim[dim]
  *     cdef int n_pairs = birth_death.size() // 2
  *     for i in range(n_pairs):             # <<<<<<<<<<<<<<
@@ -17065,7 +17064,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_birth_death_to_nu
  *         death.append(birth_death[0][i * 2 + 1])
 */
   __pyx_t_2 = NULL;
-  __pyx_t_3 = __Pyx_PyLong_From_int(__pyx_v_n_pairs); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 78, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyLong_From_int(__pyx_v_n_pairs); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 75, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __pyx_t_4 = 1;
   {
@@ -17073,12 +17072,12 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_birth_death_to_nu
     __pyx_t_1 = __Pyx_PyObject_FastCall((PyObject*)(&PyRange_Type), __pyx_callargs+__pyx_t_4, (2-__pyx_t_4) | (__pyx_t_4*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
     __Pyx_XDECREF(__pyx_t_2); __pyx_t_2 = 0;
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 78, __pyx_L1_error)
+    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 75, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
   }
-  __pyx_t_3 = PyObject_GetIter(__pyx_t_1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 78, __pyx_L1_error)
+  __pyx_t_3 = PyObject_GetIter(__pyx_t_1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 75, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  __pyx_t_5 = (CYTHON_COMPILING_IN_LIMITED_API) ? PyIter_Next : __Pyx_PyObject_GetIterNextFunc(__pyx_t_3); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 78, __pyx_L1_error)
+  __pyx_t_5 = (CYTHON_COMPILING_IN_LIMITED_API) ? PyIter_Next : __Pyx_PyObject_GetIterNextFunc(__pyx_t_3); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 75, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   for (;;) {
     {
@@ -17086,7 +17085,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_birth_death_to_nu
       if (unlikely(!__pyx_t_1)) {
         PyObject* exc_type = PyErr_Occurred();
         if (exc_type) {
-          if (unlikely(!__Pyx_PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) __PYX_ERR(0, 78, __pyx_L1_error)
+          if (unlikely(!__Pyx_PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) __PYX_ERR(0, 75, __pyx_L1_error)
           PyErr_Clear();
         }
         break;
@@ -17096,42 +17095,42 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_birth_death_to_nu
     __Pyx_XDECREF_SET(__pyx_v_i, __pyx_t_1);
     __pyx_t_1 = 0;
 
-    /* "src/scloop/data/ripser_lib/ripser_lib.pyx":79
+    /* "src/scloop/data/ripser_lib/ripser_lib.pyx":76
  *     cdef int n_pairs = birth_death.size() // 2
  *     for i in range(n_pairs):
  *         birth.append(birth_death[0][i * 2])             # <<<<<<<<<<<<<<
  *         death.append(birth_death[0][i * 2 + 1])
  *     return np.stack((birth, death), axis=1)
 */
-    __pyx_t_1 = __Pyx_PyLong_MultiplyObjC(__pyx_v_i, __pyx_mstate_global->__pyx_int_2, 2, 0, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 79, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyLong_MultiplyObjC(__pyx_v_i, __pyx_mstate_global->__pyx_int_2, 2, 0, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 76, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
-    __pyx_t_6 = __Pyx_PyLong_As_size_t(__pyx_t_1); if (unlikely((__pyx_t_6 == (size_t)-1) && PyErr_Occurred())) __PYX_ERR(0, 79, __pyx_L1_error)
+    __pyx_t_6 = __Pyx_PyLong_As_size_t(__pyx_t_1); if (unlikely((__pyx_t_6 == (size_t)-1) && PyErr_Occurred())) __PYX_ERR(0, 76, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-    __pyx_t_1 = PyFloat_FromDouble(((__pyx_v_birth_death[0])[__pyx_t_6])); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 79, __pyx_L1_error)
+    __pyx_t_1 = PyFloat_FromDouble(((__pyx_v_birth_death[0])[__pyx_t_6])); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 76, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
-    __pyx_t_7 = __Pyx_PyList_Append(__pyx_v_birth, __pyx_t_1); if (unlikely(__pyx_t_7 == ((int)-1))) __PYX_ERR(0, 79, __pyx_L1_error)
+    __pyx_t_7 = __Pyx_PyList_Append(__pyx_v_birth, __pyx_t_1); if (unlikely(__pyx_t_7 == ((int)-1))) __PYX_ERR(0, 76, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "src/scloop/data/ripser_lib/ripser_lib.pyx":80
+    /* "src/scloop/data/ripser_lib/ripser_lib.pyx":77
  *     for i in range(n_pairs):
  *         birth.append(birth_death[0][i * 2])
  *         death.append(birth_death[0][i * 2 + 1])             # <<<<<<<<<<<<<<
  *     return np.stack((birth, death), axis=1)
  * 
 */
-    __pyx_t_1 = __Pyx_PyLong_MultiplyObjC(__pyx_v_i, __pyx_mstate_global->__pyx_int_2, 2, 0, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 80, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyLong_MultiplyObjC(__pyx_v_i, __pyx_mstate_global->__pyx_int_2, 2, 0, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 77, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
-    __pyx_t_2 = __Pyx_PyLong_AddObjC(__pyx_t_1, __pyx_mstate_global->__pyx_int_1, 1, 0, 0); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 80, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyLong_AddObjC(__pyx_t_1, __pyx_mstate_global->__pyx_int_1, 1, 0, 0); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 77, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-    __pyx_t_6 = __Pyx_PyLong_As_size_t(__pyx_t_2); if (unlikely((__pyx_t_6 == (size_t)-1) && PyErr_Occurred())) __PYX_ERR(0, 80, __pyx_L1_error)
+    __pyx_t_6 = __Pyx_PyLong_As_size_t(__pyx_t_2); if (unlikely((__pyx_t_6 == (size_t)-1) && PyErr_Occurred())) __PYX_ERR(0, 77, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-    __pyx_t_2 = PyFloat_FromDouble(((__pyx_v_birth_death[0])[__pyx_t_6])); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 80, __pyx_L1_error)
+    __pyx_t_2 = PyFloat_FromDouble(((__pyx_v_birth_death[0])[__pyx_t_6])); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 77, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
-    __pyx_t_7 = __Pyx_PyList_Append(__pyx_v_death, __pyx_t_2); if (unlikely(__pyx_t_7 == ((int)-1))) __PYX_ERR(0, 80, __pyx_L1_error)
+    __pyx_t_7 = __Pyx_PyList_Append(__pyx_v_death, __pyx_t_2); if (unlikely(__pyx_t_7 == ((int)-1))) __PYX_ERR(0, 77, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-    /* "src/scloop/data/ripser_lib/ripser_lib.pyx":78
+    /* "src/scloop/data/ripser_lib/ripser_lib.pyx":75
  *     cdef vector[value_t]* birth_death = &births_and_deaths_by_dim[dim]
  *     cdef int n_pairs = birth_death.size() // 2
  *     for i in range(n_pairs):             # <<<<<<<<<<<<<<
@@ -17141,7 +17140,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_birth_death_to_nu
   }
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":81
+  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":78
  *         birth.append(birth_death[0][i * 2])
  *         death.append(birth_death[0][i * 2 + 1])
  *     return np.stack((birth, death), axis=1)             # <<<<<<<<<<<<<<
@@ -17150,19 +17149,19 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_birth_death_to_nu
 */
   __Pyx_XDECREF(__pyx_r);
   __pyx_t_2 = NULL;
-  __Pyx_GetModuleGlobalName(__pyx_t_1, __pyx_mstate_global->__pyx_n_u_np); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 81, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_1, __pyx_mstate_global->__pyx_n_u_np); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 78, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_8 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_mstate_global->__pyx_n_u_stack); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 81, __pyx_L1_error)
+  __pyx_t_8 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_mstate_global->__pyx_n_u_stack); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 78, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_8);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = PyTuple_New(2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 81, __pyx_L1_error)
+  __pyx_t_1 = PyTuple_New(2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 78, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_INCREF(__pyx_v_birth);
   __Pyx_GIVEREF(__pyx_v_birth);
-  if (__Pyx_PyTuple_SET_ITEM(__pyx_t_1, 0, __pyx_v_birth) != (0)) __PYX_ERR(0, 81, __pyx_L1_error);
+  if (__Pyx_PyTuple_SET_ITEM(__pyx_t_1, 0, __pyx_v_birth) != (0)) __PYX_ERR(0, 78, __pyx_L1_error);
   __Pyx_INCREF(__pyx_v_death);
   __Pyx_GIVEREF(__pyx_v_death);
-  if (__Pyx_PyTuple_SET_ITEM(__pyx_t_1, 1, __pyx_v_death) != (0)) __PYX_ERR(0, 81, __pyx_L1_error);
+  if (__Pyx_PyTuple_SET_ITEM(__pyx_t_1, 1, __pyx_v_death) != (0)) __PYX_ERR(0, 78, __pyx_L1_error);
   __pyx_t_4 = 1;
   #if CYTHON_UNPACK_METHODS
   if (unlikely(PyMethod_Check(__pyx_t_8))) {
@@ -17177,23 +17176,23 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_birth_death_to_nu
   #endif
   {
     PyObject *__pyx_callargs[2 + ((CYTHON_VECTORCALL) ? 1 : 0)] = {__pyx_t_2, __pyx_t_1};
-    __pyx_t_9 = __Pyx_MakeVectorcallBuilderKwds(1); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 81, __pyx_L1_error)
+    __pyx_t_9 = __Pyx_MakeVectorcallBuilderKwds(1); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 78, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_9);
-    if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_axis, __pyx_mstate_global->__pyx_int_1, __pyx_t_9, __pyx_callargs+2, 0) < (0)) __PYX_ERR(0, 81, __pyx_L1_error)
+    if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_axis, __pyx_mstate_global->__pyx_int_1, __pyx_t_9, __pyx_callargs+2, 0) < (0)) __PYX_ERR(0, 78, __pyx_L1_error)
     __pyx_t_3 = __Pyx_Object_Vectorcall_CallFromBuilder((PyObject*)__pyx_t_8, __pyx_callargs+__pyx_t_4, (2-__pyx_t_4) | (__pyx_t_4*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET), __pyx_t_9);
     __Pyx_XDECREF(__pyx_t_2); __pyx_t_2 = 0;
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
     __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-    if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 81, __pyx_L1_error)
+    if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 78, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
   }
-  if (!(likely(PyList_CheckExact(__pyx_t_3))||((__pyx_t_3) == Py_None) || __Pyx_RaiseUnexpectedTypeError("list", __pyx_t_3))) __PYX_ERR(0, 81, __pyx_L1_error)
+  if (!(likely(PyList_CheckExact(__pyx_t_3))||((__pyx_t_3) == Py_None) || __Pyx_RaiseUnexpectedTypeError("list", __pyx_t_3))) __PYX_ERR(0, 78, __pyx_L1_error)
   __pyx_r = ((PyObject*)__pyx_t_3);
   __pyx_t_3 = 0;
   goto __pyx_L0;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":66
+  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":63
  *     return cocycle_representatives
  * 
  * cdef list converting_birth_death_to_numpy(vector[vector[value_t]] births_and_deaths_by_dim, int dim):             # <<<<<<<<<<<<<<
@@ -17219,7 +17218,7 @@ static PyObject *__pyx_f_6scloop_4data_10ripser_lib_converting_birth_death_to_nu
   return __pyx_r;
 }
 
-/* "src/scloop/data/ripser_lib/ripser_lib.pyx":83
+/* "src/scloop/data/ripser_lib/ripser_lib.pyx":80
  *     return np.stack((birth, death), axis=1)
  * 
  * def ripser(             # <<<<<<<<<<<<<<
@@ -17270,60 +17269,60 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   {
     PyObject ** const __pyx_pyargnames[] = {&__pyx_mstate_global->__pyx_n_u_distance_matrix,&__pyx_mstate_global->__pyx_n_u_modulus,&__pyx_mstate_global->__pyx_n_u_dim_max,&__pyx_mstate_global->__pyx_n_u_threshold,&__pyx_mstate_global->__pyx_n_u_do_cocycles,0};
     const Py_ssize_t __pyx_kwds_len = (__pyx_kwds) ? __Pyx_NumKwargs_FASTCALL(__pyx_kwds) : 0;
-    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 83, __pyx_L3_error)
+    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 80, __pyx_L3_error)
     if (__pyx_kwds_len > 0) {
       switch (__pyx_nargs) {
         case  5:
         values[4] = __Pyx_ArgRef_FASTCALL(__pyx_args, 4);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 83, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 80, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  4:
         values[3] = __Pyx_ArgRef_FASTCALL(__pyx_args, 3);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 83, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 80, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  3:
         values[2] = __Pyx_ArgRef_FASTCALL(__pyx_args, 2);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 83, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 80, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  2:
         values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 83, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 80, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  1:
         values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 83, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 80, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  0: break;
         default: goto __pyx_L5_argtuple_error;
       }
       const Py_ssize_t kwd_pos_args = __pyx_nargs;
-      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "ripser", 0) < (0)) __PYX_ERR(0, 83, __pyx_L3_error)
+      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "ripser", 0) < (0)) __PYX_ERR(0, 80, __pyx_L3_error)
       for (Py_ssize_t i = __pyx_nargs; i < 5; i++) {
-        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("ripser", 1, 5, 5, i); __PYX_ERR(0, 83, __pyx_L3_error) }
+        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("ripser", 1, 5, 5, i); __PYX_ERR(0, 80, __pyx_L3_error) }
       }
     } else if (unlikely(__pyx_nargs != 5)) {
       goto __pyx_L5_argtuple_error;
     } else {
       values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
-      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 83, __pyx_L3_error)
+      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 80, __pyx_L3_error)
       values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
-      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 83, __pyx_L3_error)
+      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 80, __pyx_L3_error)
       values[2] = __Pyx_ArgRef_FASTCALL(__pyx_args, 2);
-      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 83, __pyx_L3_error)
+      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 80, __pyx_L3_error)
       values[3] = __Pyx_ArgRef_FASTCALL(__pyx_args, 3);
-      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 83, __pyx_L3_error)
+      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 80, __pyx_L3_error)
       values[4] = __Pyx_ArgRef_FASTCALL(__pyx_args, 4);
-      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 83, __pyx_L3_error)
+      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 80, __pyx_L3_error)
     }
     __pyx_v_distance_matrix = values[0];
-    __pyx_v_modulus = __Pyx_PyLong_As_int(values[1]); if (unlikely((__pyx_v_modulus == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 85, __pyx_L3_error)
-    __pyx_v_dim_max = __Pyx_PyLong_As_int(values[2]); if (unlikely((__pyx_v_dim_max == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 86, __pyx_L3_error)
-    __pyx_v_threshold = __Pyx_PyFloat_AsFloat(values[3]); if (unlikely((__pyx_v_threshold == (float)-1) && PyErr_Occurred())) __PYX_ERR(0, 87, __pyx_L3_error)
+    __pyx_v_modulus = __Pyx_PyLong_As_int(values[1]); if (unlikely((__pyx_v_modulus == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 82, __pyx_L3_error)
+    __pyx_v_dim_max = __Pyx_PyLong_As_int(values[2]); if (unlikely((__pyx_v_dim_max == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 83, __pyx_L3_error)
+    __pyx_v_threshold = __Pyx_PyFloat_AsFloat(values[3]); if (unlikely((__pyx_v_threshold == (float)-1) && PyErr_Occurred())) __PYX_ERR(0, 84, __pyx_L3_error)
     __pyx_v_do_cocycles = ((PyObject*)values[4]);
   }
   goto __pyx_L6_skip;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("ripser", 1, 5, 5, __pyx_nargs); __PYX_ERR(0, 83, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("ripser", 1, 5, 5, __pyx_nargs); __PYX_ERR(0, 80, __pyx_L3_error)
   __pyx_L6_skip:;
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L3_error:;
@@ -17334,7 +17333,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_do_cocycles), (&PyBool_Type), 1, "do_cocycles", 1))) __PYX_ERR(0, 88, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_do_cocycles), (&PyBool_Type), 1, "do_cocycles", 1))) __PYX_ERR(0, 85, __pyx_L1_error)
   __pyx_r = __pyx_pf_6scloop_4data_10ripser_lib_ripser(__pyx_self, __pyx_v_distance_matrix, __pyx_v_modulus, __pyx_v_dim_max, __pyx_v_threshold, __pyx_v_do_cocycles);
 
   /* function exit code */
@@ -17389,7 +17388,7 @@ static PyObject *__pyx_pf_6scloop_4data_10ripser_lib_ripser(CYTHON_UNUSED PyObje
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("ripser", 0);
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":91
+  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":88
  * ) -> RipserResults:
  *     # I, J, and V need to be contiguous array
  *     cdef int[::1] _I = np.ascontiguousarray(distance_matrix.row, dtype = np.intc)             # <<<<<<<<<<<<<<
@@ -17397,16 +17396,16 @@ static PyObject *__pyx_pf_6scloop_4data_10ripser_lib_ripser(CYTHON_UNUSED PyObje
  *     cdef float[::1] _V = np.ascontiguousarray(distance_matrix.data, dtype = np.float32)
 */
   __pyx_t_2 = NULL;
-  __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_np); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 91, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_np); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 88, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_ascontiguousarray); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 91, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_ascontiguousarray); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 88, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_v_distance_matrix, __pyx_mstate_global->__pyx_n_u_row); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 91, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_v_distance_matrix, __pyx_mstate_global->__pyx_n_u_row); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 88, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  __Pyx_GetModuleGlobalName(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_np); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 91, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_np); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 88, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_intc); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 91, __pyx_L1_error)
+  __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_intc); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 88, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_6);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
   __pyx_t_7 = 1;
@@ -17423,25 +17422,25 @@ static PyObject *__pyx_pf_6scloop_4data_10ripser_lib_ripser(CYTHON_UNUSED PyObje
   #endif
   {
     PyObject *__pyx_callargs[2 + ((CYTHON_VECTORCALL) ? 1 : 0)] = {__pyx_t_2, __pyx_t_3};
-    __pyx_t_5 = __Pyx_MakeVectorcallBuilderKwds(1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 91, __pyx_L1_error)
+    __pyx_t_5 = __Pyx_MakeVectorcallBuilderKwds(1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 88, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_5);
-    if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_dtype, __pyx_t_6, __pyx_t_5, __pyx_callargs+2, 0) < (0)) __PYX_ERR(0, 91, __pyx_L1_error)
+    if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_dtype, __pyx_t_6, __pyx_t_5, __pyx_callargs+2, 0) < (0)) __PYX_ERR(0, 88, __pyx_L1_error)
     __pyx_t_1 = __Pyx_Object_Vectorcall_CallFromBuilder((PyObject*)__pyx_t_4, __pyx_callargs+__pyx_t_7, (2-__pyx_t_7) | (__pyx_t_7*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET), __pyx_t_5);
     __Pyx_XDECREF(__pyx_t_2); __pyx_t_2 = 0;
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 91, __pyx_L1_error)
+    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 88, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
   }
-  __pyx_t_8 = __Pyx_PyObject_to_MemoryviewSlice_dc_int(__pyx_t_1, PyBUF_WRITABLE); if (unlikely(!__pyx_t_8.memview)) __PYX_ERR(0, 91, __pyx_L1_error)
+  __pyx_t_8 = __Pyx_PyObject_to_MemoryviewSlice_dc_int(__pyx_t_1, PyBUF_WRITABLE); if (unlikely(!__pyx_t_8.memview)) __PYX_ERR(0, 88, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_v__I = __pyx_t_8;
   __pyx_t_8.memview = NULL;
   __pyx_t_8.data = NULL;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":92
+  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":89
  *     # I, J, and V need to be contiguous array
  *     cdef int[::1] _I = np.ascontiguousarray(distance_matrix.row, dtype = np.intc)
  *     cdef int[::1] _J = np.ascontiguousarray(distance_matrix.col, dtype = np.intc)             # <<<<<<<<<<<<<<
@@ -17449,16 +17448,16 @@ static PyObject *__pyx_pf_6scloop_4data_10ripser_lib_ripser(CYTHON_UNUSED PyObje
  * 
 */
   __pyx_t_4 = NULL;
-  __Pyx_GetModuleGlobalName(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_np); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 92, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_np); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 89, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_ascontiguousarray); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 92, __pyx_L1_error)
+  __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_ascontiguousarray); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 89, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_6);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-  __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_v_distance_matrix, __pyx_mstate_global->__pyx_n_u_col); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 92, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_v_distance_matrix, __pyx_mstate_global->__pyx_n_u_col); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 89, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_np); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 92, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_np); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 89, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_intc); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 92, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_intc); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 89, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __pyx_t_7 = 1;
@@ -17475,25 +17474,25 @@ static PyObject *__pyx_pf_6scloop_4data_10ripser_lib_ripser(CYTHON_UNUSED PyObje
   #endif
   {
     PyObject *__pyx_callargs[2 + ((CYTHON_VECTORCALL) ? 1 : 0)] = {__pyx_t_4, __pyx_t_5};
-    __pyx_t_3 = __Pyx_MakeVectorcallBuilderKwds(1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 92, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_MakeVectorcallBuilderKwds(1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 89, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
-    if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_dtype, __pyx_t_2, __pyx_t_3, __pyx_callargs+2, 0) < (0)) __PYX_ERR(0, 92, __pyx_L1_error)
+    if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_dtype, __pyx_t_2, __pyx_t_3, __pyx_callargs+2, 0) < (0)) __PYX_ERR(0, 89, __pyx_L1_error)
     __pyx_t_1 = __Pyx_Object_Vectorcall_CallFromBuilder((PyObject*)__pyx_t_6, __pyx_callargs+__pyx_t_7, (2-__pyx_t_7) | (__pyx_t_7*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET), __pyx_t_3);
     __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
     __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
-    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 92, __pyx_L1_error)
+    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 89, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
   }
-  __pyx_t_8 = __Pyx_PyObject_to_MemoryviewSlice_dc_int(__pyx_t_1, PyBUF_WRITABLE); if (unlikely(!__pyx_t_8.memview)) __PYX_ERR(0, 92, __pyx_L1_error)
+  __pyx_t_8 = __Pyx_PyObject_to_MemoryviewSlice_dc_int(__pyx_t_1, PyBUF_WRITABLE); if (unlikely(!__pyx_t_8.memview)) __PYX_ERR(0, 89, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_v__J = __pyx_t_8;
   __pyx_t_8.memview = NULL;
   __pyx_t_8.data = NULL;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":93
+  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":90
  *     cdef int[::1] _I = np.ascontiguousarray(distance_matrix.row, dtype = np.intc)
  *     cdef int[::1] _J = np.ascontiguousarray(distance_matrix.col, dtype = np.intc)
  *     cdef float[::1] _V = np.ascontiguousarray(distance_matrix.data, dtype = np.float32)             # <<<<<<<<<<<<<<
@@ -17501,16 +17500,16 @@ static PyObject *__pyx_pf_6scloop_4data_10ripser_lib_ripser(CYTHON_UNUSED PyObje
  *     cdef int* I = &_I[0]
 */
   __pyx_t_6 = NULL;
-  __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_np); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 93, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_np); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 90, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_ascontiguousarray); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 93, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_ascontiguousarray); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 90, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_v_distance_matrix, __pyx_mstate_global->__pyx_n_u_data); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 93, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_v_distance_matrix, __pyx_mstate_global->__pyx_n_u_data); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 90, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  __Pyx_GetModuleGlobalName(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_np); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 93, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_np); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 90, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_float32); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 93, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_float32); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 90, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
   __pyx_t_7 = 1;
@@ -17527,25 +17526,25 @@ static PyObject *__pyx_pf_6scloop_4data_10ripser_lib_ripser(CYTHON_UNUSED PyObje
   #endif
   {
     PyObject *__pyx_callargs[2 + ((CYTHON_VECTORCALL) ? 1 : 0)] = {__pyx_t_6, __pyx_t_3};
-    __pyx_t_5 = __Pyx_MakeVectorcallBuilderKwds(1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 93, __pyx_L1_error)
+    __pyx_t_5 = __Pyx_MakeVectorcallBuilderKwds(1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 90, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_5);
-    if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_dtype, __pyx_t_4, __pyx_t_5, __pyx_callargs+2, 0) < (0)) __PYX_ERR(0, 93, __pyx_L1_error)
+    if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_dtype, __pyx_t_4, __pyx_t_5, __pyx_callargs+2, 0) < (0)) __PYX_ERR(0, 90, __pyx_L1_error)
     __pyx_t_1 = __Pyx_Object_Vectorcall_CallFromBuilder((PyObject*)__pyx_t_2, __pyx_callargs+__pyx_t_7, (2-__pyx_t_7) | (__pyx_t_7*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET), __pyx_t_5);
     __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
     __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 93, __pyx_L1_error)
+    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 90, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
   }
-  __pyx_t_9 = __Pyx_PyObject_to_MemoryviewSlice_dc_float(__pyx_t_1, PyBUF_WRITABLE); if (unlikely(!__pyx_t_9.memview)) __PYX_ERR(0, 93, __pyx_L1_error)
+  __pyx_t_9 = __Pyx_PyObject_to_MemoryviewSlice_dc_float(__pyx_t_1, PyBUF_WRITABLE); if (unlikely(!__pyx_t_9.memview)) __PYX_ERR(0, 90, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_v__V = __pyx_t_9;
   __pyx_t_9.memview = NULL;
   __pyx_t_9.data = NULL;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":95
+  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":92
  *     cdef float[::1] _V = np.ascontiguousarray(distance_matrix.data, dtype = np.float32)
  * 
  *     cdef int* I = &_I[0]             # <<<<<<<<<<<<<<
@@ -17560,11 +17559,11 @@ static PyObject *__pyx_pf_6scloop_4data_10ripser_lib_ripser(CYTHON_UNUSED PyObje
   } else if (unlikely(__pyx_t_10 >= __pyx_v__I.shape[0])) __pyx_t_11 = 0;
   if (unlikely(__pyx_t_11 != -1)) {
     __Pyx_RaiseBufferIndexError(__pyx_t_11);
-    __PYX_ERR(0, 95, __pyx_L1_error)
+    __PYX_ERR(0, 92, __pyx_L1_error)
   }
   __pyx_v_I = (&(*((int *) ( /* dim=0 */ ((char *) (((int *) __pyx_v__I.data) + __pyx_t_10)) ))));
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":96
+  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":93
  * 
  *     cdef int* I = &_I[0]
  *     cdef int* J = &_J[0]             # <<<<<<<<<<<<<<
@@ -17579,11 +17578,11 @@ static PyObject *__pyx_pf_6scloop_4data_10ripser_lib_ripser(CYTHON_UNUSED PyObje
   } else if (unlikely(__pyx_t_10 >= __pyx_v__J.shape[0])) __pyx_t_11 = 0;
   if (unlikely(__pyx_t_11 != -1)) {
     __Pyx_RaiseBufferIndexError(__pyx_t_11);
-    __PYX_ERR(0, 96, __pyx_L1_error)
+    __PYX_ERR(0, 93, __pyx_L1_error)
   }
   __pyx_v_J = (&(*((int *) ( /* dim=0 */ ((char *) (((int *) __pyx_v__J.data) + __pyx_t_10)) ))));
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":97
+  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":94
  *     cdef int* I = &_I[0]
  *     cdef int* J = &_J[0]
  *     cdef float* V = &_V[0]             # <<<<<<<<<<<<<<
@@ -17598,53 +17597,53 @@ static PyObject *__pyx_pf_6scloop_4data_10ripser_lib_ripser(CYTHON_UNUSED PyObje
   } else if (unlikely(__pyx_t_10 >= __pyx_v__V.shape[0])) __pyx_t_11 = 0;
   if (unlikely(__pyx_t_11 != -1)) {
     __Pyx_RaiseBufferIndexError(__pyx_t_11);
-    __PYX_ERR(0, 97, __pyx_L1_error)
+    __PYX_ERR(0, 94, __pyx_L1_error)
   }
   __pyx_v_V = (&(*((float *) ( /* dim=0 */ ((char *) (((float *) __pyx_v__V.data) + __pyx_t_10)) ))));
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":99
+  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":96
  *     cdef float* V = &_V[0]
  * 
  *     cdef int NEdges = distance_matrix.nnz             # <<<<<<<<<<<<<<
  *     cdef int N = distance_matrix.shape[0]
  *     cdef ripserResults res = rips_dm_sparse(I, J, V, NEdges, N, modulus, dim_max, threshold, int(do_cocycles))
 */
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_distance_matrix, __pyx_mstate_global->__pyx_n_u_nnz); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 99, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_distance_matrix, __pyx_mstate_global->__pyx_n_u_nnz); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 96, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_11 = __Pyx_PyLong_As_int(__pyx_t_1); if (unlikely((__pyx_t_11 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 99, __pyx_L1_error)
+  __pyx_t_11 = __Pyx_PyLong_As_int(__pyx_t_1); if (unlikely((__pyx_t_11 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 96, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_v_NEdges = __pyx_t_11;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":100
+  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":97
  * 
  *     cdef int NEdges = distance_matrix.nnz
  *     cdef int N = distance_matrix.shape[0]             # <<<<<<<<<<<<<<
  *     cdef ripserResults res = rips_dm_sparse(I, J, V, NEdges, N, modulus, dim_max, threshold, int(do_cocycles))
  *     cdef list persistence_diagrams = [converting_birth_death_to_numpy(res.births_and_deaths_by_dim, i) for i in range(dim_max)]
 */
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_distance_matrix, __pyx_mstate_global->__pyx_n_u_shape); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 100, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_distance_matrix, __pyx_mstate_global->__pyx_n_u_shape); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 97, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = __Pyx_GetItemInt(__pyx_t_1, 0, long, 1, __Pyx_PyLong_From_long, 0, 0, 1, 1, __Pyx_ReferenceSharing_OwnStrongReference); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 100, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_GetItemInt(__pyx_t_1, 0, long, 1, __Pyx_PyLong_From_long, 0, 0, 1, 1, __Pyx_ReferenceSharing_OwnStrongReference); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 97, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_11 = __Pyx_PyLong_As_int(__pyx_t_2); if (unlikely((__pyx_t_11 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 100, __pyx_L1_error)
+  __pyx_t_11 = __Pyx_PyLong_As_int(__pyx_t_2); if (unlikely((__pyx_t_11 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 97, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_v_N = __pyx_t_11;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":101
+  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":98
  *     cdef int NEdges = distance_matrix.nnz
  *     cdef int N = distance_matrix.shape[0]
  *     cdef ripserResults res = rips_dm_sparse(I, J, V, NEdges, N, modulus, dim_max, threshold, int(do_cocycles))             # <<<<<<<<<<<<<<
  *     cdef list persistence_diagrams = [converting_birth_death_to_numpy(res.births_and_deaths_by_dim, i) for i in range(dim_max)]
  *     cdef list cocycle_representatives = [converting_cocycles_to_numpy(res.cocycles_by_dim, i) for i in range(1, dim_max)]
 */
-  __pyx_t_2 = __Pyx_PyNumber_Int(__pyx_v_do_cocycles); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 101, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyNumber_Int(__pyx_v_do_cocycles); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 98, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_11 = __Pyx_PyLong_As_int(__pyx_t_2); if (unlikely((__pyx_t_11 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 101, __pyx_L1_error)
+  __pyx_t_11 = __Pyx_PyLong_As_int(__pyx_t_2); if (unlikely((__pyx_t_11 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 98, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_v_res = rips_dm_sparse(__pyx_v_I, __pyx_v_J, __pyx_v_V, __pyx_v_NEdges, __pyx_v_N, __pyx_v_modulus, __pyx_v_dim_max, __pyx_v_threshold, __pyx_t_11);
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":102
+  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":99
  *     cdef int N = distance_matrix.shape[0]
  *     cdef ripserResults res = rips_dm_sparse(I, J, V, NEdges, N, modulus, dim_max, threshold, int(do_cocycles))
  *     cdef list persistence_diagrams = [converting_birth_death_to_numpy(res.births_and_deaths_by_dim, i) for i in range(dim_max)]             # <<<<<<<<<<<<<<
@@ -17652,22 +17651,22 @@ static PyObject *__pyx_pf_6scloop_4data_10ripser_lib_ripser(CYTHON_UNUSED PyObje
  *     return RipserResults(
 */
   { /* enter inner scope */
-    __pyx_t_2 = PyList_New(0); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 102, __pyx_L1_error)
+    __pyx_t_2 = PyList_New(0); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 99, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
     __pyx_t_11 = __pyx_v_dim_max;
     __pyx_t_12 = __pyx_t_11;
     for (__pyx_t_13 = 0; __pyx_t_13 < __pyx_t_12; __pyx_t_13+=1) {
       __pyx_7genexpr__pyx_v_i = __pyx_t_13;
-      __pyx_t_1 = __pyx_f_6scloop_4data_10ripser_lib_converting_birth_death_to_numpy(__pyx_v_res.births_and_deaths_by_dim, __pyx_7genexpr__pyx_v_i); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 102, __pyx_L1_error)
+      __pyx_t_1 = __pyx_f_6scloop_4data_10ripser_lib_converting_birth_death_to_numpy(__pyx_v_res.births_and_deaths_by_dim, __pyx_7genexpr__pyx_v_i); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 99, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
-      if (unlikely(__Pyx_ListComp_Append(__pyx_t_2, (PyObject*)__pyx_t_1))) __PYX_ERR(0, 102, __pyx_L1_error)
+      if (unlikely(__Pyx_ListComp_Append(__pyx_t_2, (PyObject*)__pyx_t_1))) __PYX_ERR(0, 99, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     }
   } /* exit inner scope */
   __pyx_v_persistence_diagrams = ((PyObject*)__pyx_t_2);
   __pyx_t_2 = 0;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":103
+  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":100
  *     cdef ripserResults res = rips_dm_sparse(I, J, V, NEdges, N, modulus, dim_max, threshold, int(do_cocycles))
  *     cdef list persistence_diagrams = [converting_birth_death_to_numpy(res.births_and_deaths_by_dim, i) for i in range(dim_max)]
  *     cdef list cocycle_representatives = [converting_cocycles_to_numpy(res.cocycles_by_dim, i) for i in range(1, dim_max)]             # <<<<<<<<<<<<<<
@@ -17675,22 +17674,22 @@ static PyObject *__pyx_pf_6scloop_4data_10ripser_lib_ripser(CYTHON_UNUSED PyObje
  *         persistence_diagrams,
 */
   { /* enter inner scope */
-    __pyx_t_2 = PyList_New(0); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 103, __pyx_L1_error)
+    __pyx_t_2 = PyList_New(0); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 100, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
     __pyx_t_11 = __pyx_v_dim_max;
     __pyx_t_12 = __pyx_t_11;
     for (__pyx_t_14 = 1; __pyx_t_14 < __pyx_t_12; __pyx_t_14+=1) {
       __pyx_8genexpr1__pyx_v_i = __pyx_t_14;
-      __pyx_t_1 = __pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy(__pyx_v_res.cocycles_by_dim, __pyx_8genexpr1__pyx_v_i); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 103, __pyx_L1_error)
+      __pyx_t_1 = __pyx_f_6scloop_4data_10ripser_lib_converting_cocycles_to_numpy(__pyx_v_res.cocycles_by_dim, __pyx_8genexpr1__pyx_v_i); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 100, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
-      if (unlikely(__Pyx_ListComp_Append(__pyx_t_2, (PyObject*)__pyx_t_1))) __PYX_ERR(0, 103, __pyx_L1_error)
+      if (unlikely(__Pyx_ListComp_Append(__pyx_t_2, (PyObject*)__pyx_t_1))) __PYX_ERR(0, 100, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     }
   } /* exit inner scope */
   __pyx_v_cocycle_representatives = ((PyObject*)__pyx_t_2);
   __pyx_t_2 = 0;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":104
+  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":101
  *     cdef list persistence_diagrams = [converting_birth_death_to_numpy(res.births_and_deaths_by_dim, i) for i in range(dim_max)]
  *     cdef list cocycle_representatives = [converting_cocycles_to_numpy(res.cocycles_by_dim, i) for i in range(1, dim_max)]
  *     return RipserResults(             # <<<<<<<<<<<<<<
@@ -17699,16 +17698,16 @@ static PyObject *__pyx_pf_6scloop_4data_10ripser_lib_ripser(CYTHON_UNUSED PyObje
 */
   __Pyx_XDECREF(__pyx_r);
   __pyx_t_1 = NULL;
-  __Pyx_GetModuleGlobalName(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_RipserResults); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 104, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_RipserResults); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 101, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":107
+  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":104
  *         persistence_diagrams,
  *         cocycle_representatives,
  *         NEdges             # <<<<<<<<<<<<<<
  *     )
 */
-  __pyx_t_4 = __Pyx_PyLong_From_int(__pyx_v_NEdges); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 107, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyLong_From_int(__pyx_v_NEdges); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 104, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __pyx_t_7 = 1;
   #if CYTHON_UNPACK_METHODS
@@ -17728,14 +17727,14 @@ static PyObject *__pyx_pf_6scloop_4data_10ripser_lib_ripser(CYTHON_UNUSED PyObje
     __Pyx_XDECREF(__pyx_t_1); __pyx_t_1 = 0;
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
     __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-    if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 104, __pyx_L1_error)
+    if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 101, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
   }
   __pyx_r = __pyx_t_2;
   __pyx_t_2 = 0;
   goto __pyx_L0;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":83
+  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":80
  *     return np.stack((birth, death), axis=1)
  * 
  * def ripser(             # <<<<<<<<<<<<<<
@@ -19604,7 +19603,7 @@ __Pyx_RefNannySetupContext("PyInit_ripser_lib", 0);
   if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_pyx_unpickle_Enum, __pyx_t_4) < (0)) __PYX_ERR(1, 4, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":6
+  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":3
  * cimport cython
  * from libcpp.vector cimport vector
  * from scipy.sparse import coo_matrix             # <<<<<<<<<<<<<<
@@ -19613,78 +19612,78 @@ __Pyx_RefNannySetupContext("PyInit_ripser_lib", 0);
 */
   {
     PyObject* const __pyx_imported_names[] = {__pyx_mstate_global->__pyx_n_u_coo_matrix};
-    __pyx_t_1 = __Pyx_Import(__pyx_mstate_global->__pyx_n_u_scipy_sparse, __pyx_imported_names, 1, NULL, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 6, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_Import(__pyx_mstate_global->__pyx_n_u_scipy_sparse, __pyx_imported_names, 1, NULL, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 3, __pyx_L1_error)
   }
   __pyx_t_4 = __pyx_t_1;
   __Pyx_GOTREF(__pyx_t_4);
   {
     PyObject* const __pyx_imported_names[] = {__pyx_mstate_global->__pyx_n_u_coo_matrix};
     __pyx_t_9 = 0; {
-      __pyx_t_5 = __Pyx_ImportFrom(__pyx_t_4, __pyx_imported_names[__pyx_t_9]); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 6, __pyx_L1_error)
+      __pyx_t_5 = __Pyx_ImportFrom(__pyx_t_4, __pyx_imported_names[__pyx_t_9]); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 3, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_5);
-      if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_imported_names[__pyx_t_9], __pyx_t_5) < (0)) __PYX_ERR(0, 6, __pyx_L1_error)
+      if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_imported_names[__pyx_t_9], __pyx_t_5) < (0)) __PYX_ERR(0, 3, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
     }
   }
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":7
+  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":4
  * from libcpp.vector cimport vector
  * from scipy.sparse import coo_matrix
  * import numpy as np             # <<<<<<<<<<<<<<
  * import typing
  * import dataclasses
 */
-  __pyx_t_1 = __Pyx_Import(__pyx_mstate_global->__pyx_n_u_numpy, 0, 0, NULL, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 7, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_Import(__pyx_mstate_global->__pyx_n_u_numpy, 0, 0, NULL, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 4, __pyx_L1_error)
   __pyx_t_4 = __pyx_t_1;
   __Pyx_GOTREF(__pyx_t_4);
-  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_np, __pyx_t_4) < (0)) __PYX_ERR(0, 7, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_np, __pyx_t_4) < (0)) __PYX_ERR(0, 4, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":8
+  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":5
  * from scipy.sparse import coo_matrix
  * import numpy as np
  * import typing             # <<<<<<<<<<<<<<
  * import dataclasses
  * 
 */
-  __pyx_t_1 = __Pyx_Import(__pyx_mstate_global->__pyx_n_u_typing, 0, 0, NULL, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 8, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_Import(__pyx_mstate_global->__pyx_n_u_typing, 0, 0, NULL, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 5, __pyx_L1_error)
   __pyx_t_4 = __pyx_t_1;
   __Pyx_GOTREF(__pyx_t_4);
-  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_typing, __pyx_t_4) < (0)) __PYX_ERR(0, 8, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_typing, __pyx_t_4) < (0)) __PYX_ERR(0, 5, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":9
+  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":6
  * import numpy as np
  * import typing
  * import dataclasses             # <<<<<<<<<<<<<<
  * 
  * ctypedef float value_t
 */
-  __pyx_t_1 = __Pyx_Import(__pyx_mstate_global->__pyx_n_u_dataclasses, 0, 0, NULL, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 9, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_Import(__pyx_mstate_global->__pyx_n_u_dataclasses, 0, 0, NULL, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 6, __pyx_L1_error)
   __pyx_t_4 = __pyx_t_1;
   __Pyx_GOTREF(__pyx_t_4);
-  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_dataclasses, __pyx_t_4) < (0)) __PYX_ERR(0, 9, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_dataclasses, __pyx_t_4) < (0)) __PYX_ERR(0, 6, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":20
+  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":17
  * 
  * @dataclasses.dataclass
  * class RipserResults:             # <<<<<<<<<<<<<<
  *     births_and_deaths_by_dim: list[np.ndarray]
  *     cocycles_by_dim: list
 */
-  __pyx_t_4 = __Pyx_Py3MetaclassPrepare((PyObject *) NULL, __pyx_mstate_global->__pyx_empty_tuple, __pyx_mstate_global->__pyx_n_u_RipserResults, __pyx_mstate_global->__pyx_n_u_RipserResults, (PyObject *) NULL, __pyx_mstate_global->__pyx_n_u_scloop_data_ripser_lib, (PyObject *) NULL); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 20, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_Py3MetaclassPrepare((PyObject *) NULL, __pyx_mstate_global->__pyx_empty_tuple, __pyx_mstate_global->__pyx_n_u_RipserResults, __pyx_mstate_global->__pyx_n_u_RipserResults, (PyObject *) NULL, __pyx_mstate_global->__pyx_n_u_scloop_data_ripser_lib, (PyObject *) NULL); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 17, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
-  __pyx_t_5 = __Pyx_PyDict_NewPresized(3); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 20, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyDict_NewPresized(3); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 17, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  if (PyDict_SetItem(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_births_and_deaths_by_dim, __pyx_mstate_global->__pyx_kp_u_list_np_ndarray) < (0)) __PYX_ERR(0, 20, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_cocycles_by_dim, __pyx_mstate_global->__pyx_n_u_list) < (0)) __PYX_ERR(0, 20, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_num_edges, __pyx_mstate_global->__pyx_n_u_int) < (0)) __PYX_ERR(0, 20, __pyx_L1_error)
-  if (__Pyx_SetNameInClass(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_annotations, __pyx_t_5) < (0)) __PYX_ERR(0, 20, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_births_and_deaths_by_dim, __pyx_mstate_global->__pyx_kp_u_list_np_ndarray) < (0)) __PYX_ERR(0, 17, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_cocycles_by_dim, __pyx_mstate_global->__pyx_n_u_list) < (0)) __PYX_ERR(0, 17, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_num_edges, __pyx_mstate_global->__pyx_n_u_int) < (0)) __PYX_ERR(0, 17, __pyx_L1_error)
+  if (__Pyx_SetNameInClass(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_annotations, __pyx_t_5) < (0)) __PYX_ERR(0, 17, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":19
+  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":16
  *     cdef ripserResults rips_dm_sparse(int* I, int* J, float* V, int NEdges, int N, int modulus, int dim_max, float threshold, int do_cocycles)
  * 
  * @dataclasses.dataclass             # <<<<<<<<<<<<<<
@@ -19692,20 +19691,20 @@ __Pyx_RefNannySetupContext("PyInit_ripser_lib", 0);
  *     births_and_deaths_by_dim: list[np.ndarray]
 */
   __pyx_t_10 = NULL;
-  __Pyx_GetModuleGlobalName(__pyx_t_11, __pyx_mstate_global->__pyx_n_u_dataclasses); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 19, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_11, __pyx_mstate_global->__pyx_n_u_dataclasses); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 16, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_11);
-  __pyx_t_12 = __Pyx_PyObject_GetAttrStr(__pyx_t_11, __pyx_mstate_global->__pyx_n_u_dataclass); if (unlikely(!__pyx_t_12)) __PYX_ERR(0, 19, __pyx_L1_error)
+  __pyx_t_12 = __Pyx_PyObject_GetAttrStr(__pyx_t_11, __pyx_mstate_global->__pyx_n_u_dataclass); if (unlikely(!__pyx_t_12)) __PYX_ERR(0, 16, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_12);
   __Pyx_DECREF(__pyx_t_11); __pyx_t_11 = 0;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":20
+  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":17
  * 
  * @dataclasses.dataclass
  * class RipserResults:             # <<<<<<<<<<<<<<
  *     births_and_deaths_by_dim: list[np.ndarray]
  *     cocycles_by_dim: list
 */
-  __pyx_t_11 = __Pyx_Py3ClassCreate(((PyObject*)&PyType_Type), __pyx_mstate_global->__pyx_n_u_RipserResults, __pyx_mstate_global->__pyx_empty_tuple, __pyx_t_4, NULL, 0, 0); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 20, __pyx_L1_error)
+  __pyx_t_11 = __Pyx_Py3ClassCreate(((PyObject*)&PyType_Type), __pyx_mstate_global->__pyx_n_u_RipserResults, __pyx_mstate_global->__pyx_empty_tuple, __pyx_t_4, NULL, 0, 0); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 17, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_11);
   #if CYTHON_COMPILING_IN_CPYTHON && PY_VERSION_HEX >= 0x030E0000
   PyUnstable_Object_EnableDeferredRefcount(__pyx_t_11);
@@ -19717,38 +19716,38 @@ __Pyx_RefNannySetupContext("PyInit_ripser_lib", 0);
     __Pyx_XDECREF(__pyx_t_10); __pyx_t_10 = 0;
     __Pyx_DECREF(__pyx_t_11); __pyx_t_11 = 0;
     __Pyx_DECREF(__pyx_t_12); __pyx_t_12 = 0;
-    if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 19, __pyx_L1_error)
+    if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 16, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_5);
   }
-  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_RipserResults, __pyx_t_5) < (0)) __PYX_ERR(0, 20, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_RipserResults, __pyx_t_5) < (0)) __PYX_ERR(0, 17, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":83
+  /* "src/scloop/data/ripser_lib/ripser_lib.pyx":80
  *     return np.stack((birth, death), axis=1)
  * 
  * def ripser(             # <<<<<<<<<<<<<<
  *     distance_matrix: coo_matrix,
  *     int modulus,
 */
-  __pyx_t_4 = __Pyx_PyDict_NewPresized(2); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 83, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyDict_NewPresized(2); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 80, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
-  if (PyDict_SetItem(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_distance_matrix, __pyx_mstate_global->__pyx_n_u_coo_matrix) < (0)) __PYX_ERR(0, 83, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_return, __pyx_mstate_global->__pyx_n_u_RipserResults) < (0)) __PYX_ERR(0, 83, __pyx_L1_error)
-  __pyx_t_5 = __Pyx_CyFunction_New(&__pyx_mdef_6scloop_4data_10ripser_lib_1ripser, 0, __pyx_mstate_global->__pyx_n_u_ripser, NULL, __pyx_mstate_global->__pyx_n_u_scloop_data_ripser_lib, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[0])); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 83, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_distance_matrix, __pyx_mstate_global->__pyx_n_u_coo_matrix) < (0)) __PYX_ERR(0, 80, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_return, __pyx_mstate_global->__pyx_n_u_RipserResults) < (0)) __PYX_ERR(0, 80, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_CyFunction_New(&__pyx_mdef_6scloop_4data_10ripser_lib_1ripser, 0, __pyx_mstate_global->__pyx_n_u_ripser, NULL, __pyx_mstate_global->__pyx_n_u_scloop_data_ripser_lib, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[0])); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 80, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
   #if CYTHON_COMPILING_IN_CPYTHON && PY_VERSION_HEX >= 0x030E0000
   PyUnstable_Object_EnableDeferredRefcount(__pyx_t_5);
   #endif
   __Pyx_CyFunction_SetAnnotationsDict(__pyx_t_5, __pyx_t_4);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_ripser, __pyx_t_5) < (0)) __PYX_ERR(0, 83, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_ripser, __pyx_t_5) < (0)) __PYX_ERR(0, 80, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
   /* "src/scloop/data/ripser_lib/ripser_lib.pyx":1
- * # distutils: language = c++             # <<<<<<<<<<<<<<
- * # distutils: include_dirs = src/scloop/data/ripser_lib
- * 
+ * cimport cython             # <<<<<<<<<<<<<<
+ * from libcpp.vector cimport vector
+ * from scipy.sparse import coo_matrix
 */
   __pyx_t_5 = __Pyx_PyDict_NewPresized(0); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
@@ -20001,7 +20000,7 @@ static int __Pyx_CreateCodeObjects(__pyx_mstatetype *__pyx_mstate) {
   PyObject* tuple_dedup_map = PyDict_New();
   if (unlikely(!tuple_dedup_map)) return -1;
   {
-    const __Pyx_PyCode_New_function_description descr = {5, 0, 0, 18, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 83};
+    const __Pyx_PyCode_New_function_description descr = {5, 0, 0, 18, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 80};
     PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_distance_matrix, __pyx_mstate->__pyx_n_u_modulus, __pyx_mstate->__pyx_n_u_dim_max, __pyx_mstate->__pyx_n_u_threshold, __pyx_mstate->__pyx_n_u_do_cocycles, __pyx_mstate->__pyx_n_u_I, __pyx_mstate->__pyx_n_u_J, __pyx_mstate->__pyx_n_u_V, __pyx_mstate->__pyx_n_u_I_2, __pyx_mstate->__pyx_n_u_J_2, __pyx_mstate->__pyx_n_u_V_2, __pyx_mstate->__pyx_n_u_NEdges, __pyx_mstate->__pyx_n_u_N, __pyx_mstate->__pyx_n_u_res, __pyx_mstate->__pyx_n_u_persistence_diagrams, __pyx_mstate->__pyx_n_u_cocycle_representatives, __pyx_mstate->__pyx_n_u_i, __pyx_mstate->__pyx_n_u_i};
     __pyx_mstate_global->__pyx_codeobj_tab[0] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_src_scloop_data_ripser_lib_ripse, __pyx_mstate->__pyx_n_u_ripser, __pyx_mstate->__pyx_kp_b_iso88591_r_1O6_1_r_1O6_1_QoWHBa_2Qa_2Qa, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[0])) goto bad;
   }

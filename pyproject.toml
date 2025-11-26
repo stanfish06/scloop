@@ -22,7 +22,6 @@ dependencies = [
   "rich>=14.0.0",
   "torchdyn>=1.0.6",
   "tensorflow>=2.18.1",
-  "pyrefly>=0.36.2",
 ]
 # tensorflow hasn't supported 3.13 yet
 
@@ -52,7 +51,7 @@ indent-style = "space"
 package-dir = { "" = "src" }
 ext-modules = [
   { name = "scloop.data.ripser_lib", sources = [
-    "./src/scloop/data/ripser_lib/ripser_lib.pyx",
-    "./src/scloop/data/ripser_lib/ripser.cpp",
+    "./src/scloop/data/ripser_lib.pyx",
+    "./src/scloop/data/ripser.cpp",
   ], language = "c++", optional = false }
 ]

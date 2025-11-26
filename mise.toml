@@ -2,7 +2,7 @@
 uv = "latest"
 
 [env]
-CPLUS_INCLUDE_PATH = "{{config_root}}/src/scloop/data/ripser_lib"
+CPLUS_INCLUDE_PATH = "{{config_root}}/src/scloop/data"
 
 [settings]
 python.uv_venv_auto = true
