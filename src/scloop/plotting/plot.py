@@ -1,4 +1,4 @@
-# Copyright 2025 Zhiyuan Yu (Heemskerk's lab, University of Mchigan)
+# Copyright 2025 Zhiyuan Yu (Heemskerk's lab, University of Michigan)
 import glasbey
 import matplotlib.pyplot as plt
 import numpy as np

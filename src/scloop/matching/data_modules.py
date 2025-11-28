@@ -1,3 +1,4 @@
+# Copyright 2025 Zhiyuan Yu (Heemskerk's lab, University of Michigan)
 import numpy as np
 import pytorch_lightning as pl
 from torch import Generator, from_numpy
