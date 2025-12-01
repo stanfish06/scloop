@@ -18,3 +18,6 @@ wheels/
 .specify/
 todo/
 *.ipynb
+
+# Refactor planning
+REFACTOR_PLAN.md

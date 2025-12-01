@@ -12,10 +12,15 @@ scLoop is a library to identify statistically significant loops in single-cell R
 ## Build Instructions
 ```bash
 make build
-make clean
 ```
 
-Alternatively,
+or
+
 ```bash
-mise sync
+make rebuild
+```
+
+## Virtual Envrionemnt
+```bash
+make sync
 ```

@@ -21,7 +21,7 @@ build: build-m4ri
 	CPLUS_INCLUDE_PATH=$(PROJECT_ROOT)/src/scloop/data:$(DM_PREFIX) \
 		uv build
 
-sync:
+sync: build-m4ri
 	CPLUS_INCLUDE_PATH=$(PROJECT_ROOT)/src/scloop/data:$(DM_PREFIX)/discrete-frechet-distance uv sync
 
 clean:
