@@ -4,26 +4,18 @@
 {
     "distutils": {
         "depends": [
-            "/home/stanfish/Git/scloop/src/scloop/utils/linear_algebra_gf2/include/m4ri/m4ri.h"
-        ],
-        "extra_compile_args": [
-            "-fopenmp"
-        ],
-        "extra_link_args": [
-            "-fopenmp"
-        ],
-        "extra_objects": [
-            "/home/stanfish/Git/scloop/src/scloop/utils/linear_algebra_gf2/libm4ri.a"
+            "src/scloop/utils/distance_metrics/discrete-frechet-distance/Frechet.h"
         ],
         "include_dirs": [
-            "/home/stanfish/Git/scloop/src/scloop/utils/linear_algebra_gf2/include"
+            "./src/scloop/utils/distance_metrics/discrete-frechet-distance"
         ],
-        "name": "scloop.utils.linear_algebra_gf2.m4ri_lib",
+        "language": "c++",
+        "name": "scloop.utils.linear_algebra_gf2.utils.distance_metrics",
         "sources": [
-            "./src/scloop/utils/linear_algebra_gf2/m4ri_lib.pyx"
+            "./src/scloop/utils/distance_metrics/frechet.pyx"
         ]
     },
-    "module_name": "scloop.utils.linear_algebra_gf2.m4ri_lib"
+    "module_name": "scloop.utils.linear_algebra_gf2.utils.distance_metrics"
 }
 END: Cython Metadata */
 
@@ -540,20 +532,36 @@ typedef uintptr_t  __pyx_uintptr_t;
 #endif
 #define __PYX_REINTERPRET_FUNCION(func_pointer, other_pointer) ((func_pointer)(void(*)(void))(other_pointer))
 
-/* CInitCode */
+/* CppInitCode */
+#ifndef __cplusplus
+  #error "Cython files generated with the C++ option must be compiled with a C++ compiler."
+#endif
 #ifndef CYTHON_INLINE
   #if defined(__clang__)
     #define CYTHON_INLINE __inline__ __attribute__ ((__unused__))
-  #elif defined(__GNUC__)
-    #define CYTHON_INLINE __inline__
-  #elif defined(_MSC_VER)
-    #define CYTHON_INLINE __inline
-  #elif defined (__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
-    #define CYTHON_INLINE inline
   #else
-    #define CYTHON_INLINE
+    #define CYTHON_INLINE inline
   #endif
 #endif
+template<typename T>
+void __Pyx_call_destructor(T& x) {
+    x.~T();
+}
+template<typename T>
+class __Pyx_FakeReference {
+  public:
+    __Pyx_FakeReference() : ptr(NULL) { }
+    __Pyx_FakeReference(const T& ref) : ptr(const_cast<T*>(&ref)) { }
+    T *operator->() { return ptr; }
+    T *operator&() { return ptr; }
+    operator T&() { return *ptr; }
+    template<typename U> bool operator ==(const U& other) const { return *ptr == other; }
+    template<typename U> bool operator !=(const U& other) const { return *ptr != other; }
+    template<typename U> bool operator==(const __Pyx_FakeReference<U>& other) const { return *ptr == *other.ptr; }
+    template<typename U> bool operator!=(const __Pyx_FakeReference<U>& other) const { return *ptr != *other.ptr; }
+  private:
+    T *ptr;
+};
 
 /* PythonCompatibility */
 #define __PYX_BUILD_PY_SSIZE_T "n"
@@ -1134,17 +1142,19 @@ static int __Pyx_init_co_variables(void) {
     #warning Please do not define the '__PYX_EXTERN_C' macro externally. Use 'CYTHON_EXTERN_C' instead.
     #endif
 #else
-  #ifdef __cplusplus
-    #define __PYX_EXTERN_C extern "C"
-  #else
-    #define __PYX_EXTERN_C extern
-  #endif
+    #define __PYX_EXTERN_C extern "C++"
 #endif
 
-#define __PYX_HAVE__scloop__utils__linear_algebra_gf2__m4ri_lib
-#define __PYX_HAVE_API__scloop__utils__linear_algebra_gf2__m4ri_lib
+#define __PYX_HAVE__scloop__utils__linear_algebra_gf2__utils__distance_metrics
+#define __PYX_HAVE_API__scloop__utils__linear_algebra_gf2__utils__distance_metrics
 /* Early includes */
-#include "m4ri/m4ri.h"
+#include "ios"
+#include "new"
+#include "stdexcept"
+#include "typeinfo"
+#include <vector>
+#include <functional>
+#include "Frechet.h"
 #ifdef _OPENMP
 #include <omp.h>
 #endif /* _OPENMP */
@@ -1352,7 +1362,7 @@ static const char *__pyx_filename;
 /* #### Code section: filename_table ### */
 
 static const char* const __pyx_f[] = {
-  "src/scloop/utils/linear_algebra_gf2/m4ri_lib.pyx",
+  "src/scloop/utils/distance_metrics/frechet.pyx",
 };
 /* #### Code section: utility_code_proto_before_types ### */
 /* Atomics.proto (used by UnpackUnboundCMethod) */
@@ -1529,6 +1539,24 @@ static const char* const __pyx_f[] = {
 /* #### Code section: type_declarations ### */
 
 /*--- Type declarations ---*/
+
+/* "src/scloop/utils/distance_metrics/frechet.pyx":6
+ * from libcpp.functional cimport function
+ * 
+ * ctypedef vector[double] double_vec_1d             # <<<<<<<<<<<<<<
+ * ctypedef vector[vector[double]] double_vec_2d
+ * 
+*/
+typedef std::vector<double>  __pyx_t_6scloop_5utils_18linear_algebra_gf2_5utils_16distance_metrics_double_vec_1d;
+
+/* "src/scloop/utils/distance_metrics/frechet.pyx":7
+ * 
+ * ctypedef vector[double] double_vec_1d
+ * ctypedef vector[vector[double]] double_vec_2d             # <<<<<<<<<<<<<<
+ * 
+ * cdef extern from "Frechet.h":
+*/
+typedef std::vector<std::vector<double> >  __pyx_t_6scloop_5utils_18linear_algebra_gf2_5utils_16distance_metrics_double_vec_2d;
 /* #### Code section: utility_code_proto ### */
 
 /* --- Runtime support code (head) --- */
@@ -1605,69 +1633,35 @@ static const char* const __pyx_f[] = {
 #define __Pyx_CLEAR(r)    do { PyObject* tmp = ((PyObject*)(r)); r = NULL; __Pyx_DECREF(tmp);} while(0)
 #define __Pyx_XCLEAR(r)   do { if((r) != NULL) {PyObject* tmp = ((PyObject*)(r)); r = NULL; __Pyx_DECREF(tmp);}} while(0)
 
-/* PyErrExceptionMatches.proto (used by PyObjectGetAttrStrNoError) */
-#if CYTHON_FAST_THREAD_STATE
-#define __Pyx_PyErr_ExceptionMatches(err) __Pyx_PyErr_ExceptionMatchesInState(__pyx_tstate, err)
-static CYTHON_INLINE int __Pyx_PyErr_ExceptionMatchesInState(PyThreadState* tstate, PyObject* err);
-#else
-#define __Pyx_PyErr_ExceptionMatches(err)  PyErr_ExceptionMatches(err)
-#endif
+/* GetItemInt.proto */
+#define __Pyx_GetItemInt(o, i, type, is_signed, to_py_func, is_list, wraparound, boundscheck, has_gil, unsafe_shared)\
+    (__Pyx_fits_Py_ssize_t(i, type, is_signed) ?\
+    __Pyx_GetItemInt_Fast(o, (Py_ssize_t)i, is_list, wraparound, boundscheck, unsafe_shared) :\
+    (is_list ? (PyErr_SetString(PyExc_IndexError, "list index out of range"), (PyObject*)NULL) :\
+               __Pyx_GetItemInt_Generic(o, to_py_func(i))))
+#define __Pyx_GetItemInt_List(o, i, type, is_signed, to_py_func, is_list, wraparound, boundscheck, has_gil, unsafe_shared)\
+    (__Pyx_fits_Py_ssize_t(i, type, is_signed) ?\
+    __Pyx_GetItemInt_List_Fast(o, (Py_ssize_t)i, wraparound, boundscheck, unsafe_shared) :\
+    (PyErr_SetString(PyExc_IndexError, "list index out of range"), (PyObject*)NULL))
+static CYTHON_INLINE PyObject *__Pyx_GetItemInt_List_Fast(PyObject *o, Py_ssize_t i,
+                                                              int wraparound, int boundscheck, int unsafe_shared);
+#define __Pyx_GetItemInt_Tuple(o, i, type, is_signed, to_py_func, is_list, wraparound, boundscheck, has_gil, unsafe_shared)\
+    (__Pyx_fits_Py_ssize_t(i, type, is_signed) ?\
+    __Pyx_GetItemInt_Tuple_Fast(o, (Py_ssize_t)i, wraparound, boundscheck, unsafe_shared) :\
+    (PyErr_SetString(PyExc_IndexError, "tuple index out of range"), (PyObject*)NULL))
+static CYTHON_INLINE PyObject *__Pyx_GetItemInt_Tuple_Fast(PyObject *o, Py_ssize_t i,
+                                                              int wraparound, int boundscheck, int unsafe_shared);
+static PyObject *__Pyx_GetItemInt_Generic(PyObject *o, PyObject* j);
+static CYTHON_INLINE PyObject *__Pyx_GetItemInt_Fast(PyObject *o, Py_ssize_t i,
+                                                     int is_list, int wraparound, int boundscheck, int unsafe_shared);
 
-/* PyThreadStateGet.proto (used by PyErrFetchRestore) */
-#if CYTHON_FAST_THREAD_STATE
-#define __Pyx_PyThreadState_declare  PyThreadState *__pyx_tstate;
-#define __Pyx_PyThreadState_assign  __pyx_tstate = __Pyx_PyThreadState_Current;
-#if PY_VERSION_HEX >= 0x030C00A6
-#define __Pyx_PyErr_Occurred()  (__pyx_tstate->current_exception != NULL)
-#define __Pyx_PyErr_CurrentExceptionType()  (__pyx_tstate->current_exception ? (PyObject*) Py_TYPE(__pyx_tstate->current_exception) : (PyObject*) NULL)
+/* MoveIfSupported.proto */
+#if CYTHON_USE_CPP_STD_MOVE
+  #include <utility>
+  #define __PYX_STD_MOVE_IF_SUPPORTED(x) std::move(x)
 #else
-#define __Pyx_PyErr_Occurred()  (__pyx_tstate->curexc_type != NULL)
-#define __Pyx_PyErr_CurrentExceptionType()  (__pyx_tstate->curexc_type)
+  #define __PYX_STD_MOVE_IF_SUPPORTED(x) x
 #endif
-#else
-#define __Pyx_PyThreadState_declare
-#define __Pyx_PyThreadState_assign
-#define __Pyx_PyErr_Occurred()  (PyErr_Occurred() != NULL)
-#define __Pyx_PyErr_CurrentExceptionType()  PyErr_Occurred()
-#endif
-
-/* PyErrFetchRestore.proto (used by PyObjectGetAttrStrNoError) */
-#if CYTHON_FAST_THREAD_STATE
-#define __Pyx_PyErr_Clear() __Pyx_ErrRestore(NULL, NULL, NULL)
-#define __Pyx_ErrRestoreWithState(type, value, tb)  __Pyx_ErrRestoreInState(PyThreadState_GET(), type, value, tb)
-#define __Pyx_ErrFetchWithState(type, value, tb)    __Pyx_ErrFetchInState(PyThreadState_GET(), type, value, tb)
-#define __Pyx_ErrRestore(type, value, tb)  __Pyx_ErrRestoreInState(__pyx_tstate, type, value, tb)
-#define __Pyx_ErrFetch(type, value, tb)    __Pyx_ErrFetchInState(__pyx_tstate, type, value, tb)
-static CYTHON_INLINE void __Pyx_ErrRestoreInState(PyThreadState *tstate, PyObject *type, PyObject *value, PyObject *tb);
-static CYTHON_INLINE void __Pyx_ErrFetchInState(PyThreadState *tstate, PyObject **type, PyObject **value, PyObject **tb);
-#if CYTHON_COMPILING_IN_CPYTHON && PY_VERSION_HEX < 0x030C00A6
-#define __Pyx_PyErr_SetNone(exc) (Py_INCREF(exc), __Pyx_ErrRestore((exc), NULL, NULL))
-#else
-#define __Pyx_PyErr_SetNone(exc) PyErr_SetNone(exc)
-#endif
-#else
-#define __Pyx_PyErr_Clear() PyErr_Clear()
-#define __Pyx_PyErr_SetNone(exc) PyErr_SetNone(exc)
-#define __Pyx_ErrRestoreWithState(type, value, tb)  PyErr_Restore(type, value, tb)
-#define __Pyx_ErrFetchWithState(type, value, tb)  PyErr_Fetch(type, value, tb)
-#define __Pyx_ErrRestoreInState(tstate, type, value, tb)  PyErr_Restore(type, value, tb)
-#define __Pyx_ErrFetchInState(tstate, type, value, tb)  PyErr_Fetch(type, value, tb)
-#define __Pyx_ErrRestore(type, value, tb)  PyErr_Restore(type, value, tb)
-#define __Pyx_ErrFetch(type, value, tb)  PyErr_Fetch(type, value, tb)
-#endif
-
-/* PyObjectGetAttrStr.proto (used by PyObjectGetAttrStrNoError) */
-#if CYTHON_USE_TYPE_SLOTS
-static CYTHON_INLINE PyObject* __Pyx_PyObject_GetAttrStr(PyObject* obj, PyObject* attr_name);
-#else
-#define __Pyx_PyObject_GetAttrStr(o,n) PyObject_GetAttr(o,n)
-#endif
-
-/* PyObjectGetAttrStrNoError.proto (used by GetBuiltinName) */
-static CYTHON_INLINE PyObject* __Pyx_PyObject_GetAttrStrNoError(PyObject* obj, PyObject* attr_name);
-
-/* GetBuiltinName.proto */
-static PyObject *__Pyx_GetBuiltinName(PyObject *name);
 
 /* TupleAndListFromArray.proto (used by fastcall) */
 #if CYTHON_COMPILING_IN_CPYTHON
@@ -1753,6 +1747,13 @@ static CYTHON_INLINE PyObject* __Pyx_PyObject_FastCallDict(PyObject *func, PyObj
 
 /* PyObjectCallOneArg.proto (used by CallUnboundCMethod0) */
 static CYTHON_INLINE PyObject* __Pyx_PyObject_CallOneArg(PyObject *func, PyObject *arg);
+
+/* PyObjectGetAttrStr.proto (used by UnpackUnboundCMethod) */
+#if CYTHON_USE_TYPE_SLOTS
+static CYTHON_INLINE PyObject* __Pyx_PyObject_GetAttrStr(PyObject* obj, PyObject* attr_name);
+#else
+#define __Pyx_PyObject_GetAttrStr(o,n) PyObject_GetAttr(o,n)
+#endif
 
 /* UnpackUnboundCMethod.proto (used by CallUnboundCMethod0) */
 typedef struct {
@@ -1862,112 +1863,62 @@ static CYTHON_INLINE int __Pyx_ParseKeywords(
 static void __Pyx_RaiseArgtupleInvalid(const char* func_name, int exact,
     Py_ssize_t num_min, Py_ssize_t num_max, Py_ssize_t num_found);
 
-/* AssertionsEnabled.proto */
-#if CYTHON_COMPILING_IN_LIMITED_API  ||  PY_VERSION_HEX >= 0x030C0000
-  static int __pyx_assertions_enabled_flag;
-  #define __pyx_assertions_enabled() (__pyx_assertions_enabled_flag)
-  #if __clang__ || __GNUC__
-  __attribute__((no_sanitize("thread")))
-  #endif
-  static int __Pyx_init_assertions_enabled(void) {
-    PyObject *builtins, *debug, *debug_str;
-    int flag;
-    builtins = PyEval_GetBuiltins();
-    if (!builtins) goto bad;
-    debug_str = PyUnicode_FromStringAndSize("__debug__", 9);
-    if (!debug_str) goto bad;
-    debug = PyObject_GetItem(builtins, debug_str);
-    Py_DECREF(debug_str);
-    if (!debug) goto bad;
-    flag = PyObject_IsTrue(debug);
-    Py_DECREF(debug);
-    if (flag == -1) goto bad;
-    __pyx_assertions_enabled_flag = flag;
-    return 0;
-  bad:
-    __pyx_assertions_enabled_flag = 1;
-    return -1;
-  }
+/* ArgTypeTestFunc.export */
+static int __Pyx__ArgTypeTest(PyObject *obj, PyTypeObject *type, const char *name, int exact);
+
+/* ArgTypeTest.proto */
+#define __Pyx_ArgTypeTest(obj, type, none_allowed, name, exact)\
+    ((likely(__Pyx_IS_TYPE(obj, type) | (none_allowed && (obj == Py_None)))) ? 1 :\
+        __Pyx__ArgTypeTest(obj, type, name, exact))
+
+/* PyValueError_Check.proto */
+#define __Pyx_PyExc_ValueError_Check(obj)  __Pyx_TypeCheck(obj, PyExc_ValueError)
+
+/* PyThreadStateGet.proto (used by PyErrFetchRestore) */
+#if CYTHON_FAST_THREAD_STATE
+#define __Pyx_PyThreadState_declare  PyThreadState *__pyx_tstate;
+#define __Pyx_PyThreadState_assign  __pyx_tstate = __Pyx_PyThreadState_Current;
+#if PY_VERSION_HEX >= 0x030C00A6
+#define __Pyx_PyErr_Occurred()  (__pyx_tstate->current_exception != NULL)
+#define __Pyx_PyErr_CurrentExceptionType()  (__pyx_tstate->current_exception ? (PyObject*) Py_TYPE(__pyx_tstate->current_exception) : (PyObject*) NULL)
 #else
-  #define __Pyx_init_assertions_enabled()  (0)
-  #define __pyx_assertions_enabled()  (!Py_OptimizeFlag)
+#define __Pyx_PyErr_Occurred()  (__pyx_tstate->curexc_type != NULL)
+#define __Pyx_PyErr_CurrentExceptionType()  (__pyx_tstate->curexc_type)
+#endif
+#else
+#define __Pyx_PyThreadState_declare
+#define __Pyx_PyThreadState_assign
+#define __Pyx_PyErr_Occurred()  (PyErr_Occurred() != NULL)
+#define __Pyx_PyErr_CurrentExceptionType()  PyErr_Occurred()
 #endif
 
-/* PyAssertionError_Check.proto */
-#define __Pyx_PyExc_AssertionError_Check(obj)  __Pyx_TypeCheck(obj, PyExc_AssertionError)
+/* PyErrFetchRestore.proto (used by RaiseException) */
+#if CYTHON_FAST_THREAD_STATE
+#define __Pyx_PyErr_Clear() __Pyx_ErrRestore(NULL, NULL, NULL)
+#define __Pyx_ErrRestoreWithState(type, value, tb)  __Pyx_ErrRestoreInState(PyThreadState_GET(), type, value, tb)
+#define __Pyx_ErrFetchWithState(type, value, tb)    __Pyx_ErrFetchInState(PyThreadState_GET(), type, value, tb)
+#define __Pyx_ErrRestore(type, value, tb)  __Pyx_ErrRestoreInState(__pyx_tstate, type, value, tb)
+#define __Pyx_ErrFetch(type, value, tb)    __Pyx_ErrFetchInState(__pyx_tstate, type, value, tb)
+static CYTHON_INLINE void __Pyx_ErrRestoreInState(PyThreadState *tstate, PyObject *type, PyObject *value, PyObject *tb);
+static CYTHON_INLINE void __Pyx_ErrFetchInState(PyThreadState *tstate, PyObject **type, PyObject **value, PyObject **tb);
+#if CYTHON_COMPILING_IN_CPYTHON && PY_VERSION_HEX < 0x030C00A6
+#define __Pyx_PyErr_SetNone(exc) (Py_INCREF(exc), __Pyx_ErrRestore((exc), NULL, NULL))
+#else
+#define __Pyx_PyErr_SetNone(exc) PyErr_SetNone(exc)
+#endif
+#else
+#define __Pyx_PyErr_Clear() PyErr_Clear()
+#define __Pyx_PyErr_SetNone(exc) PyErr_SetNone(exc)
+#define __Pyx_ErrRestoreWithState(type, value, tb)  PyErr_Restore(type, value, tb)
+#define __Pyx_ErrFetchWithState(type, value, tb)  PyErr_Fetch(type, value, tb)
+#define __Pyx_ErrRestoreInState(tstate, type, value, tb)  PyErr_Restore(type, value, tb)
+#define __Pyx_ErrFetchInState(tstate, type, value, tb)  PyErr_Fetch(type, value, tb)
+#define __Pyx_ErrRestore(type, value, tb)  PyErr_Restore(type, value, tb)
+#define __Pyx_ErrFetch(type, value, tb)  PyErr_Fetch(type, value, tb)
+#endif
 
 /* RaiseException.export */
 static void __Pyx_Raise(PyObject *type, PyObject *value, PyObject *tb, PyObject *cause);
-
-/* RaiseTooManyValuesToUnpack.proto */
-static CYTHON_INLINE void __Pyx_RaiseTooManyValuesError(Py_ssize_t expected);
-
-/* RaiseNeedMoreValuesToUnpack.proto */
-static CYTHON_INLINE void __Pyx_RaiseNeedMoreValuesError(Py_ssize_t index);
-
-/* IterFinish.proto */
-static CYTHON_INLINE int __Pyx_IterFinish(void);
-
-/* UnpackItemEndCheck.proto */
-static int __Pyx_IternextUnpackEndCheck(PyObject *retval, Py_ssize_t expected);
-
-/* PyRange_Check.proto */
-#if CYTHON_COMPILING_IN_PYPY && !defined(PyRange_Check)
-  #define PyRange_Check(obj)  __Pyx_TypeCheck((obj), &PyRange_Type)
-#endif
-
-/* ListCompAppend.proto */
-#if CYTHON_USE_PYLIST_INTERNALS && CYTHON_ASSUME_SAFE_MACROS
-static CYTHON_INLINE int __Pyx_ListComp_Append(PyObject* list, PyObject* x) {
-    PyListObject* L = (PyListObject*) list;
-    Py_ssize_t len = Py_SIZE(list);
-    if (likely(L->allocated > len)) {
-        Py_INCREF(x);
-        #if CYTHON_COMPILING_IN_CPYTHON && PY_VERSION_HEX >= 0x030d0000
-        L->ob_item[len] = x;
-        #else
-        PyList_SET_ITEM(list, len, x);
-        #endif
-        __Pyx_SET_SIZE(list, len + 1);
-        return 0;
-    }
-    return PyList_Append(list, x);
-}
-#else
-#define __Pyx_ListComp_Append(L,x) PyList_Append(L,x)
-#endif
-
-/* GetException.proto */
-#if CYTHON_FAST_THREAD_STATE
-#define __Pyx_GetException(type, value, tb)  __Pyx__GetException(__pyx_tstate, type, value, tb)
-static int __Pyx__GetException(PyThreadState *tstate, PyObject **type, PyObject **value, PyObject **tb);
-#else
-static int __Pyx_GetException(PyObject **type, PyObject **value, PyObject **tb);
-#endif
-
-/* SwapException.proto */
-#if CYTHON_FAST_THREAD_STATE
-#define __Pyx_ExceptionSwap(type, value, tb)  __Pyx__ExceptionSwap(__pyx_tstate, type, value, tb)
-static CYTHON_INLINE void __Pyx__ExceptionSwap(PyThreadState *tstate, PyObject **type, PyObject **value, PyObject **tb);
-#else
-static CYTHON_INLINE void __Pyx_ExceptionSwap(PyObject **type, PyObject **value, PyObject **tb);
-#endif
-
-/* GetTopmostException.proto (used by SaveResetException) */
-#if CYTHON_USE_EXC_INFO_STACK && CYTHON_FAST_THREAD_STATE
-static _PyErr_StackItem * __Pyx_PyErr_GetTopmostException(PyThreadState *tstate);
-#endif
-
-/* SaveResetException.proto */
-#if CYTHON_FAST_THREAD_STATE
-#define __Pyx_ExceptionSave(type, value, tb)  __Pyx__ExceptionSave(__pyx_tstate, type, value, tb)
-static CYTHON_INLINE void __Pyx__ExceptionSave(PyThreadState *tstate, PyObject **type, PyObject **value, PyObject **tb);
-#define __Pyx_ExceptionReset(type, value, tb)  __Pyx__ExceptionReset(__pyx_tstate, type, value, tb)
-static CYTHON_INLINE void __Pyx__ExceptionReset(PyThreadState *tstate, PyObject *type, PyObject *value, PyObject *tb);
-#else
-#define __Pyx_ExceptionSave(type, value, tb)   PyErr_GetExcInfo(type, value, tb)
-#define __Pyx_ExceptionReset(type, value, tb)  PyErr_SetExcInfo(type, value, tb)
-#endif
 
 /* dict_setdefault.proto (used by FetchCommonType) */
 static CYTHON_INLINE PyObject *__Pyx_PyDict_SetDefault(PyObject *d, PyObject *key, PyObject *default_value);
@@ -2140,6 +2091,17 @@ static CYTHON_INLINE int __Pyx_object_dict_version_matches(PyObject* obj, PY_UIN
 #define __PYX_PY_DICT_LOOKUP_IF_MODIFIED(VAR, DICT, LOOKUP)  (VAR) = (LOOKUP);
 #endif
 
+/* PyErrExceptionMatches.proto (used by PyObjectGetAttrStrNoError) */
+#if CYTHON_FAST_THREAD_STATE
+#define __Pyx_PyErr_ExceptionMatches(err) __Pyx_PyErr_ExceptionMatchesInState(__pyx_tstate, err)
+static CYTHON_INLINE int __Pyx_PyErr_ExceptionMatchesInState(PyThreadState* tstate, PyObject* err);
+#else
+#define __Pyx_PyErr_ExceptionMatches(err)  PyErr_ExceptionMatches(err)
+#endif
+
+/* PyObjectGetAttrStrNoError.proto (used by CLineInTraceback) */
+static CYTHON_INLINE PyObject* __Pyx_PyObject_GetAttrStrNoError(PyObject* obj, PyObject* attr_name);
+
 /* CLineInTraceback.proto (used by AddTraceback) */
 #if CYTHON_CLINE_IN_TRACEBACK && CYTHON_CLINE_IN_TRACEBACK_RUNTIME
 static int __Pyx_CLineForTraceback(PyThreadState *tstate, int c_line);
@@ -2173,13 +2135,52 @@ static void __pyx_insert_code_object(int code_line, __Pyx_CachedCodeObjectType* 
 static void __Pyx_AddTraceback(const char *funcname, int c_line,
                                int py_line, const char *filename);
 
+/* CppExceptionConversion.proto */
+#ifndef __Pyx_CppExn2PyErr
+#include <new>
+#include <typeinfo>
+#include <stdexcept>
+#include <ios>
+static void __Pyx_CppExn2PyErr() {
+  try {
+    if (PyErr_Occurred())
+      ; // let the latest Python exn pass through and ignore the current one
+    else
+      throw;
+  } catch (const std::bad_alloc& exn) {
+    PyErr_SetString(PyExc_MemoryError, exn.what());
+  } catch (const std::bad_cast& exn) {
+    PyErr_SetString(PyExc_TypeError, exn.what());
+  } catch (const std::bad_typeid& exn) {
+    PyErr_SetString(PyExc_TypeError, exn.what());
+  } catch (const std::domain_error& exn) {
+    PyErr_SetString(PyExc_ValueError, exn.what());
+  } catch (const std::invalid_argument& exn) {
+    PyErr_SetString(PyExc_ValueError, exn.what());
+  } catch (const std::ios_base::failure& exn) {
+    PyErr_SetString(PyExc_IOError, exn.what());
+  } catch (const std::out_of_range& exn) {
+    PyErr_SetString(PyExc_IndexError, exn.what());
+  } catch (const std::overflow_error& exn) {
+    PyErr_SetString(PyExc_OverflowError, exn.what());
+  } catch (const std::range_error& exn) {
+    PyErr_SetString(PyExc_ArithmeticError, exn.what());
+  } catch (const std::underflow_error& exn) {
+    PyErr_SetString(PyExc_ArithmeticError, exn.what());
+  } catch (const std::exception& exn) {
+    PyErr_SetString(PyExc_RuntimeError, exn.what());
+  }
+  catch (...)
+  {
+    PyErr_SetString(PyExc_RuntimeError, "Unknown exception");
+  }
+}
+#endif
+
 /* GCCDiagnostics.proto */
 #if !defined(__INTEL_COMPILER) && defined(__GNUC__) && (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))
 #define __Pyx_HAS_GCC_DIAGNOSTIC
 #endif
-
-/* CIntFromPy.proto */
-static CYTHON_INLINE rci_t __Pyx_PyLong_As_rci_t(PyObject *);
 
 /* PyObjectVectorCallKwBuilder.proto (used by CIntToPy) */
 CYTHON_UNUSED static int __Pyx_VectorcallBuilder_AddArg_Check(PyObject *key, PyObject *value, PyObject *builder, PyObject **args, int n);
@@ -2200,7 +2201,10 @@ static int __Pyx_VectorcallBuilder_AddArgStr(const char *key, PyObject *value, P
 #endif
 
 /* CIntToPy.proto */
-static CYTHON_INLINE PyObject* __Pyx_PyLong_From_BIT(BIT value);
+static CYTHON_INLINE PyObject* __Pyx_PyLong_From_long(long value);
+
+/* CIntFromPy.proto */
+static CYTHON_INLINE size_t __Pyx_PyLong_As_size_t(PyObject *);
 
 /* FormatTypeName.proto */
 #if CYTHON_COMPILING_IN_LIMITED_API
@@ -2218,9 +2222,6 @@ typedef const char *__Pyx_TypeName;
 #define __Pyx_PyType_GetFullyQualifiedName(tp) ((tp)->tp_name)
 #define __Pyx_DECREF_TypeName(obj)
 #endif
-
-/* CIntToPy.proto */
-static CYTHON_INLINE PyObject* __Pyx_PyLong_From_long(long value);
 
 /* CIntFromPy.proto */
 static CYTHON_INLINE long __Pyx_PyLong_As_long(PyObject *);
@@ -2315,19 +2316,27 @@ static int __Pyx_State_RemoveModule(void*);
 #define __PYX_TYPE_MODULE_PREFIX __PYX_ABI_MODULE_NAME "."
 
 
-/* Module declarations from "scloop.utils.linear_algebra_gf2.m4ri_lib" */
+/* Module declarations from "cython" */
+
+/* Module declarations from "libcpp.vector" */
+
+/* Module declarations from "libcpp" */
+
+/* Module declarations from "libcpp.functional" */
+
+/* Module declarations from "scloop.utils.linear_algebra_gf2.utils.distance_metrics" */
+static __pyx_t_6scloop_5utils_18linear_algebra_gf2_5utils_16distance_metrics_double_vec_2d __pyx_f_6scloop_5utils_18linear_algebra_gf2_5utils_16distance_metrics_list_to_vec_2d(PyObject *); /*proto*/
 /* #### Code section: typeinfo ### */
 /* #### Code section: before_global_var ### */
-#define __Pyx_MODULE_NAME "scloop.utils.linear_algebra_gf2.m4ri_lib"
-extern int __pyx_module_is_main_scloop__utils__linear_algebra_gf2__m4ri_lib;
-int __pyx_module_is_main_scloop__utils__linear_algebra_gf2__m4ri_lib = 0;
+#define __Pyx_MODULE_NAME "scloop.utils.linear_algebra_gf2.utils.distance_metrics"
+extern int __pyx_module_is_main_scloop__utils__linear_algebra_gf2__utils__distance_metrics;
+int __pyx_module_is_main_scloop__utils__linear_algebra_gf2__utils__distance_metrics = 0;
 
-/* Implementation of "scloop.utils.linear_algebra_gf2.m4ri_lib" */
+/* Implementation of "scloop.utils.linear_algebra_gf2.utils.distance_metrics" */
 /* #### Code section: global_var ### */
-static PyObject *__pyx_builtin_zip;
 /* #### Code section: string_decls ### */
 /* #### Code section: decls ### */
-static PyObject *__pyx_pf_6scloop_5utils_18linear_algebra_gf2_8m4ri_lib_solve_gf2(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_one_ridx_A, PyObject *__pyx_v_one_cidx_A, PyObject *__pyx_v_nrow_A, PyObject *__pyx_v_ncol_A, PyObject *__pyx_v_one_idx_b); /* proto */
+static PyObject *__pyx_pf_6scloop_5utils_18linear_algebra_gf2_5utils_16distance_metrics_compute_loop_frechet(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_curve_a, PyObject *__pyx_v_curve_b, PyObject *__pyx_v_distance_type); /* proto */
 /* #### Code section: late_includes ### */
 /* #### Code section: module_state ### */
 /* SmallCodeConfig */
@@ -2351,6 +2360,7 @@ typedef struct {
   __Pyx_CachedCFunction __pyx_umethod_PyDict_Type_items;
   __Pyx_CachedCFunction __pyx_umethod_PyDict_Type_pop;
   __Pyx_CachedCFunction __pyx_umethod_PyDict_Type_values;
+  PyObject *__pyx_tuple[1];
   PyObject *__pyx_codeobj_tab[1];
   PyObject *__pyx_string_tab[33];
 /* #### Code section: module_state_contents ### */
@@ -2394,38 +2404,38 @@ static __pyx_mstatetype * const __pyx_mstate_global = &__pyx_mstate_global_stati
 #endif
 /* #### Code section: constant_name_defines ### */
 #define __pyx_kp_u_ __pyx_string_tab[0]
-#define __pyx_kp_u_number_of_rows_must_be_greater_t __pyx_string_tab[1]
-#define __pyx_kp_u_src_scloop_utils_linear_algebra __pyx_string_tab[2]
-#define __pyx_n_u_A __pyx_string_tab[3]
-#define __pyx_n_u_Pyx_PyDict_NextRef __pyx_string_tab[4]
-#define __pyx_n_u_asyncio_coroutines __pyx_string_tab[5]
-#define __pyx_n_u_b __pyx_string_tab[6]
+#define __pyx_kp_u_Note_that_Cython_is_deliberately __pyx_string_tab[1]
+#define __pyx_kp_u_Unsupported_distance_type __pyx_string_tab[2]
+#define __pyx_kp_u_add_note __pyx_string_tab[3]
+#define __pyx_kp_u_src_scloop_utils_distance_metric __pyx_string_tab[4]
+#define __pyx_n_u_Pyx_PyDict_NextRef __pyx_string_tab[5]
+#define __pyx_n_u_asyncio_coroutines __pyx_string_tab[6]
 #define __pyx_n_u_cline_in_traceback __pyx_string_tab[7]
-#define __pyx_n_u_func __pyx_string_tab[8]
-#define __pyx_n_u_i __pyx_string_tab[9]
-#define __pyx_n_u_is_coroutine __pyx_string_tab[10]
-#define __pyx_n_u_items __pyx_string_tab[11]
-#define __pyx_n_u_j __pyx_string_tab[12]
-#define __pyx_n_u_main __pyx_string_tab[13]
-#define __pyx_n_u_module __pyx_string_tab[14]
-#define __pyx_n_u_name __pyx_string_tab[15]
-#define __pyx_n_u_ncol_A __pyx_string_tab[16]
-#define __pyx_n_u_nrow_A __pyx_string_tab[17]
-#define __pyx_n_u_one_cidx_A __pyx_string_tab[18]
-#define __pyx_n_u_one_idx_b __pyx_string_tab[19]
-#define __pyx_n_u_one_ridx_A __pyx_string_tab[20]
-#define __pyx_n_u_pop __pyx_string_tab[21]
-#define __pyx_n_u_qualname __pyx_string_tab[22]
-#define __pyx_n_u_result __pyx_string_tab[23]
-#define __pyx_n_u_scloop_utils_linear_algebra_gf2 __pyx_string_tab[24]
-#define __pyx_n_u_set_name __pyx_string_tab[25]
-#define __pyx_n_u_setdefault __pyx_string_tab[26]
-#define __pyx_n_u_sol __pyx_string_tab[27]
-#define __pyx_n_u_solve_gf2 __pyx_string_tab[28]
-#define __pyx_n_u_test __pyx_string_tab[29]
-#define __pyx_n_u_values __pyx_string_tab[30]
-#define __pyx_n_u_zip __pyx_string_tab[31]
-#define __pyx_kp_b_iso88591_7_XQ_HAXQ_HAXQ_F_Ql_Qc_Cq_Q_Qc __pyx_string_tab[32]
+#define __pyx_n_u_compute_loop_frechet __pyx_string_tab[8]
+#define __pyx_n_u_curve_a __pyx_string_tab[9]
+#define __pyx_n_u_curve_a_vec __pyx_string_tab[10]
+#define __pyx_n_u_curve_b __pyx_string_tab[11]
+#define __pyx_n_u_curve_b_vec __pyx_string_tab[12]
+#define __pyx_n_u_distance_type __pyx_string_tab[13]
+#define __pyx_n_u_euclidean __pyx_string_tab[14]
+#define __pyx_n_u_float __pyx_string_tab[15]
+#define __pyx_n_u_func __pyx_string_tab[16]
+#define __pyx_n_u_is_coroutine __pyx_string_tab[17]
+#define __pyx_n_u_items __pyx_string_tab[18]
+#define __pyx_n_u_list __pyx_string_tab[19]
+#define __pyx_n_u_main __pyx_string_tab[20]
+#define __pyx_n_u_module __pyx_string_tab[21]
+#define __pyx_n_u_name __pyx_string_tab[22]
+#define __pyx_n_u_pop __pyx_string_tab[23]
+#define __pyx_n_u_qualname __pyx_string_tab[24]
+#define __pyx_n_u_return __pyx_string_tab[25]
+#define __pyx_n_u_scloop_utils_linear_algebra_gf2 __pyx_string_tab[26]
+#define __pyx_n_u_set_name __pyx_string_tab[27]
+#define __pyx_n_u_setdefault __pyx_string_tab[28]
+#define __pyx_n_u_str __pyx_string_tab[29]
+#define __pyx_n_u_test __pyx_string_tab[30]
+#define __pyx_n_u_values __pyx_string_tab[31]
+#define __pyx_kp_b_iso88591_1_1A_1A_S_q_j_7q __pyx_string_tab[32]
 /* #### Code section: module_state_clear ### */
 #if CYTHON_USE_MODULE_STATE
 static CYTHON_SMALL_CODE int __pyx_m_clear(PyObject *m) {
@@ -2440,6 +2450,7 @@ static CYTHON_SMALL_CODE int __pyx_m_clear(PyObject *m) {
   #if CYTHON_PEP489_MULTI_PHASE_INIT
   __Pyx_State_RemoveModule(NULL);
   #endif
+  for (int i=0; i<1; ++i) { Py_CLEAR(clear_module_state->__pyx_tuple[i]); }
   for (int i=0; i<1; ++i) { Py_CLEAR(clear_module_state->__pyx_codeobj_tab[i]); }
   for (int i=0; i<33; ++i) { Py_CLEAR(clear_module_state->__pyx_string_tab[i]); }
 /* #### Code section: module_state_clear_contents ### */
@@ -2464,6 +2475,7 @@ static CYTHON_SMALL_CODE int __pyx_m_traverse(PyObject *m, visitproc visit, void
   __Pyx_VISIT_CONST(traverse_module_state->__pyx_empty_tuple);
   __Pyx_VISIT_CONST(traverse_module_state->__pyx_empty_bytes);
   __Pyx_VISIT_CONST(traverse_module_state->__pyx_empty_unicode);
+  for (int i=0; i<1; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_tuple[i]); }
   for (int i=0; i<1; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_codeobj_tab[i]); }
   for (int i=0; i<33; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_string_tab[i]); }
 /* #### Code section: module_state_traverse_contents ### */
@@ -2479,46 +2491,328 @@ return 0;
 #endif
 /* #### Code section: module_code ### */
 
-/* "scloop/utils/linear_algebra_gf2/m4ri_lib.pyx":21
+/* "src/scloop/utils/distance_metrics/frechet.pyx":14
+ *     cdef double computeLoopFrechet(const double_vec_2d& curve_a, const double_vec_2d& curve_b)
  * 
+ * cdef double_vec_1d list_to_vec_1d(list l):             # <<<<<<<<<<<<<<
+ *     cdef double_vec_1d vec
+ *     vec.reserve(len(l))
+*/
+
+static __pyx_t_6scloop_5utils_18linear_algebra_gf2_5utils_16distance_metrics_double_vec_1d __pyx_f_6scloop_5utils_18linear_algebra_gf2_5utils_16distance_metrics_list_to_vec_1d(PyObject *__pyx_v_l) {
+  __pyx_t_6scloop_5utils_18linear_algebra_gf2_5utils_16distance_metrics_double_vec_1d __pyx_v_vec;
+  PyObject *__pyx_v_v = NULL;
+  __pyx_t_6scloop_5utils_18linear_algebra_gf2_5utils_16distance_metrics_double_vec_1d __pyx_r;
+  __Pyx_RefNannyDeclarations
+  Py_ssize_t __pyx_t_1;
+  PyObject *__pyx_t_2 = NULL;
+  PyObject *__pyx_t_3 = NULL;
+  double __pyx_t_4;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("list_to_vec_1d", 0);
+
+  /* "src/scloop/utils/distance_metrics/frechet.pyx":16
+ * cdef double_vec_1d list_to_vec_1d(list l):
+ *     cdef double_vec_1d vec
+ *     vec.reserve(len(l))             # <<<<<<<<<<<<<<
+ *     for v in l:
+ *         vec.push_back(v)
+*/
+  if (unlikely(__pyx_v_l == Py_None)) {
+    PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
+    __PYX_ERR(0, 16, __pyx_L1_error)
+  }
+  __pyx_t_1 = __Pyx_PyList_GET_SIZE(__pyx_v_l); if (unlikely(__pyx_t_1 == ((Py_ssize_t)-1))) __PYX_ERR(0, 16, __pyx_L1_error)
+  try {
+    __pyx_v_vec.reserve(__pyx_t_1);
+  } catch(...) {
+    __Pyx_CppExn2PyErr();
+    __PYX_ERR(0, 16, __pyx_L1_error)
+  }
+
+  /* "src/scloop/utils/distance_metrics/frechet.pyx":17
+ *     cdef double_vec_1d vec
+ *     vec.reserve(len(l))
+ *     for v in l:             # <<<<<<<<<<<<<<
+ *         vec.push_back(v)
+ *     return vec
+*/
+  if (unlikely(__pyx_v_l == Py_None)) {
+    PyErr_SetString(PyExc_TypeError, "'NoneType' object is not iterable");
+    __PYX_ERR(0, 17, __pyx_L1_error)
+  }
+  __pyx_t_2 = __pyx_v_l; __Pyx_INCREF(__pyx_t_2);
+  __pyx_t_1 = 0;
+  for (;;) {
+    {
+      Py_ssize_t __pyx_temp = __Pyx_PyList_GET_SIZE(__pyx_t_2);
+      #if !CYTHON_ASSUME_SAFE_SIZE
+      if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 17, __pyx_L1_error)
+      #endif
+      if (__pyx_t_1 >= __pyx_temp) break;
+    }
+    __pyx_t_3 = __Pyx_PyList_GetItemRefFast(__pyx_t_2, __pyx_t_1, __Pyx_ReferenceSharing_OwnStrongReference);
+    ++__pyx_t_1;
+    if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 17, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_3);
+    __Pyx_XDECREF_SET(__pyx_v_v, __pyx_t_3);
+    __pyx_t_3 = 0;
+
+    /* "src/scloop/utils/distance_metrics/frechet.pyx":18
+ *     vec.reserve(len(l))
+ *     for v in l:
+ *         vec.push_back(v)             # <<<<<<<<<<<<<<
+ *     return vec
  * 
- * def solve_gf2(one_ridx_A, one_cidx_A, nrow_A, ncol_A, one_idx_b):             # <<<<<<<<<<<<<<
- *     assert nrow_A >= ncol_A, "number of rows must be greater than or equal to the number of columns"
- *     cdef mzd_t *A = mzd_init(nrow_A, ncol_A);
+*/
+    __pyx_t_4 = __Pyx_PyFloat_AsDouble(__pyx_v_v); if (unlikely((__pyx_t_4 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 18, __pyx_L1_error)
+    try {
+      __pyx_v_vec.push_back(__pyx_t_4);
+    } catch(...) {
+      __Pyx_CppExn2PyErr();
+      __PYX_ERR(0, 18, __pyx_L1_error)
+    }
+
+    /* "src/scloop/utils/distance_metrics/frechet.pyx":17
+ *     cdef double_vec_1d vec
+ *     vec.reserve(len(l))
+ *     for v in l:             # <<<<<<<<<<<<<<
+ *         vec.push_back(v)
+ *     return vec
+*/
+  }
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+
+  /* "src/scloop/utils/distance_metrics/frechet.pyx":19
+ *     for v in l:
+ *         vec.push_back(v)
+ *     return vec             # <<<<<<<<<<<<<<
+ * 
+ * cdef double_vec_2d list_to_vec_2d(list l):
+*/
+  __pyx_r = __pyx_v_vec;
+  goto __pyx_L0;
+
+  /* "src/scloop/utils/distance_metrics/frechet.pyx":14
+ *     cdef double computeLoopFrechet(const double_vec_2d& curve_a, const double_vec_2d& curve_b)
+ * 
+ * cdef double_vec_1d list_to_vec_1d(list l):             # <<<<<<<<<<<<<<
+ *     cdef double_vec_1d vec
+ *     vec.reserve(len(l))
+*/
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_2);
+  __Pyx_XDECREF(__pyx_t_3);
+  __Pyx_AddTraceback("scloop.utils.linear_algebra_gf2.utils.distance_metrics.list_to_vec_1d", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_pretend_to_initialize(&__pyx_r);
+  __pyx_L0:;
+  __Pyx_XDECREF(__pyx_v_v);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "src/scloop/utils/distance_metrics/frechet.pyx":21
+ *     return vec
+ * 
+ * cdef double_vec_2d list_to_vec_2d(list l):             # <<<<<<<<<<<<<<
+ *     cdef size_t m = len(l)
+ *     cdef size_t n = len(l[0])
+*/
+
+static __pyx_t_6scloop_5utils_18linear_algebra_gf2_5utils_16distance_metrics_double_vec_2d __pyx_f_6scloop_5utils_18linear_algebra_gf2_5utils_16distance_metrics_list_to_vec_2d(PyObject *__pyx_v_l) {
+  size_t __pyx_v_m;
+  size_t __pyx_v_n;
+  __pyx_t_6scloop_5utils_18linear_algebra_gf2_5utils_16distance_metrics_double_vec_2d __pyx_v_vec;
+  size_t __pyx_v_i;
+  size_t __pyx_v_j;
+  __pyx_t_6scloop_5utils_18linear_algebra_gf2_5utils_16distance_metrics_double_vec_2d __pyx_r;
+  __Pyx_RefNannyDeclarations
+  Py_ssize_t __pyx_t_1;
+  PyObject *__pyx_t_2 = NULL;
+  __pyx_t_6scloop_5utils_18linear_algebra_gf2_5utils_16distance_metrics_double_vec_1d __pyx_t_3;
+  __pyx_t_6scloop_5utils_18linear_algebra_gf2_5utils_16distance_metrics_double_vec_2d __pyx_t_4;
+  size_t __pyx_t_5;
+  size_t __pyx_t_6;
+  size_t __pyx_t_7;
+  size_t __pyx_t_8;
+  size_t __pyx_t_9;
+  size_t __pyx_t_10;
+  PyObject *__pyx_t_11 = NULL;
+  double __pyx_t_12;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("list_to_vec_2d", 0);
+
+  /* "src/scloop/utils/distance_metrics/frechet.pyx":22
+ * 
+ * cdef double_vec_2d list_to_vec_2d(list l):
+ *     cdef size_t m = len(l)             # <<<<<<<<<<<<<<
+ *     cdef size_t n = len(l[0])
+ *     cdef double_vec_2d vec = double_vec_2d(m, double_vec_1d(n))
+*/
+  if (unlikely(__pyx_v_l == Py_None)) {
+    PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
+    __PYX_ERR(0, 22, __pyx_L1_error)
+  }
+  __pyx_t_1 = __Pyx_PyList_GET_SIZE(__pyx_v_l); if (unlikely(__pyx_t_1 == ((Py_ssize_t)-1))) __PYX_ERR(0, 22, __pyx_L1_error)
+  __pyx_v_m = __pyx_t_1;
+
+  /* "src/scloop/utils/distance_metrics/frechet.pyx":23
+ * cdef double_vec_2d list_to_vec_2d(list l):
+ *     cdef size_t m = len(l)
+ *     cdef size_t n = len(l[0])             # <<<<<<<<<<<<<<
+ *     cdef double_vec_2d vec = double_vec_2d(m, double_vec_1d(n))
+ *     cdef size_t i, j
+*/
+  if (unlikely(__pyx_v_l == Py_None)) {
+    PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
+    __PYX_ERR(0, 23, __pyx_L1_error)
+  }
+  __pyx_t_2 = __Pyx_GetItemInt_List(__pyx_v_l, 0, long, 1, __Pyx_PyLong_From_long, 1, 0, 1, 1, __Pyx_ReferenceSharing_FunctionArgument); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 23, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  __pyx_t_1 = PyObject_Length(__pyx_t_2); if (unlikely(__pyx_t_1 == ((Py_ssize_t)-1))) __PYX_ERR(0, 23, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __pyx_v_n = __pyx_t_1;
+
+  /* "src/scloop/utils/distance_metrics/frechet.pyx":24
+ *     cdef size_t m = len(l)
+ *     cdef size_t n = len(l[0])
+ *     cdef double_vec_2d vec = double_vec_2d(m, double_vec_1d(n))             # <<<<<<<<<<<<<<
+ *     cdef size_t i, j
+ *     for i in range(m):
+*/
+  try {
+    __pyx_t_3 = __pyx_t_6scloop_5utils_18linear_algebra_gf2_5utils_16distance_metrics_double_vec_1d(__pyx_v_n);
+  } catch(...) {
+    __Pyx_CppExn2PyErr();
+    __PYX_ERR(0, 24, __pyx_L1_error)
+  }
+  try {
+    __pyx_t_4 = __pyx_t_6scloop_5utils_18linear_algebra_gf2_5utils_16distance_metrics_double_vec_2d(__pyx_v_m, __pyx_t_3);
+  } catch(...) {
+    __Pyx_CppExn2PyErr();
+    __PYX_ERR(0, 24, __pyx_L1_error)
+  }
+  __pyx_v_vec = __PYX_STD_MOVE_IF_SUPPORTED(__pyx_t_4);
+
+  /* "src/scloop/utils/distance_metrics/frechet.pyx":26
+ *     cdef double_vec_2d vec = double_vec_2d(m, double_vec_1d(n))
+ *     cdef size_t i, j
+ *     for i in range(m):             # <<<<<<<<<<<<<<
+ *         for j in range(n):
+ *             vec[i][j] = l[i][j]
+*/
+  __pyx_t_5 = __pyx_v_m;
+  __pyx_t_6 = __pyx_t_5;
+  for (__pyx_t_7 = 0; __pyx_t_7 < __pyx_t_6; __pyx_t_7+=1) {
+    __pyx_v_i = __pyx_t_7;
+
+    /* "src/scloop/utils/distance_metrics/frechet.pyx":27
+ *     cdef size_t i, j
+ *     for i in range(m):
+ *         for j in range(n):             # <<<<<<<<<<<<<<
+ *             vec[i][j] = l[i][j]
+ *     return vec
+*/
+    __pyx_t_8 = __pyx_v_n;
+    __pyx_t_9 = __pyx_t_8;
+    for (__pyx_t_10 = 0; __pyx_t_10 < __pyx_t_9; __pyx_t_10+=1) {
+      __pyx_v_j = __pyx_t_10;
+
+      /* "src/scloop/utils/distance_metrics/frechet.pyx":28
+ *     for i in range(m):
+ *         for j in range(n):
+ *             vec[i][j] = l[i][j]             # <<<<<<<<<<<<<<
+ *     return vec
+ * 
+*/
+      if (unlikely(__pyx_v_l == Py_None)) {
+        PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
+        __PYX_ERR(0, 28, __pyx_L1_error)
+      }
+      __pyx_t_2 = __Pyx_GetItemInt_List(__pyx_v_l, __pyx_v_i, size_t, 0, __Pyx_PyLong_FromSize_t, 1, 0, 1, 1, __Pyx_ReferenceSharing_FunctionArgument); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 28, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_2);
+      __pyx_t_11 = __Pyx_GetItemInt(__pyx_t_2, __pyx_v_j, size_t, 0, __Pyx_PyLong_FromSize_t, 0, 0, 1, 1, __Pyx_ReferenceSharing_OwnStrongReference); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 28, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_11);
+      __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+      __pyx_t_12 = __Pyx_PyFloat_AsDouble(__pyx_t_11); if (unlikely((__pyx_t_12 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 28, __pyx_L1_error)
+      __Pyx_DECREF(__pyx_t_11); __pyx_t_11 = 0;
+      ((__pyx_v_vec[__pyx_v_i])[__pyx_v_j]) = __pyx_t_12;
+    }
+  }
+
+  /* "src/scloop/utils/distance_metrics/frechet.pyx":29
+ *         for j in range(n):
+ *             vec[i][j] = l[i][j]
+ *     return vec             # <<<<<<<<<<<<<<
+ * 
+ * def compute_loop_frechet(
+*/
+  __pyx_r = __pyx_v_vec;
+  goto __pyx_L0;
+
+  /* "src/scloop/utils/distance_metrics/frechet.pyx":21
+ *     return vec
+ * 
+ * cdef double_vec_2d list_to_vec_2d(list l):             # <<<<<<<<<<<<<<
+ *     cdef size_t m = len(l)
+ *     cdef size_t n = len(l[0])
+*/
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_2);
+  __Pyx_XDECREF(__pyx_t_11);
+  __Pyx_AddTraceback("scloop.utils.linear_algebra_gf2.utils.distance_metrics.list_to_vec_2d", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_pretend_to_initialize(&__pyx_r);
+  __pyx_L0:;
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "src/scloop/utils/distance_metrics/frechet.pyx":31
+ *     return vec
+ * 
+ * def compute_loop_frechet(             # <<<<<<<<<<<<<<
+ *     curve_a: list,
+ *     curve_b: list,
 */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_6scloop_5utils_18linear_algebra_gf2_8m4ri_lib_1solve_gf2(PyObject *__pyx_self, 
+static PyObject *__pyx_pw_6scloop_5utils_18linear_algebra_gf2_5utils_16distance_metrics_1compute_loop_frechet(PyObject *__pyx_self, 
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
 PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
-static PyMethodDef __pyx_mdef_6scloop_5utils_18linear_algebra_gf2_8m4ri_lib_1solve_gf2 = {"solve_gf2", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_6scloop_5utils_18linear_algebra_gf2_8m4ri_lib_1solve_gf2, __Pyx_METH_FASTCALL|METH_KEYWORDS, 0};
-static PyObject *__pyx_pw_6scloop_5utils_18linear_algebra_gf2_8m4ri_lib_1solve_gf2(PyObject *__pyx_self, 
+static PyMethodDef __pyx_mdef_6scloop_5utils_18linear_algebra_gf2_5utils_16distance_metrics_1compute_loop_frechet = {"compute_loop_frechet", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_6scloop_5utils_18linear_algebra_gf2_5utils_16distance_metrics_1compute_loop_frechet, __Pyx_METH_FASTCALL|METH_KEYWORDS, 0};
+static PyObject *__pyx_pw_6scloop_5utils_18linear_algebra_gf2_5utils_16distance_metrics_1compute_loop_frechet(PyObject *__pyx_self, 
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
 PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ) {
-  PyObject *__pyx_v_one_ridx_A = 0;
-  PyObject *__pyx_v_one_cidx_A = 0;
-  PyObject *__pyx_v_nrow_A = 0;
-  PyObject *__pyx_v_ncol_A = 0;
-  PyObject *__pyx_v_one_idx_b = 0;
+  PyObject *__pyx_v_curve_a = 0;
+  PyObject *__pyx_v_curve_b = 0;
+  PyObject *__pyx_v_distance_type = 0;
   #if !CYTHON_METH_FASTCALL
   CYTHON_UNUSED Py_ssize_t __pyx_nargs;
   #endif
   CYTHON_UNUSED PyObject *const *__pyx_kwvalues;
-  PyObject* values[5] = {0,0,0,0,0};
+  PyObject* values[3] = {0,0,0};
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
   PyObject *__pyx_r = 0;
   __Pyx_RefNannyDeclarations
-  __Pyx_RefNannySetupContext("solve_gf2 (wrapper)", 0);
+  __Pyx_RefNannySetupContext("compute_loop_frechet (wrapper)", 0);
   #if !CYTHON_METH_FASTCALL
   #if CYTHON_ASSUME_SAFE_SIZE
   __pyx_nargs = PyTuple_GET_SIZE(__pyx_args);
@@ -2528,608 +2822,197 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   #endif
   __pyx_kwvalues = __Pyx_KwValues_FASTCALL(__pyx_args, __pyx_nargs);
   {
-    PyObject ** const __pyx_pyargnames[] = {&__pyx_mstate_global->__pyx_n_u_one_ridx_A,&__pyx_mstate_global->__pyx_n_u_one_cidx_A,&__pyx_mstate_global->__pyx_n_u_nrow_A,&__pyx_mstate_global->__pyx_n_u_ncol_A,&__pyx_mstate_global->__pyx_n_u_one_idx_b,0};
+    PyObject ** const __pyx_pyargnames[] = {&__pyx_mstate_global->__pyx_n_u_curve_a,&__pyx_mstate_global->__pyx_n_u_curve_b,&__pyx_mstate_global->__pyx_n_u_distance_type,0};
     const Py_ssize_t __pyx_kwds_len = (__pyx_kwds) ? __Pyx_NumKwargs_FASTCALL(__pyx_kwds) : 0;
-    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 21, __pyx_L3_error)
+    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 31, __pyx_L3_error)
     if (__pyx_kwds_len > 0) {
       switch (__pyx_nargs) {
-        case  5:
-        values[4] = __Pyx_ArgRef_FASTCALL(__pyx_args, 4);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 21, __pyx_L3_error)
-        CYTHON_FALLTHROUGH;
-        case  4:
-        values[3] = __Pyx_ArgRef_FASTCALL(__pyx_args, 3);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 21, __pyx_L3_error)
-        CYTHON_FALLTHROUGH;
         case  3:
         values[2] = __Pyx_ArgRef_FASTCALL(__pyx_args, 2);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 21, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 31, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  2:
         values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 21, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 31, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  1:
         values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 21, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 31, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  0: break;
         default: goto __pyx_L5_argtuple_error;
       }
       const Py_ssize_t kwd_pos_args = __pyx_nargs;
-      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "solve_gf2", 0) < (0)) __PYX_ERR(0, 21, __pyx_L3_error)
-      for (Py_ssize_t i = __pyx_nargs; i < 5; i++) {
-        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("solve_gf2", 1, 5, 5, i); __PYX_ERR(0, 21, __pyx_L3_error) }
+      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "compute_loop_frechet", 0) < (0)) __PYX_ERR(0, 31, __pyx_L3_error)
+      if (!values[2]) values[2] = __Pyx_NewRef(((PyObject*)((PyObject*)__pyx_mstate_global->__pyx_n_u_euclidean)));
+      for (Py_ssize_t i = __pyx_nargs; i < 2; i++) {
+        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("compute_loop_frechet", 0, 2, 3, i); __PYX_ERR(0, 31, __pyx_L3_error) }
       }
-    } else if (unlikely(__pyx_nargs != 5)) {
-      goto __pyx_L5_argtuple_error;
     } else {
-      values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
-      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 21, __pyx_L3_error)
-      values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
-      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 21, __pyx_L3_error)
-      values[2] = __Pyx_ArgRef_FASTCALL(__pyx_args, 2);
-      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 21, __pyx_L3_error)
-      values[3] = __Pyx_ArgRef_FASTCALL(__pyx_args, 3);
-      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 21, __pyx_L3_error)
-      values[4] = __Pyx_ArgRef_FASTCALL(__pyx_args, 4);
-      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 21, __pyx_L3_error)
+      switch (__pyx_nargs) {
+        case  3:
+        values[2] = __Pyx_ArgRef_FASTCALL(__pyx_args, 2);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 31, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
+        case  2:
+        values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 31, __pyx_L3_error)
+        values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 31, __pyx_L3_error)
+        break;
+        default: goto __pyx_L5_argtuple_error;
+      }
+      if (!values[2]) values[2] = __Pyx_NewRef(((PyObject*)((PyObject*)__pyx_mstate_global->__pyx_n_u_euclidean)));
     }
-    __pyx_v_one_ridx_A = values[0];
-    __pyx_v_one_cidx_A = values[1];
-    __pyx_v_nrow_A = values[2];
-    __pyx_v_ncol_A = values[3];
-    __pyx_v_one_idx_b = values[4];
+    __pyx_v_curve_a = ((PyObject*)values[0]);
+    __pyx_v_curve_b = ((PyObject*)values[1]);
+    __pyx_v_distance_type = ((PyObject*)values[2]);
   }
   goto __pyx_L6_skip;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("solve_gf2", 1, 5, 5, __pyx_nargs); __PYX_ERR(0, 21, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("compute_loop_frechet", 0, 2, 3, __pyx_nargs); __PYX_ERR(0, 31, __pyx_L3_error)
   __pyx_L6_skip:;
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L3_error:;
   for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
     Py_XDECREF(values[__pyx_temp]);
   }
-  __Pyx_AddTraceback("scloop.utils.linear_algebra_gf2.m4ri_lib.solve_gf2", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("scloop.utils.linear_algebra_gf2.utils.distance_metrics.compute_loop_frechet", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  __pyx_r = __pyx_pf_6scloop_5utils_18linear_algebra_gf2_8m4ri_lib_solve_gf2(__pyx_self, __pyx_v_one_ridx_A, __pyx_v_one_cidx_A, __pyx_v_nrow_A, __pyx_v_ncol_A, __pyx_v_one_idx_b);
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_curve_a), (&PyList_Type), 0, "curve_a", 2))) __PYX_ERR(0, 32, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_curve_b), (&PyList_Type), 0, "curve_b", 2))) __PYX_ERR(0, 33, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_distance_type), (&PyUnicode_Type), 0, "distance_type", 2))) __PYX_ERR(0, 34, __pyx_L1_error)
+  __pyx_r = __pyx_pf_6scloop_5utils_18linear_algebra_gf2_5utils_16distance_metrics_compute_loop_frechet(__pyx_self, __pyx_v_curve_a, __pyx_v_curve_b, __pyx_v_distance_type);
 
   /* function exit code */
+  goto __pyx_L0;
+  __pyx_L1_error:;
+  __pyx_r = NULL;
   for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
     Py_XDECREF(values[__pyx_temp]);
   }
+  goto __pyx_L7_cleaned_up;
+  __pyx_L0:;
+  for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
+    Py_XDECREF(values[__pyx_temp]);
+  }
+  __pyx_L7_cleaned_up:;
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_6scloop_5utils_18linear_algebra_gf2_8m4ri_lib_solve_gf2(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_one_ridx_A, PyObject *__pyx_v_one_cidx_A, PyObject *__pyx_v_nrow_A, PyObject *__pyx_v_ncol_A, PyObject *__pyx_v_one_idx_b) {
-  mzd_t *__pyx_v_A;
-  mzd_t *__pyx_v_b;
-  PyObject *__pyx_v_i = NULL;
-  PyObject *__pyx_v_j = NULL;
-  int __pyx_v_result;
-  PyObject *__pyx_v_sol = NULL;
-  PyObject *__pyx_7genexpr__pyx_v_i = NULL;
+static PyObject *__pyx_pf_6scloop_5utils_18linear_algebra_gf2_5utils_16distance_metrics_compute_loop_frechet(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_curve_a, PyObject *__pyx_v_curve_b, PyObject *__pyx_v_distance_type) {
+  __pyx_t_6scloop_5utils_18linear_algebra_gf2_5utils_16distance_metrics_double_vec_2d __pyx_v_curve_a_vec;
+  __pyx_t_6scloop_5utils_18linear_algebra_gf2_5utils_16distance_metrics_double_vec_2d __pyx_v_curve_b_vec;
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
-  PyObject *__pyx_t_1 = NULL;
+  __pyx_t_6scloop_5utils_18linear_algebra_gf2_5utils_16distance_metrics_double_vec_2d __pyx_t_1;
   int __pyx_t_2;
-  rci_t __pyx_t_3;
-  rci_t __pyx_t_4;
+  PyObject *__pyx_t_3 = NULL;
+  PyObject *__pyx_t_4 = NULL;
   PyObject *__pyx_t_5 = NULL;
   size_t __pyx_t_6;
-  Py_ssize_t __pyx_t_7;
-  PyObject *(*__pyx_t_8)(PyObject *);
-  PyObject *__pyx_t_9 = NULL;
-  PyObject *__pyx_t_10 = NULL;
-  PyObject *__pyx_t_11 = NULL;
-  PyObject *(*__pyx_t_12)(PyObject *);
-  int __pyx_t_13;
-  int __pyx_t_14;
-  char const *__pyx_t_15;
-  PyObject *__pyx_t_16 = NULL;
-  PyObject *__pyx_t_17 = NULL;
-  PyObject *__pyx_t_18 = NULL;
-  PyObject *__pyx_t_19 = NULL;
-  PyObject *__pyx_t_20 = NULL;
-  PyObject *__pyx_t_21 = NULL;
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
-  __Pyx_RefNannySetupContext("solve_gf2", 0);
+  __Pyx_RefNannySetupContext("compute_loop_frechet", 0);
 
-  /* "scloop/utils/linear_algebra_gf2/m4ri_lib.pyx":22
- * 
- * def solve_gf2(one_ridx_A, one_cidx_A, nrow_A, ncol_A, one_idx_b):
- *     assert nrow_A >= ncol_A, "number of rows must be greater than or equal to the number of columns"             # <<<<<<<<<<<<<<
- *     cdef mzd_t *A = mzd_init(nrow_A, ncol_A);
- *     cdef mzd_t *b = mzd_init(nrow_A, 1);
+  /* "src/scloop/utils/distance_metrics/frechet.pyx":36
+ *     distance_type: str = "euclidean"
+ * ) -> float:
+ *     cdef double_vec_2d curve_a_vec = list_to_vec_2d(curve_a)             # <<<<<<<<<<<<<<
+ *     cdef double_vec_2d curve_b_vec = list_to_vec_2d(curve_b)
+ *     if distance_type == "euclidean":
 */
-  #ifndef CYTHON_WITHOUT_ASSERTIONS
-  if (unlikely(__pyx_assertions_enabled())) {
-    __pyx_t_1 = PyObject_RichCompare(__pyx_v_nrow_A, __pyx_v_ncol_A, Py_GE); __Pyx_XGOTREF(__pyx_t_1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 22, __pyx_L1_error)
-    __pyx_t_2 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely((__pyx_t_2 < 0))) __PYX_ERR(0, 22, __pyx_L1_error)
-    __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-    if (unlikely(!__pyx_t_2)) {
-      __Pyx_Raise(((PyObject *)(((PyTypeObject*)PyExc_AssertionError))), __pyx_mstate_global->__pyx_kp_u_number_of_rows_must_be_greater_t, 0, 0);
-      __PYX_ERR(0, 22, __pyx_L1_error)
-    }
-  }
-  #else
-  if ((1)); else __PYX_ERR(0, 22, __pyx_L1_error)
-  #endif
+  __pyx_t_1 = __pyx_f_6scloop_5utils_18linear_algebra_gf2_5utils_16distance_metrics_list_to_vec_2d(__pyx_v_curve_a); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 36, __pyx_L1_error)
+  __pyx_v_curve_a_vec = __PYX_STD_MOVE_IF_SUPPORTED(__pyx_t_1);
 
-  /* "scloop/utils/linear_algebra_gf2/m4ri_lib.pyx":23
- * def solve_gf2(one_ridx_A, one_cidx_A, nrow_A, ncol_A, one_idx_b):
- *     assert nrow_A >= ncol_A, "number of rows must be greater than or equal to the number of columns"
- *     cdef mzd_t *A = mzd_init(nrow_A, ncol_A);             # <<<<<<<<<<<<<<
- *     cdef mzd_t *b = mzd_init(nrow_A, 1);
- *     for (i, j) in zip(one_ridx_A, one_cidx_A):
+  /* "src/scloop/utils/distance_metrics/frechet.pyx":37
+ * ) -> float:
+ *     cdef double_vec_2d curve_a_vec = list_to_vec_2d(curve_a)
+ *     cdef double_vec_2d curve_b_vec = list_to_vec_2d(curve_b)             # <<<<<<<<<<<<<<
+ *     if distance_type == "euclidean":
+ *         return computeLoopFrechet(curve_a_vec, curve_b_vec)
 */
-  __pyx_t_3 = __Pyx_PyLong_As_rci_t(__pyx_v_nrow_A); if (unlikely((__pyx_t_3 == ((rci_t)-1)) && PyErr_Occurred())) __PYX_ERR(0, 23, __pyx_L1_error)
-  __pyx_t_4 = __Pyx_PyLong_As_rci_t(__pyx_v_ncol_A); if (unlikely((__pyx_t_4 == ((rci_t)-1)) && PyErr_Occurred())) __PYX_ERR(0, 23, __pyx_L1_error)
-  __pyx_v_A = mzd_init(__pyx_t_3, __pyx_t_4);
+  __pyx_t_1 = __pyx_f_6scloop_5utils_18linear_algebra_gf2_5utils_16distance_metrics_list_to_vec_2d(__pyx_v_curve_b); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 37, __pyx_L1_error)
+  __pyx_v_curve_b_vec = __PYX_STD_MOVE_IF_SUPPORTED(__pyx_t_1);
 
-  /* "scloop/utils/linear_algebra_gf2/m4ri_lib.pyx":24
- *     assert nrow_A >= ncol_A, "number of rows must be greater than or equal to the number of columns"
- *     cdef mzd_t *A = mzd_init(nrow_A, ncol_A);
- *     cdef mzd_t *b = mzd_init(nrow_A, 1);             # <<<<<<<<<<<<<<
- *     for (i, j) in zip(one_ridx_A, one_cidx_A):
- *         mzd_write_bit(A, i, j, 1)
+  /* "src/scloop/utils/distance_metrics/frechet.pyx":38
+ *     cdef double_vec_2d curve_a_vec = list_to_vec_2d(curve_a)
+ *     cdef double_vec_2d curve_b_vec = list_to_vec_2d(curve_b)
+ *     if distance_type == "euclidean":             # <<<<<<<<<<<<<<
+ *         return computeLoopFrechet(curve_a_vec, curve_b_vec)
+ *     else:
 */
-  __pyx_t_4 = __Pyx_PyLong_As_rci_t(__pyx_v_nrow_A); if (unlikely((__pyx_t_4 == ((rci_t)-1)) && PyErr_Occurred())) __PYX_ERR(0, 24, __pyx_L1_error)
-  __pyx_v_b = mzd_init(__pyx_t_4, 1);
+  __pyx_t_2 = (__Pyx_PyUnicode_Equals(__pyx_v_distance_type, __pyx_mstate_global->__pyx_n_u_euclidean, Py_EQ)); if (unlikely((__pyx_t_2 < 0))) __PYX_ERR(0, 38, __pyx_L1_error)
+  if (likely(__pyx_t_2)) {
 
-  /* "scloop/utils/linear_algebra_gf2/m4ri_lib.pyx":25
- *     cdef mzd_t *A = mzd_init(nrow_A, ncol_A);
- *     cdef mzd_t *b = mzd_init(nrow_A, 1);
- *     for (i, j) in zip(one_ridx_A, one_cidx_A):             # <<<<<<<<<<<<<<
- *         mzd_write_bit(A, i, j, 1)
- *     for i in one_idx_b:
-*/
-  __pyx_t_5 = NULL;
-  __pyx_t_6 = 1;
-  {
-    PyObject *__pyx_callargs[3] = {__pyx_t_5, __pyx_v_one_ridx_A, __pyx_v_one_cidx_A};
-    __pyx_t_1 = __Pyx_PyObject_FastCall((PyObject*)__pyx_builtin_zip, __pyx_callargs+__pyx_t_6, (3-__pyx_t_6) | (__pyx_t_6*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
-    __Pyx_XDECREF(__pyx_t_5); __pyx_t_5 = 0;
-    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 25, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_1);
-  }
-  if (likely(PyList_CheckExact(__pyx_t_1)) || PyTuple_CheckExact(__pyx_t_1)) {
-    __pyx_t_5 = __pyx_t_1; __Pyx_INCREF(__pyx_t_5);
-    __pyx_t_7 = 0;
-    __pyx_t_8 = NULL;
-  } else {
-    __pyx_t_7 = -1; __pyx_t_5 = PyObject_GetIter(__pyx_t_1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 25, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_5);
-    __pyx_t_8 = (CYTHON_COMPILING_IN_LIMITED_API) ? PyIter_Next : __Pyx_PyObject_GetIterNextFunc(__pyx_t_5); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 25, __pyx_L1_error)
-  }
-  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  for (;;) {
-    if (likely(!__pyx_t_8)) {
-      if (likely(PyList_CheckExact(__pyx_t_5))) {
-        {
-          Py_ssize_t __pyx_temp = __Pyx_PyList_GET_SIZE(__pyx_t_5);
-          #if !CYTHON_ASSUME_SAFE_SIZE
-          if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 25, __pyx_L1_error)
-          #endif
-          if (__pyx_t_7 >= __pyx_temp) break;
-        }
-        __pyx_t_1 = __Pyx_PyList_GetItemRefFast(__pyx_t_5, __pyx_t_7, __Pyx_ReferenceSharing_OwnStrongReference);
-        ++__pyx_t_7;
-      } else {
-        {
-          Py_ssize_t __pyx_temp = __Pyx_PyTuple_GET_SIZE(__pyx_t_5);
-          #if !CYTHON_ASSUME_SAFE_SIZE
-          if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 25, __pyx_L1_error)
-          #endif
-          if (__pyx_t_7 >= __pyx_temp) break;
-        }
-        #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
-        __pyx_t_1 = __Pyx_NewRef(PyTuple_GET_ITEM(__pyx_t_5, __pyx_t_7));
-        #else
-        __pyx_t_1 = __Pyx_PySequence_ITEM(__pyx_t_5, __pyx_t_7);
-        #endif
-        ++__pyx_t_7;
-      }
-      if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 25, __pyx_L1_error)
-    } else {
-      __pyx_t_1 = __pyx_t_8(__pyx_t_5);
-      if (unlikely(!__pyx_t_1)) {
-        PyObject* exc_type = PyErr_Occurred();
-        if (exc_type) {
-          if (unlikely(!__Pyx_PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) __PYX_ERR(0, 25, __pyx_L1_error)
-          PyErr_Clear();
-        }
-        break;
-      }
-    }
-    __Pyx_GOTREF(__pyx_t_1);
-    if ((likely(PyTuple_CheckExact(__pyx_t_1))) || (PyList_CheckExact(__pyx_t_1))) {
-      PyObject* sequence = __pyx_t_1;
-      Py_ssize_t size = __Pyx_PySequence_SIZE(sequence);
-      if (unlikely(size != 2)) {
-        if (size > 2) __Pyx_RaiseTooManyValuesError(2);
-        else if (size >= 0) __Pyx_RaiseNeedMoreValuesError(size);
-        __PYX_ERR(0, 25, __pyx_L1_error)
-      }
-      #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
-      if (likely(PyTuple_CheckExact(sequence))) {
-        __pyx_t_9 = PyTuple_GET_ITEM(sequence, 0);
-        __Pyx_INCREF(__pyx_t_9);
-        __pyx_t_10 = PyTuple_GET_ITEM(sequence, 1);
-        __Pyx_INCREF(__pyx_t_10);
-      } else {
-        __pyx_t_9 = __Pyx_PyList_GetItemRefFast(sequence, 0, __Pyx_ReferenceSharing_SharedReference);
-        if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 25, __pyx_L1_error)
-        __Pyx_XGOTREF(__pyx_t_9);
-        __pyx_t_10 = __Pyx_PyList_GetItemRefFast(sequence, 1, __Pyx_ReferenceSharing_SharedReference);
-        if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 25, __pyx_L1_error)
-        __Pyx_XGOTREF(__pyx_t_10);
-      }
-      #else
-      __pyx_t_9 = __Pyx_PySequence_ITEM(sequence, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 25, __pyx_L1_error)
-      __Pyx_GOTREF(__pyx_t_9);
-      __pyx_t_10 = __Pyx_PySequence_ITEM(sequence, 1); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 25, __pyx_L1_error)
-      __Pyx_GOTREF(__pyx_t_10);
-      #endif
-      __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-    } else {
-      Py_ssize_t index = -1;
-      __pyx_t_11 = PyObject_GetIter(__pyx_t_1); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 25, __pyx_L1_error)
-      __Pyx_GOTREF(__pyx_t_11);
-      __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-      __pyx_t_12 = (CYTHON_COMPILING_IN_LIMITED_API) ? PyIter_Next : __Pyx_PyObject_GetIterNextFunc(__pyx_t_11);
-      index = 0; __pyx_t_9 = __pyx_t_12(__pyx_t_11); if (unlikely(!__pyx_t_9)) goto __pyx_L5_unpacking_failed;
-      __Pyx_GOTREF(__pyx_t_9);
-      index = 1; __pyx_t_10 = __pyx_t_12(__pyx_t_11); if (unlikely(!__pyx_t_10)) goto __pyx_L5_unpacking_failed;
-      __Pyx_GOTREF(__pyx_t_10);
-      if (__Pyx_IternextUnpackEndCheck(__pyx_t_12(__pyx_t_11), 2) < (0)) __PYX_ERR(0, 25, __pyx_L1_error)
-      __pyx_t_12 = NULL;
-      __Pyx_DECREF(__pyx_t_11); __pyx_t_11 = 0;
-      goto __pyx_L6_unpacking_done;
-      __pyx_L5_unpacking_failed:;
-      __Pyx_DECREF(__pyx_t_11); __pyx_t_11 = 0;
-      __pyx_t_12 = NULL;
-      if (__Pyx_IterFinish() == 0) __Pyx_RaiseNeedMoreValuesError(index);
-      __PYX_ERR(0, 25, __pyx_L1_error)
-      __pyx_L6_unpacking_done:;
-    }
-    __Pyx_XDECREF_SET(__pyx_v_i, __pyx_t_9);
-    __pyx_t_9 = 0;
-    __Pyx_XDECREF_SET(__pyx_v_j, __pyx_t_10);
-    __pyx_t_10 = 0;
-
-    /* "scloop/utils/linear_algebra_gf2/m4ri_lib.pyx":26
- *     cdef mzd_t *b = mzd_init(nrow_A, 1);
- *     for (i, j) in zip(one_ridx_A, one_cidx_A):
- *         mzd_write_bit(A, i, j, 1)             # <<<<<<<<<<<<<<
- *     for i in one_idx_b:
- *         mzd_write_bit(b, i, 0, 1)
-*/
-    __pyx_t_4 = __Pyx_PyLong_As_rci_t(__pyx_v_i); if (unlikely((__pyx_t_4 == ((rci_t)-1)) && PyErr_Occurred())) __PYX_ERR(0, 26, __pyx_L1_error)
-    __pyx_t_3 = __Pyx_PyLong_As_rci_t(__pyx_v_j); if (unlikely((__pyx_t_3 == ((rci_t)-1)) && PyErr_Occurred())) __PYX_ERR(0, 26, __pyx_L1_error)
-    mzd_write_bit(__pyx_v_A, __pyx_t_4, __pyx_t_3, 1);
-
-    /* "scloop/utils/linear_algebra_gf2/m4ri_lib.pyx":25
- *     cdef mzd_t *A = mzd_init(nrow_A, ncol_A);
- *     cdef mzd_t *b = mzd_init(nrow_A, 1);
- *     for (i, j) in zip(one_ridx_A, one_cidx_A):             # <<<<<<<<<<<<<<
- *         mzd_write_bit(A, i, j, 1)
- *     for i in one_idx_b:
-*/
-  }
-  __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-
-  /* "scloop/utils/linear_algebra_gf2/m4ri_lib.pyx":27
- *     for (i, j) in zip(one_ridx_A, one_cidx_A):
- *         mzd_write_bit(A, i, j, 1)
- *     for i in one_idx_b:             # <<<<<<<<<<<<<<
- *         mzd_write_bit(b, i, 0, 1)
- *     try:
-*/
-  if (likely(PyList_CheckExact(__pyx_v_one_idx_b)) || PyTuple_CheckExact(__pyx_v_one_idx_b)) {
-    __pyx_t_5 = __pyx_v_one_idx_b; __Pyx_INCREF(__pyx_t_5);
-    __pyx_t_7 = 0;
-    __pyx_t_8 = NULL;
-  } else {
-    __pyx_t_7 = -1; __pyx_t_5 = PyObject_GetIter(__pyx_v_one_idx_b); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 27, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_5);
-    __pyx_t_8 = (CYTHON_COMPILING_IN_LIMITED_API) ? PyIter_Next : __Pyx_PyObject_GetIterNextFunc(__pyx_t_5); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 27, __pyx_L1_error)
-  }
-  for (;;) {
-    if (likely(!__pyx_t_8)) {
-      if (likely(PyList_CheckExact(__pyx_t_5))) {
-        {
-          Py_ssize_t __pyx_temp = __Pyx_PyList_GET_SIZE(__pyx_t_5);
-          #if !CYTHON_ASSUME_SAFE_SIZE
-          if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 27, __pyx_L1_error)
-          #endif
-          if (__pyx_t_7 >= __pyx_temp) break;
-        }
-        __pyx_t_1 = __Pyx_PyList_GetItemRefFast(__pyx_t_5, __pyx_t_7, __Pyx_ReferenceSharing_OwnStrongReference);
-        ++__pyx_t_7;
-      } else {
-        {
-          Py_ssize_t __pyx_temp = __Pyx_PyTuple_GET_SIZE(__pyx_t_5);
-          #if !CYTHON_ASSUME_SAFE_SIZE
-          if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 27, __pyx_L1_error)
-          #endif
-          if (__pyx_t_7 >= __pyx_temp) break;
-        }
-        #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
-        __pyx_t_1 = __Pyx_NewRef(PyTuple_GET_ITEM(__pyx_t_5, __pyx_t_7));
-        #else
-        __pyx_t_1 = __Pyx_PySequence_ITEM(__pyx_t_5, __pyx_t_7);
-        #endif
-        ++__pyx_t_7;
-      }
-      if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 27, __pyx_L1_error)
-    } else {
-      __pyx_t_1 = __pyx_t_8(__pyx_t_5);
-      if (unlikely(!__pyx_t_1)) {
-        PyObject* exc_type = PyErr_Occurred();
-        if (exc_type) {
-          if (unlikely(!__Pyx_PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) __PYX_ERR(0, 27, __pyx_L1_error)
-          PyErr_Clear();
-        }
-        break;
-      }
-    }
-    __Pyx_GOTREF(__pyx_t_1);
-    __Pyx_XDECREF_SET(__pyx_v_i, __pyx_t_1);
-    __pyx_t_1 = 0;
-
-    /* "scloop/utils/linear_algebra_gf2/m4ri_lib.pyx":28
- *         mzd_write_bit(A, i, j, 1)
- *     for i in one_idx_b:
- *         mzd_write_bit(b, i, 0, 1)             # <<<<<<<<<<<<<<
- *     try:
- *         result = mzd_solve_left(A, b, 0, 1)
-*/
-    __pyx_t_3 = __Pyx_PyLong_As_rci_t(__pyx_v_i); if (unlikely((__pyx_t_3 == ((rci_t)-1)) && PyErr_Occurred())) __PYX_ERR(0, 28, __pyx_L1_error)
-    mzd_write_bit(__pyx_v_b, __pyx_t_3, 0, 1);
-
-    /* "scloop/utils/linear_algebra_gf2/m4ri_lib.pyx":27
- *     for (i, j) in zip(one_ridx_A, one_cidx_A):
- *         mzd_write_bit(A, i, j, 1)
- *     for i in one_idx_b:             # <<<<<<<<<<<<<<
- *         mzd_write_bit(b, i, 0, 1)
- *     try:
-*/
-  }
-  __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-
-  /* "scloop/utils/linear_algebra_gf2/m4ri_lib.pyx":29
- *     for i in one_idx_b:
- *         mzd_write_bit(b, i, 0, 1)
- *     try:             # <<<<<<<<<<<<<<
- *         result = mzd_solve_left(A, b, 0, 1)
- *         if result == 0:
-*/
-  /*try:*/ {
-
-    /* "scloop/utils/linear_algebra_gf2/m4ri_lib.pyx":30
- *         mzd_write_bit(b, i, 0, 1)
- *     try:
- *         result = mzd_solve_left(A, b, 0, 1)             # <<<<<<<<<<<<<<
- *         if result == 0:
- *             sol = [mzd_read_bit(b, i, 0) for i in range(ncol_A)]
-*/
-    __pyx_v_result = mzd_solve_left(__pyx_v_A, __pyx_v_b, 0, 1);
-
-    /* "scloop/utils/linear_algebra_gf2/m4ri_lib.pyx":31
- *     try:
- *         result = mzd_solve_left(A, b, 0, 1)
- *         if result == 0:             # <<<<<<<<<<<<<<
- *             sol = [mzd_read_bit(b, i, 0) for i in range(ncol_A)]
- *         else:
-*/
-    __pyx_t_2 = (__pyx_v_result == 0);
-    if (__pyx_t_2) {
-
-      /* "scloop/utils/linear_algebra_gf2/m4ri_lib.pyx":32
- *         result = mzd_solve_left(A, b, 0, 1)
- *         if result == 0:
- *             sol = [mzd_read_bit(b, i, 0) for i in range(ncol_A)]             # <<<<<<<<<<<<<<
- *         else:
- *             sol = None
-*/
-      { /* enter inner scope */
-        __pyx_t_5 = PyList_New(0); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 32, __pyx_L17_error)
-        __Pyx_GOTREF(__pyx_t_5);
-        __pyx_t_10 = NULL;
-        __pyx_t_6 = 1;
-        {
-          PyObject *__pyx_callargs[2] = {__pyx_t_10, __pyx_v_ncol_A};
-          __pyx_t_1 = __Pyx_PyObject_FastCall((PyObject*)(&PyRange_Type), __pyx_callargs+__pyx_t_6, (2-__pyx_t_6) | (__pyx_t_6*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
-          __Pyx_XDECREF(__pyx_t_10); __pyx_t_10 = 0;
-          if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 32, __pyx_L17_error)
-          __Pyx_GOTREF(__pyx_t_1);
-        }
-        __pyx_t_10 = PyObject_GetIter(__pyx_t_1); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 32, __pyx_L17_error)
-        __Pyx_GOTREF(__pyx_t_10);
-        __pyx_t_8 = (CYTHON_COMPILING_IN_LIMITED_API) ? PyIter_Next : __Pyx_PyObject_GetIterNextFunc(__pyx_t_10); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 32, __pyx_L17_error)
-        __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-        for (;;) {
-          {
-            __pyx_t_1 = __pyx_t_8(__pyx_t_10);
-            if (unlikely(!__pyx_t_1)) {
-              PyObject* exc_type = PyErr_Occurred();
-              if (exc_type) {
-                if (unlikely(!__Pyx_PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) __PYX_ERR(0, 32, __pyx_L17_error)
-                PyErr_Clear();
-              }
-              break;
-            }
-          }
-          __Pyx_GOTREF(__pyx_t_1);
-          __Pyx_XDECREF_SET(__pyx_7genexpr__pyx_v_i, __pyx_t_1);
-          __pyx_t_1 = 0;
-          __pyx_t_3 = __Pyx_PyLong_As_rci_t(__pyx_7genexpr__pyx_v_i); if (unlikely((__pyx_t_3 == ((rci_t)-1)) && PyErr_Occurred())) __PYX_ERR(0, 32, __pyx_L17_error)
-          __pyx_t_1 = __Pyx_PyLong_From_BIT(mzd_read_bit(__pyx_v_b, __pyx_t_3, 0)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 32, __pyx_L17_error)
-          __Pyx_GOTREF(__pyx_t_1);
-          if (unlikely(__Pyx_ListComp_Append(__pyx_t_5, (PyObject*)__pyx_t_1))) __PYX_ERR(0, 32, __pyx_L17_error)
-          __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-        }
-        __Pyx_DECREF(__pyx_t_10); __pyx_t_10 = 0;
-        __Pyx_XDECREF(__pyx_7genexpr__pyx_v_i); __pyx_7genexpr__pyx_v_i = 0;
-        goto __pyx_L21_exit_scope;
-        __pyx_L17_error:;
-        __Pyx_XDECREF(__pyx_7genexpr__pyx_v_i); __pyx_7genexpr__pyx_v_i = 0;
-        goto __pyx_L12_error;
-        __pyx_L21_exit_scope:;
-      } /* exit inner scope */
-      __pyx_v_sol = ((PyObject*)__pyx_t_5);
-      __pyx_t_5 = 0;
-
-      /* "scloop/utils/linear_algebra_gf2/m4ri_lib.pyx":31
- *     try:
- *         result = mzd_solve_left(A, b, 0, 1)
- *         if result == 0:             # <<<<<<<<<<<<<<
- *             sol = [mzd_read_bit(b, i, 0) for i in range(ncol_A)]
- *         else:
-*/
-      goto __pyx_L14;
-    }
-
-    /* "scloop/utils/linear_algebra_gf2/m4ri_lib.pyx":34
- *             sol = [mzd_read_bit(b, i, 0) for i in range(ncol_A)]
- *         else:
- *             sol = None             # <<<<<<<<<<<<<<
- *         return (result == 0, sol)
- *     finally:
-*/
-    /*else*/ {
-      __Pyx_INCREF(Py_None);
-      __pyx_v_sol = ((PyObject*)Py_None);
-    }
-    __pyx_L14:;
-
-    /* "scloop/utils/linear_algebra_gf2/m4ri_lib.pyx":35
- *         else:
- *             sol = None
- *         return (result == 0, sol)             # <<<<<<<<<<<<<<
- *     finally:
- *         mzd_free(A)
+    /* "src/scloop/utils/distance_metrics/frechet.pyx":39
+ *     cdef double_vec_2d curve_b_vec = list_to_vec_2d(curve_b)
+ *     if distance_type == "euclidean":
+ *         return computeLoopFrechet(curve_a_vec, curve_b_vec)             # <<<<<<<<<<<<<<
+ *     else:
+ *         raise ValueError(f"Unsupported distance type: {distance_type}")
 */
     __Pyx_XDECREF(__pyx_r);
-    __pyx_t_5 = __Pyx_PyBool_FromLong((__pyx_v_result == 0)); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 35, __pyx_L12_error)
+    __pyx_t_3 = PyFloat_FromDouble(computeLoopFrechet(__pyx_v_curve_a_vec, __pyx_v_curve_b_vec)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 39, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_3);
+    __pyx_r = __pyx_t_3;
+    __pyx_t_3 = 0;
+    goto __pyx_L0;
+
+    /* "src/scloop/utils/distance_metrics/frechet.pyx":38
+ *     cdef double_vec_2d curve_a_vec = list_to_vec_2d(curve_a)
+ *     cdef double_vec_2d curve_b_vec = list_to_vec_2d(curve_b)
+ *     if distance_type == "euclidean":             # <<<<<<<<<<<<<<
+ *         return computeLoopFrechet(curve_a_vec, curve_b_vec)
+ *     else:
+*/
+  }
+
+  /* "src/scloop/utils/distance_metrics/frechet.pyx":41
+ *         return computeLoopFrechet(curve_a_vec, curve_b_vec)
+ *     else:
+ *         raise ValueError(f"Unsupported distance type: {distance_type}")             # <<<<<<<<<<<<<<
+ * 
+ * # TODO: Frechet distance between two sets of loops
+*/
+  /*else*/ {
+    __pyx_t_4 = NULL;
+    __pyx_t_5 = __Pyx_PyUnicode_Concat(__pyx_mstate_global->__pyx_kp_u_Unsupported_distance_type, __pyx_v_distance_type); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 41, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_5);
-    __pyx_t_10 = PyTuple_New(2); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 35, __pyx_L12_error)
-    __Pyx_GOTREF(__pyx_t_10);
-    __Pyx_GIVEREF(__pyx_t_5);
-    if (__Pyx_PyTuple_SET_ITEM(__pyx_t_10, 0, __pyx_t_5) != (0)) __PYX_ERR(0, 35, __pyx_L12_error);
-    __Pyx_INCREF(__pyx_v_sol);
-    __Pyx_GIVEREF(__pyx_v_sol);
-    if (__Pyx_PyTuple_SET_ITEM(__pyx_t_10, 1, __pyx_v_sol) != (0)) __PYX_ERR(0, 35, __pyx_L12_error);
-    __pyx_t_5 = 0;
-    __pyx_r = __pyx_t_10;
-    __pyx_t_10 = 0;
-    goto __pyx_L11_return;
+    __pyx_t_6 = 1;
+    {
+      PyObject *__pyx_callargs[2] = {__pyx_t_4, __pyx_t_5};
+      __pyx_t_3 = __Pyx_PyObject_FastCall((PyObject*)(((PyTypeObject*)PyExc_ValueError)), __pyx_callargs+__pyx_t_6, (2-__pyx_t_6) | (__pyx_t_6*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
+      __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
+      __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+      if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 41, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_3);
+    }
+    __Pyx_Raise(__pyx_t_3, 0, 0, 0);
+    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+    __PYX_ERR(0, 41, __pyx_L1_error)
   }
 
-  /* "scloop/utils/linear_algebra_gf2/m4ri_lib.pyx":37
- *         return (result == 0, sol)
- *     finally:
- *         mzd_free(A)             # <<<<<<<<<<<<<<
- *         mzd_free(b)
+  /* "src/scloop/utils/distance_metrics/frechet.pyx":31
+ *     return vec
  * 
-*/
-  /*finally:*/ {
-    __pyx_L12_error:;
-    /*exception exit:*/{
-      __Pyx_PyThreadState_declare
-      __Pyx_PyThreadState_assign
-      __pyx_t_16 = 0; __pyx_t_17 = 0; __pyx_t_18 = 0; __pyx_t_19 = 0; __pyx_t_20 = 0; __pyx_t_21 = 0;
-      __Pyx_XDECREF(__pyx_t_1); __pyx_t_1 = 0;
-      __Pyx_XDECREF(__pyx_t_10); __pyx_t_10 = 0;
-      __Pyx_XDECREF(__pyx_t_11); __pyx_t_11 = 0;
-      __Pyx_XDECREF(__pyx_t_5); __pyx_t_5 = 0;
-      __Pyx_XDECREF(__pyx_t_9); __pyx_t_9 = 0;
-       __Pyx_ExceptionSwap(&__pyx_t_19, &__pyx_t_20, &__pyx_t_21);
-      if ( unlikely(__Pyx_GetException(&__pyx_t_16, &__pyx_t_17, &__pyx_t_18) < 0)) __Pyx_ErrFetch(&__pyx_t_16, &__pyx_t_17, &__pyx_t_18);
-      __Pyx_XGOTREF(__pyx_t_16);
-      __Pyx_XGOTREF(__pyx_t_17);
-      __Pyx_XGOTREF(__pyx_t_18);
-      __Pyx_XGOTREF(__pyx_t_19);
-      __Pyx_XGOTREF(__pyx_t_20);
-      __Pyx_XGOTREF(__pyx_t_21);
-      __pyx_t_13 = __pyx_lineno; __pyx_t_14 = __pyx_clineno; __pyx_t_15 = __pyx_filename;
-      {
-        mzd_free(__pyx_v_A);
-
-        /* "scloop/utils/linear_algebra_gf2/m4ri_lib.pyx":38
- *     finally:
- *         mzd_free(A)
- *         mzd_free(b)             # <<<<<<<<<<<<<<
- * 
-*/
-        mzd_free(__pyx_v_b);
-      }
-      __Pyx_XGIVEREF(__pyx_t_19);
-      __Pyx_XGIVEREF(__pyx_t_20);
-      __Pyx_XGIVEREF(__pyx_t_21);
-      __Pyx_ExceptionReset(__pyx_t_19, __pyx_t_20, __pyx_t_21);
-      __Pyx_XGIVEREF(__pyx_t_16);
-      __Pyx_XGIVEREF(__pyx_t_17);
-      __Pyx_XGIVEREF(__pyx_t_18);
-      __Pyx_ErrRestore(__pyx_t_16, __pyx_t_17, __pyx_t_18);
-      __pyx_t_16 = 0; __pyx_t_17 = 0; __pyx_t_18 = 0; __pyx_t_19 = 0; __pyx_t_20 = 0; __pyx_t_21 = 0;
-      __pyx_lineno = __pyx_t_13; __pyx_clineno = __pyx_t_14; __pyx_filename = __pyx_t_15;
-      goto __pyx_L1_error;
-    }
-    __pyx_L11_return: {
-      __pyx_t_21 = __pyx_r;
-      __pyx_r = 0;
-
-      /* "scloop/utils/linear_algebra_gf2/m4ri_lib.pyx":37
- *         return (result == 0, sol)
- *     finally:
- *         mzd_free(A)             # <<<<<<<<<<<<<<
- *         mzd_free(b)
- * 
-*/
-      mzd_free(__pyx_v_A);
-
-      /* "scloop/utils/linear_algebra_gf2/m4ri_lib.pyx":38
- *     finally:
- *         mzd_free(A)
- *         mzd_free(b)             # <<<<<<<<<<<<<<
- * 
-*/
-      mzd_free(__pyx_v_b);
-      __pyx_r = __pyx_t_21;
-      __pyx_t_21 = 0;
-      goto __pyx_L0;
-    }
-  }
-
-  /* "scloop/utils/linear_algebra_gf2/m4ri_lib.pyx":21
- * 
- * 
- * def solve_gf2(one_ridx_A, one_cidx_A, nrow_A, ncol_A, one_idx_b):             # <<<<<<<<<<<<<<
- *     assert nrow_A >= ncol_A, "number of rows must be greater than or equal to the number of columns"
- *     cdef mzd_t *A = mzd_init(nrow_A, ncol_A);
+ * def compute_loop_frechet(             # <<<<<<<<<<<<<<
+ *     curve_a: list,
+ *     curve_b: list,
 */
 
   /* function exit code */
   __pyx_L1_error:;
-  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_XDECREF(__pyx_t_3);
+  __Pyx_XDECREF(__pyx_t_4);
   __Pyx_XDECREF(__pyx_t_5);
-  __Pyx_XDECREF(__pyx_t_9);
-  __Pyx_XDECREF(__pyx_t_10);
-  __Pyx_XDECREF(__pyx_t_11);
-  __Pyx_AddTraceback("scloop.utils.linear_algebra_gf2.m4ri_lib.solve_gf2", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("scloop.utils.linear_algebra_gf2.utils.distance_metrics.compute_loop_frechet", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   __pyx_L0:;
-  __Pyx_XDECREF(__pyx_v_i);
-  __Pyx_XDECREF(__pyx_v_j);
-  __Pyx_XDECREF(__pyx_v_sol);
-  __Pyx_XDECREF(__pyx_7genexpr__pyx_v_i);
   __Pyx_XGIVEREF(__pyx_r);
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
@@ -3219,10 +3102,10 @@ static int __Pyx_modinit_function_import_code(__pyx_mstatetype *__pyx_mstate) {
 
 #if CYTHON_PEP489_MULTI_PHASE_INIT
 static PyObject* __pyx_pymod_create(PyObject *spec, PyModuleDef *def); /*proto*/
-static int __pyx_pymod_exec_m4ri_lib(PyObject* module); /*proto*/
+static int __pyx_pymod_exec_distance_metrics(PyObject* module); /*proto*/
 static PyModuleDef_Slot __pyx_moduledef_slots[] = {
   {Py_mod_create, (void*)__pyx_pymod_create},
-  {Py_mod_exec, (void*)__pyx_pymod_exec_m4ri_lib},
+  {Py_mod_exec, (void*)__pyx_pymod_exec_distance_metrics},
   #if CYTHON_COMPILING_IN_CPYTHON_FREETHREADING
   {Py_mod_gil, Py_MOD_GIL_USED},
   #endif
@@ -3241,7 +3124,7 @@ namespace {
   #endif
   {
       PyModuleDef_HEAD_INIT,
-      "m4ri_lib",
+      "distance_metrics",
       0, /* m_doc */
     #if CYTHON_USE_MODULE_STATE
       sizeof(__pyx_mstatetype), /* m_size */
@@ -3279,8 +3162,8 @@ namespace {
   #endif
 #endif
 
-__Pyx_PyMODINIT_FUNC PyInit_m4ri_lib(void) CYTHON_SMALL_CODE; /*proto*/
-__Pyx_PyMODINIT_FUNC PyInit_m4ri_lib(void)
+__Pyx_PyMODINIT_FUNC PyInit_distance_metrics(void) CYTHON_SMALL_CODE; /*proto*/
+__Pyx_PyMODINIT_FUNC PyInit_distance_metrics(void)
 #if CYTHON_PEP489_MULTI_PHASE_INIT
 {
   return PyModuleDef_Init(&__pyx_moduledef);
@@ -3387,7 +3270,7 @@ bad:
 }
 
 
-static CYTHON_SMALL_CODE int __pyx_pymod_exec_m4ri_lib(PyObject *__pyx_pyinit_module)
+static CYTHON_SMALL_CODE int __pyx_pymod_exec_distance_metrics(PyObject *__pyx_pyinit_module)
 #endif
 {
   int stringtab_initialized = 0;
@@ -3397,6 +3280,7 @@ static CYTHON_SMALL_CODE int __pyx_pymod_exec_m4ri_lib(PyObject *__pyx_pyinit_mo
   __pyx_mstatetype *__pyx_mstate = NULL;
   PyObject *__pyx_t_1 = NULL;
   PyObject *__pyx_t_2 = NULL;
+  PyObject *__pyx_t_3 = NULL;
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
@@ -3404,7 +3288,7 @@ static CYTHON_SMALL_CODE int __pyx_pymod_exec_m4ri_lib(PyObject *__pyx_pyinit_mo
   #if CYTHON_PEP489_MULTI_PHASE_INIT
   if (__pyx_m) {
     if (__pyx_m == __pyx_pyinit_module) return 0;
-    PyErr_SetString(PyExc_RuntimeError, "Module 'm4ri_lib' has already been imported. Re-initialisation is not supported.");
+    PyErr_SetString(PyExc_RuntimeError, "Module 'distance_metrics' has already been imported. Re-initialisation is not supported.");
     return -1;
   }
   #else
@@ -3420,7 +3304,7 @@ static CYTHON_SMALL_CODE int __pyx_pymod_exec_m4ri_lib(PyObject *__pyx_pyinit_mo
   #if CYTHON_USE_MODULE_STATE
   {
     int add_module_result = __Pyx_State_AddModule(__pyx_t_1, &__pyx_moduledef);
-    __pyx_t_1 = 0; /* transfer ownership from __pyx_t_1 to "m4ri_lib" pseudovariable */
+    __pyx_t_1 = 0; /* transfer ownership from __pyx_t_1 to "distance_metrics" pseudovariable */
     if (unlikely((add_module_result < 0))) __PYX_ERR(0, 1, __pyx_L1_error)
     pystate_addmodule_run = 1;
   }
@@ -3448,7 +3332,7 @@ static CYTHON_SMALL_CODE int __pyx_pymod_exec_m4ri_lib(PyObject *__pyx_pyinit_mo
   }
   #endif
   
-__Pyx_RefNannySetupContext("PyInit_m4ri_lib", 0);
+__Pyx_RefNannySetupContext("PyInit_distance_metrics", 0);
   __Pyx_init_runtime_version();
   if (__Pyx_check_binary_version(__PYX_LIMITED_VERSION_HEX, __Pyx_get_runtime_version(), CYTHON_COMPILING_IN_LIMITED_API) < (0)) __PYX_ERR(0, 1, __pyx_L1_error)
   __pyx_mstate->__pyx_empty_tuple = PyTuple_New(0); if (unlikely(!__pyx_mstate->__pyx_empty_tuple)) __PYX_ERR(0, 1, __pyx_L1_error)
@@ -3459,13 +3343,13 @@ __Pyx_RefNannySetupContext("PyInit_m4ri_lib", 0);
   if (__Pyx_InitConstants(__pyx_mstate) < (0)) __PYX_ERR(0, 1, __pyx_L1_error)
   stringtab_initialized = 1;
   if (__Pyx_InitGlobals() < (0)) __PYX_ERR(0, 1, __pyx_L1_error)
-  if (__pyx_module_is_main_scloop__utils__linear_algebra_gf2__m4ri_lib) {
+  if (__pyx_module_is_main_scloop__utils__linear_algebra_gf2__utils__distance_metrics) {
     if (PyObject_SetAttr(__pyx_m, __pyx_mstate_global->__pyx_n_u_name, __pyx_mstate_global->__pyx_n_u_main) < (0)) __PYX_ERR(0, 1, __pyx_L1_error)
   }
   {
     PyObject *modules = PyImport_GetModuleDict(); if (unlikely(!modules)) __PYX_ERR(0, 1, __pyx_L1_error)
-    if (!PyDict_GetItemString(modules, "scloop.utils.linear_algebra_gf2.m4ri_lib")) {
-      if (unlikely((PyDict_SetItemString(modules, "scloop.utils.linear_algebra_gf2.m4ri_lib", __pyx_m) < 0))) __PYX_ERR(0, 1, __pyx_L1_error)
+    if (!PyDict_GetItemString(modules, "scloop.utils.linear_algebra_gf2.utils.distance_metrics")) {
+      if (unlikely((PyDict_SetItemString(modules, "scloop.utils.linear_algebra_gf2.utils.distance_metrics", __pyx_m) < 0))) __PYX_ERR(0, 1, __pyx_L1_error)
     }
   }
   /*--- Builtin init code ---*/
@@ -3483,39 +3367,49 @@ __Pyx_RefNannySetupContext("PyInit_m4ri_lib", 0);
   (void)__Pyx_modinit_function_import_code(__pyx_mstate);
   /*--- Execution code ---*/
 
-  /* "scloop/utils/linear_algebra_gf2/m4ri_lib.pyx":21
+  /* "src/scloop/utils/distance_metrics/frechet.pyx":31
+ *     return vec
  * 
- * 
- * def solve_gf2(one_ridx_A, one_cidx_A, nrow_A, ncol_A, one_idx_b):             # <<<<<<<<<<<<<<
- *     assert nrow_A >= ncol_A, "number of rows must be greater than or equal to the number of columns"
- *     cdef mzd_t *A = mzd_init(nrow_A, ncol_A);
+ * def compute_loop_frechet(             # <<<<<<<<<<<<<<
+ *     curve_a: list,
+ *     curve_b: list,
 */
-  __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_6scloop_5utils_18linear_algebra_gf2_8m4ri_lib_1solve_gf2, 0, __pyx_mstate_global->__pyx_n_u_solve_gf2, NULL, __pyx_mstate_global->__pyx_n_u_scloop_utils_linear_algebra_gf2, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[0])); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 21, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyDict_NewPresized(4); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 31, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
+  if (PyDict_SetItem(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_curve_a, __pyx_mstate_global->__pyx_n_u_list) < (0)) __PYX_ERR(0, 31, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_curve_b, __pyx_mstate_global->__pyx_n_u_list) < (0)) __PYX_ERR(0, 31, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_distance_type, __pyx_mstate_global->__pyx_n_u_str) < (0)) __PYX_ERR(0, 31, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_return, __pyx_mstate_global->__pyx_n_u_float) < (0)) __PYX_ERR(0, 31, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_CyFunction_New(&__pyx_mdef_6scloop_5utils_18linear_algebra_gf2_5utils_16distance_metrics_1compute_loop_frechet, 0, __pyx_mstate_global->__pyx_n_u_compute_loop_frechet, NULL, __pyx_mstate_global->__pyx_n_u_scloop_utils_linear_algebra_gf2, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[0])); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 31, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_3);
   #if CYTHON_COMPILING_IN_CPYTHON && PY_VERSION_HEX >= 0x030E0000
-  PyUnstable_Object_EnableDeferredRefcount(__pyx_t_2);
+  PyUnstable_Object_EnableDeferredRefcount(__pyx_t_3);
   #endif
-  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_solve_gf2, __pyx_t_2) < (0)) __PYX_ERR(0, 21, __pyx_L1_error)
+  __Pyx_CyFunction_SetDefaultsTuple(__pyx_t_3, __pyx_mstate_global->__pyx_tuple[0]);
+  __Pyx_CyFunction_SetAnnotationsDict(__pyx_t_3, __pyx_t_2);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_compute_loop_frechet, __pyx_t_3) < (0)) __PYX_ERR(0, 31, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-  /* "scloop/utils/linear_algebra_gf2/m4ri_lib.pyx":1
+  /* "src/scloop/utils/distance_metrics/frechet.pyx":1
  * # Copyright 2025 Zhiyuan Yu (Heemskerk's lab, University of Michigan)             # <<<<<<<<<<<<<<
- * cdef extern from "m4ri/m4ri.h":
- *     ctypedef int rci_t
+ * cimport cython
+ * from libcpp.vector cimport vector
 */
-  __pyx_t_2 = __Pyx_PyDict_NewPresized(0); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 1, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_2);
-  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_test, __pyx_t_2) < (0)) __PYX_ERR(0, 1, __pyx_L1_error)
-  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __pyx_t_3 = __Pyx_PyDict_NewPresized(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 1, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_3);
+  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_test, __pyx_t_3) < (0)) __PYX_ERR(0, 1, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
   /*--- Wrapped vars code ---*/
 
   goto __pyx_L0;
   __pyx_L1_error:;
   __Pyx_XDECREF(__pyx_t_2);
+  __Pyx_XDECREF(__pyx_t_3);
   if (__pyx_m) {
     if (__pyx_mstate->__pyx_d && stringtab_initialized) {
-      __Pyx_AddTraceback("init scloop.utils.linear_algebra_gf2.m4ri_lib", __pyx_clineno, __pyx_lineno, __pyx_filename);
+      __Pyx_AddTraceback("init scloop.utils.linear_algebra_gf2.utils.distance_metrics", __pyx_clineno, __pyx_lineno, __pyx_filename);
     }
     #if !CYTHON_USE_MODULE_STATE
     Py_CLEAR(__pyx_m);
@@ -3529,7 +3423,7 @@ __Pyx_RefNannySetupContext("PyInit_m4ri_lib", 0);
     }
     #endif
   } else if (!PyErr_Occurred()) {
-    PyErr_SetString(PyExc_ImportError, "init scloop.utils.linear_algebra_gf2.m4ri_lib");
+    PyErr_SetString(PyExc_ImportError, "init scloop.utils.linear_algebra_gf2.utils.distance_metrics");
   }
   __pyx_L0:;
   __Pyx_RefNannyFinishContext();
@@ -3544,7 +3438,6 @@ __Pyx_RefNannySetupContext("PyInit_m4ri_lib", 0);
 
 static int __Pyx_InitCachedBuiltins(__pyx_mstatetype *__pyx_mstate) {
   CYTHON_UNUSED_VAR(__pyx_mstate);
-  __pyx_builtin_zip = __Pyx_GetBuiltinName(__pyx_mstate->__pyx_n_u_zip); if (!__pyx_builtin_zip) __PYX_ERR(0, 25, __pyx_L1_error)
 
   /* Cached unbound methods */
   __pyx_mstate->__pyx_umethod_PyDict_Type_items.type = (PyObject*)&PyDict_Type;
@@ -3554,8 +3447,6 @@ static int __Pyx_InitCachedBuiltins(__pyx_mstatetype *__pyx_mstate) {
   __pyx_mstate->__pyx_umethod_PyDict_Type_values.type = (PyObject*)&PyDict_Type;
   __pyx_mstate->__pyx_umethod_PyDict_Type_values.method_name = &__pyx_mstate->__pyx_n_u_values;
   return 0;
-  __pyx_L1_error:;
-  return -1;
 }
 /* #### Code section: cached_constants ### */
 
@@ -3563,33 +3454,59 @@ static int __Pyx_InitCachedConstants(__pyx_mstatetype *__pyx_mstate) {
   __Pyx_RefNannyDeclarations
   CYTHON_UNUSED_VAR(__pyx_mstate);
   __Pyx_RefNannySetupContext("__Pyx_InitCachedConstants", 0);
+
+  /* "src/scloop/utils/distance_metrics/frechet.pyx":31
+ *     return vec
+ * 
+ * def compute_loop_frechet(             # <<<<<<<<<<<<<<
+ *     curve_a: list,
+ *     curve_b: list,
+*/
+  __pyx_mstate_global->__pyx_tuple[0] = PyTuple_Pack(1, ((PyObject*)__pyx_mstate_global->__pyx_n_u_euclidean)); if (unlikely(!__pyx_mstate_global->__pyx_tuple[0])) __PYX_ERR(0, 31, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_mstate_global->__pyx_tuple[0]);
+  __Pyx_GIVEREF(__pyx_mstate_global->__pyx_tuple[0]);
+  #if CYTHON_IMMORTAL_CONSTANTS
+  {
+    PyObject **table = __pyx_mstate->__pyx_tuple;
+    for (Py_ssize_t i=0; i<1; ++i) {
+      #if CYTHON_COMPILING_IN_CPYTHON_FREETHREADING
+      Py_SET_REFCNT(table[i], _Py_IMMORTAL_REFCNT_LOCAL);
+      #else
+      Py_SET_REFCNT(table[i], _Py_IMMORTAL_INITIAL_REFCNT);
+      #endif
+    }
+  }
+  #endif
   __Pyx_RefNannyFinishContext();
   return 0;
+  __pyx_L1_error:;
+  __Pyx_RefNannyFinishContext();
+  return -1;
 }
 /* #### Code section: init_constants ### */
 
 static int __Pyx_InitConstants(__pyx_mstatetype *__pyx_mstate) {
   CYTHON_UNUSED_VAR(__pyx_mstate);
   {
-    const struct { const unsigned int length: 8; } index[] = {{1},{69},{48},{1},{20},{18},{1},{18},{8},{1},{13},{5},{1},{8},{10},{8},{6},{6},{10},{9},{10},{3},{12},{6},{40},{12},{10},{3},{9},{8},{6},{3},{165}};
-    #if (CYTHON_COMPRESS_STRINGS) == 2 /* compression: bz2 (450 bytes) */
-const char* const cstring = "BZh91AY&SY^\"\2612\000\000,\177\373n\354~\001j\001\234\204\255Ar@\277\377\377\360@@@@@@@@\000@@\0000\001x\332Z\tI\t7\251\2057\221'\243MA\220\000\000\006\230\000G\352h54h\322\236\246!\014b\020\311\246CF@\3024\30410\200\2251)\350\230S&j2\006\200\000\000\r\000i\345\036\246\312q\025\024\347\254\260urA\213P\030\320Efs\322\305\300Ea\031r\004*\362\247-H\246g\257\336h\315\024t\366\334\223\223\326\246ov\231\322\025\024\023n\347\327\013\301d =\310\350\313\217e\322\304\314@\303d\204H\367x\241\213\035xkj\023\022i\313\252L\374sR2\241[\226$S\tR\023\325\t\270\230/\327+\213\305\242*!q\372\300@\304T$5\2567\206=\271\2418\2646\364\t\013)bG*\220e\307\033\035ZIc\036}K\267h\326\322$\266N\321I\034#\320\203\033)\260\332%[\224\300\337\343\241\031\244R,8\034\332\215\202P\210\rbw#\334\034\242\361\243P\340\016\222%\365\304\034D\007U\210l\345i\230\251\310D\202h\304\005\304AX\003RM\024\326zN\325\025\340N\003|k.\330\316)g\023z\355\026d\212\355\202w\367\244\206\205\214U5\272.+\311\3415\342\350\"\312Z&\335\330\247\037\301\177S\005\004\260S$\242%\377\351\362*\257F_3\026\014)\200\367\304\177k4f3\232Q\311\247\234\231\303\n\253\371\233\035\264\352/\177\2136\222\r\252\245\244\264(\240\236\227\336Q\006\341w$S\205\t\005\342+\023 ";
-    PyObject *data = __Pyx_DecompressString(cstring, 450, 2);
+    const struct { const unsigned int length: 8; } index[] = {{1},{179},{27},{8},{45},{20},{18},{18},{20},{7},{11},{7},{11},{13},{9},{5},{8},{13},{5},{4},{8},{10},{8},{3},{12},{6},{54},{12},{10},{3},{8},{6},{67}};
+    #if (CYTHON_COMPRESS_STRINGS) == 2 /* compression: bz2 (493 bytes) */
+const char* const cstring = "BZh91AY&SY\265\255\364\312\000\000(\377\373g\303\250 b\203\264\320\257!Z\001\277\377\377a@@@@@@@\000@@@\0000\001\206\000\206\250\315S\3244\301\032\000\000\001\240\000\032hdh\315C\230\0020L@0\t\202h\310h`\023\004ba\251\223F\211\243%?SiOBi\032\032h\000\000d\003\324~\2502\017\202\031\024\022\345\244\352N\\$\321\240\373\240~\313\370o\362\202\3574BSH\242!\355\206\016d*\205\255\266\036\301\302\212\323Y0_<'\035\314\221#[4\273Y\210\246\t\365h\030b\335\310\347\0165r\230 Z\233\010\206\371\331\310M\261f\\\020\301\220j;\352\206DA\374\355\014\212\021\273\355\026\221\235?g\321\327\254Y\371\300\010_\322T\324t/w\030\244\3410\177\246\336\2704\020\0250gQ\014\231\255\333d\004D0\217*H\271^\2536u\335\036J\2774\306\326\321\216\003\025VQ\247\324\341\2335]\213.75M\342ej\010*\r\021\344EA\031q\257\036D\022\266\320v9\201`M\220\342F\326b[\225\003E`ym{\332\006\016/\352\262\353\221\243u\223\202\ts1\n\007\0046\020\370\346\210f\366\032M\352\240u\022\214H\031\026O\331\255C\356\335\032os\231A\2318\035\373\312\230\007\201s@\232\343\205\274.\377Z\271s\233t\320Z\221{0\305\204\003\240\2201fX9\271s9\342R\025Z2&@I\354\271\316\"\0357\266\340\204\004\314\024\363t\225\330H\014\340\312\020\202\270Id\r\025\256q\024|j\034\375\234.\311\365\274\r4\031\340'W\0000p6\333\2548\310\037\211\227\221\347\324)\315$Q}\035\022#\022y\215,\252\224\021+\217\370\273\222)\302\204\205\255o\246P";
+    PyObject *data = __Pyx_DecompressString(cstring, 493, 2);
     if (unlikely(!data)) __PYX_ERR(0, 1, __pyx_L1_error)
     const char* const bytes = __Pyx_PyBytes_AsString(data);
     #if !CYTHON_ASSUME_SAFE_MACROS
     if (likely(bytes)); else { Py_DECREF(data); __PYX_ERR(0, 1, __pyx_L1_error) }
     #endif
-    #elif (CYTHON_COMPRESS_STRINGS) != 0 /* compression: zlib (384 bytes) */
-const char* const cstring = "x\332e\217=O\0341\020\206u\342\020\213\222\"\027\240EF\210vO\202H4H\321)\010Q\241l\244Ht#\257o\3560x\355=\177\300\035\025\345\226.]nII\231\237\342\222\237\022/K@I,[\363h\346\235\031\277_\245\253J\324D\315\210Vw\206T\316XR\"\231k\2446\345\355\025\225Di\202\013G\005\261*%\220\274\3670%\\%\215\321ll\230P\252\036;\313\205\031\013.\221j\240b\216\245\2460\237\035\216\253/\232\203\340e^\257\226\023\200\357\253ez\247\234Y\270\300\245\375\2013jV\222q\2253\245U\232\"\321\224\254\233\003\\\202\325\224aI\331\r\300\314I\006\300\201\033xSr\213\225\271\006\250h\322\246S\251\251\023\330\221\244U\2122\375\023&29\204\211J\023\031\237.{\352\240\354@\277\244jU\003tV\373>\215\306\t\333;\313_\234\345\377;\313\3778\0030h_7&\232&K]\267\022\351\336b'\005\260h,\300-\025\016\315=\257\037\006q\370\2419\366\373\3762\024q\270\355\317\303$\\\266\177\343f\263\325\234%I\341E\273\027\263\235\004,l\205oa\021\207Y\263\336\024\377\344\326c6\362\273a\321\256\265G-{\034\305\254_Q\304\217\237\375\236?y\253l?\376|:xZ\374\032<w\205\230}\362\033\336\204\375P<'\034\370Q\354\303o\\.\325\014";
-    PyObject *data = __Pyx_DecompressString(cstring, 384, 1);
+    #elif (CYTHON_COMPRESS_STRINGS) != 0 /* compression: zlib (436 bytes) */
+const char* const cstring = "x\332]R=o\0241\020\325I\001\322\220\010Q\321\r\005J\225=\005E\002\321 \304\207D\023\235@\264\214f\355\331;\007\257\275g\217O\331\006\245\244L\231\362J\312\373))\257\344\2470\233[\242\010k\345y\353\235y\363\346\255\337\236Ea\220\005\t\274\357e\021\003\270\014\226\275\2539\221\260\357!KrF8\rI\001f\037g\307\247\257O\201\202\205\304\347l$C.\265\361\2243g\210\r\324\305yq\001\244\3578W\360\271\201>\026\010\314\026$B\247y\367\013d\301\0012\313\000\340\210B\210B\342b@-wa~\004\326%m\342V<T\177\"\237\271\372\026r\351\272\230D)\255\313B\301\360m\2737@\326\242RpNf\232\215\217\261\233\026q>O\377\345a\313\303<y\332(\355\202\245\352\372\013\304\231n\263\376\203\316\211g|!_\270\241\334\007\343beb\212\312\020X\331tG\247\312\022\031\256\311\3740\261\355\2120\016mp\3443%\255\030i\014\270b\263\203\365\030\206\223;-\203f.Jl\231B\343#\tbS\202AD\227\361\256\265\023n\263\327\"\304\226T\200\2566\332\342y@\201Z\215\235*\300e!\277{M,%\205\235\001\325\255\001\325\240\236\022\222\237s\235\010\347\315\313\361\303\377\316 \352\357\030i\025Y\365\242x\321[\200\250\276\252\206\025\371\302\371r\262}|0<{O\257N\266\017\036n\367^\254\277oN6\357\356\201G\227?\257\276^O\266\373\2077\207\317\327O\326\307\277\227\177\366\017~\235_On\236\275\332,\377\002\302\304\367\253";
+    PyObject *data = __Pyx_DecompressString(cstring, 436, 1);
     if (unlikely(!data)) __PYX_ERR(0, 1, __pyx_L1_error)
     const char* const bytes = __Pyx_PyBytes_AsString(data);
     #if !CYTHON_ASSUME_SAFE_MACROS
     if (likely(bytes)); else { Py_DECREF(data); __PYX_ERR(0, 1, __pyx_L1_error) }
     #endif
-    #else /* compression: none (548 bytes) */
-const char* const bytes = "?number of rows must be greater than or equal to the number of columnssrc/scloop/utils/linear_algebra_gf2/m4ri_lib.pyxA__Pyx_PyDict_NextRefasyncio.coroutinesbcline_in_traceback__func__i_is_coroutineitemsj__main____module____name__ncol_Anrow_Aone_cidx_Aone_idx_bone_ridx_Apop__qualname__resultscloop.utils.linear_algebra_gf2.m4ri_lib__set_name__setdefaultsolsolve_gf2__test__valueszip\200\001\330\004\013\2107\220#\220X\230Q\330\004\024\220H\230A\230X\240Q\330\004\024\220H\230A\230X\240Q\330\004\t\210\023\210F\220#\220Q\220l\240!\330\010\025\220Q\220c\230\023\230C\230q\330\004\010\210\005\210Q\330\010\025\220Q\220c\230\023\230C\230q\330\004\005\330\010\021\220\036\230q\240\003\2403\240c\250\021\330\010\013\2107\220#\220Q\330\014\022\220!\220<\230q\240\003\2403\240c\250\024\250U\260%\260q\270\001\340\014\022\220!\330\010\020\220\007\220s\230#\230Q\340\010\020\220\001\220\021\330\010\020\220\001\220\021";
+    #else /* compression: none (636 bytes) */
+const char* const bytes = "?Note that Cython is deliberately stricter than PEP-484 and rejects subclasses of builtin types. If you need to pass subclasses then set the 'annotation_typing' directive to False.Unsupported distance type: add_notesrc/scloop/utils/distance_metrics/frechet.pyx__Pyx_PyDict_NextRefasyncio.coroutinescline_in_tracebackcompute_loop_frechetcurve_acurve_a_veccurve_bcurve_b_vecdistance_typeeuclideanfloat__func___is_coroutineitemslist__main____module____name__pop__qualname__returnscloop.utils.linear_algebra_gf2.utils.distance_metrics__set_name__setdefaultstr__test__values\200\001\330\r\016\330\r\016\330\004\023\2201\330\005\006\330\004%\240^\2601\260A\330\004%\240^\2601\260A\330\004\007\200~\220S\230\001\330\010\017\320\017!\240\021\240-\250q\340\010\016\210j\230\001\320\0317\260q";
     PyObject *data = NULL;
     CYTHON_UNUSED_VAR(__Pyx_DecompressString);
     #endif
@@ -3598,7 +3515,7 @@ const char* const bytes = "?number of rows must be greater than or equal to the 
     for (int i = 0; i < 32; i++) {
       Py_ssize_t bytes_length = index[i].length;
       PyObject *string = PyUnicode_DecodeUTF8(bytes + pos, bytes_length, NULL);
-      if (likely(string) && i >= 3) PyUnicode_InternInPlace(&string);
+      if (likely(string) && i >= 5) PyUnicode_InternInPlace(&string);
       if (unlikely(!string)) {
         Py_XDECREF(data);
         __PYX_ERR(0, 1, __pyx_L1_error)
@@ -3641,10 +3558,10 @@ const char* const bytes = "?number of rows must be greater than or equal to the 
 }
 /* #### Code section: init_codeobjects ### */
 typedef struct {
-    unsigned int argcount : 3;
+    unsigned int argcount : 2;
     unsigned int num_posonly_args : 1;
     unsigned int num_kwonly_args : 1;
-    unsigned int nlocals : 4;
+    unsigned int nlocals : 3;
     unsigned int flags : 10;
     unsigned int first_line : 5;
 } __Pyx_PyCode_New_function_description;
@@ -3663,9 +3580,9 @@ static int __Pyx_CreateCodeObjects(__pyx_mstatetype *__pyx_mstate) {
   PyObject* tuple_dedup_map = PyDict_New();
   if (unlikely(!tuple_dedup_map)) return -1;
   {
-    const __Pyx_PyCode_New_function_description descr = {5, 0, 0, 12, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 21};
-    PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_one_ridx_A, __pyx_mstate->__pyx_n_u_one_cidx_A, __pyx_mstate->__pyx_n_u_nrow_A, __pyx_mstate->__pyx_n_u_ncol_A, __pyx_mstate->__pyx_n_u_one_idx_b, __pyx_mstate->__pyx_n_u_A, __pyx_mstate->__pyx_n_u_b, __pyx_mstate->__pyx_n_u_i, __pyx_mstate->__pyx_n_u_j, __pyx_mstate->__pyx_n_u_result, __pyx_mstate->__pyx_n_u_sol, __pyx_mstate->__pyx_n_u_i};
-    __pyx_mstate_global->__pyx_codeobj_tab[0] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_src_scloop_utils_linear_algebra, __pyx_mstate->__pyx_n_u_solve_gf2, __pyx_mstate->__pyx_kp_b_iso88591_7_XQ_HAXQ_HAXQ_F_Ql_Qc_Cq_Q_Qc, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[0])) goto bad;
+    const __Pyx_PyCode_New_function_description descr = {3, 0, 0, 5, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 31};
+    PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_curve_a, __pyx_mstate->__pyx_n_u_curve_b, __pyx_mstate->__pyx_n_u_distance_type, __pyx_mstate->__pyx_n_u_curve_a_vec, __pyx_mstate->__pyx_n_u_curve_b_vec};
+    __pyx_mstate_global->__pyx_codeobj_tab[0] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_src_scloop_utils_distance_metric, __pyx_mstate->__pyx_n_u_compute_loop_frechet, __pyx_mstate->__pyx_kp_b_iso88591_1_1A_1A_S_q_j_7q, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[0])) goto bad;
   }
   Py_DECREF(tuple_dedup_map);
   return 0;
@@ -3678,11 +3595,6 @@ static int __Pyx_CreateCodeObjects(__pyx_mstatetype *__pyx_mstate) {
 static int __Pyx_InitGlobals(void) {
   /* PythonCompatibility.init */
   if (likely(__Pyx_init_co_variables() == 0)); else
-  
-  if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 1, __pyx_L1_error)
-
-  /* AssertionsEnabled.init */
-  if (likely(__Pyx_init_assertions_enabled() == 0)); else
   
   if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 1, __pyx_L1_error)
 
@@ -3749,153 +3661,107 @@ end:
 }
 #endif
 
-/* PyErrExceptionMatches (used by PyObjectGetAttrStrNoError) */
-#if CYTHON_FAST_THREAD_STATE
-static int __Pyx_PyErr_ExceptionMatchesTuple(PyObject *exc_type, PyObject *tuple) {
-    Py_ssize_t i, n;
-    n = PyTuple_GET_SIZE(tuple);
-    for (i=0; i<n; i++) {
-        if (exc_type == PyTuple_GET_ITEM(tuple, i)) return 1;
-    }
-    for (i=0; i<n; i++) {
-        if (__Pyx_PyErr_GivenExceptionMatches(exc_type, PyTuple_GET_ITEM(tuple, i))) return 1;
-    }
-    return 0;
+/* GetItemInt */
+static PyObject *__Pyx_GetItemInt_Generic(PyObject *o, PyObject* j) {
+    PyObject *r;
+    if (unlikely(!j)) return NULL;
+    r = PyObject_GetItem(o, j);
+    Py_DECREF(j);
+    return r;
 }
-static CYTHON_INLINE int __Pyx_PyErr_ExceptionMatchesInState(PyThreadState* tstate, PyObject* err) {
-    int result;
-    PyObject *exc_type;
-#if PY_VERSION_HEX >= 0x030C00A6
-    PyObject *current_exception = tstate->current_exception;
-    if (unlikely(!current_exception)) return 0;
-    exc_type = (PyObject*) Py_TYPE(current_exception);
-    if (exc_type == err) return 1;
+static CYTHON_INLINE PyObject *__Pyx_GetItemInt_List_Fast(PyObject *o, Py_ssize_t i,
+                                                              int wraparound, int boundscheck, int unsafe_shared) {
+    CYTHON_MAYBE_UNUSED_VAR(unsafe_shared);
+#if CYTHON_ASSUME_SAFE_SIZE
+    Py_ssize_t wrapped_i = i;
+    if (wraparound & unlikely(i < 0)) {
+        wrapped_i += PyList_GET_SIZE(o);
+    }
+    if ((CYTHON_AVOID_BORROWED_REFS || CYTHON_AVOID_THREAD_UNSAFE_BORROWED_REFS || !CYTHON_ASSUME_SAFE_MACROS)) {
+        return __Pyx_PyList_GetItemRefFast(o, wrapped_i, unsafe_shared);
+    } else
+    if ((!boundscheck) || likely(__Pyx_is_valid_index(wrapped_i, PyList_GET_SIZE(o)))) {
+        return __Pyx_NewRef(PyList_GET_ITEM(o, wrapped_i));
+    }
+    return __Pyx_GetItemInt_Generic(o, PyLong_FromSsize_t(i));
 #else
-    exc_type = tstate->curexc_type;
-    if (exc_type == err) return 1;
-    if (unlikely(!exc_type)) return 0;
+    (void)wraparound;
+    (void)boundscheck;
+    return PySequence_GetItem(o, i);
 #endif
-    #if CYTHON_AVOID_BORROWED_REFS
-    Py_INCREF(exc_type);
+}
+static CYTHON_INLINE PyObject *__Pyx_GetItemInt_Tuple_Fast(PyObject *o, Py_ssize_t i,
+                                                              int wraparound, int boundscheck, int unsafe_shared) {
+    CYTHON_MAYBE_UNUSED_VAR(unsafe_shared);
+#if CYTHON_ASSUME_SAFE_SIZE && CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
+    Py_ssize_t wrapped_i = i;
+    if (wraparound & unlikely(i < 0)) {
+        wrapped_i += PyTuple_GET_SIZE(o);
+    }
+    if ((!boundscheck) || likely(__Pyx_is_valid_index(wrapped_i, PyTuple_GET_SIZE(o)))) {
+        return __Pyx_NewRef(PyTuple_GET_ITEM(o, wrapped_i));
+    }
+    return __Pyx_GetItemInt_Generic(o, PyLong_FromSsize_t(i));
+#else
+    (void)wraparound;
+    (void)boundscheck;
+    return PySequence_GetItem(o, i);
+#endif
+}
+static CYTHON_INLINE PyObject *__Pyx_GetItemInt_Fast(PyObject *o, Py_ssize_t i, int is_list,
+                                                     int wraparound, int boundscheck, int unsafe_shared) {
+    CYTHON_MAYBE_UNUSED_VAR(unsafe_shared);
+#if CYTHON_ASSUME_SAFE_MACROS && CYTHON_ASSUME_SAFE_SIZE
+    if (is_list || PyList_CheckExact(o)) {
+        Py_ssize_t n = ((!wraparound) | likely(i >= 0)) ? i : i + PyList_GET_SIZE(o);
+        if ((CYTHON_AVOID_BORROWED_REFS || CYTHON_AVOID_THREAD_UNSAFE_BORROWED_REFS)) {
+            return __Pyx_PyList_GetItemRefFast(o, n, unsafe_shared);
+        } else if ((!boundscheck) || (likely(__Pyx_is_valid_index(n, PyList_GET_SIZE(o))))) {
+            return __Pyx_NewRef(PyList_GET_ITEM(o, n));
+        }
+    } else
+    #if !CYTHON_AVOID_BORROWED_REFS
+    if (PyTuple_CheckExact(o)) {
+        Py_ssize_t n = ((!wraparound) | likely(i >= 0)) ? i : i + PyTuple_GET_SIZE(o);
+        if ((!boundscheck) || likely(__Pyx_is_valid_index(n, PyTuple_GET_SIZE(o)))) {
+            return __Pyx_NewRef(PyTuple_GET_ITEM(o, n));
+        }
+    } else
     #endif
-    if (unlikely(PyTuple_Check(err))) {
-        result = __Pyx_PyErr_ExceptionMatchesTuple(exc_type, err);
-    } else {
-        result = __Pyx_PyErr_GivenExceptionMatches(exc_type, err);
-    }
-    #if CYTHON_AVOID_BORROWED_REFS
-    Py_DECREF(exc_type);
-    #endif
-    return result;
-}
 #endif
-
-/* PyErrFetchRestore (used by PyObjectGetAttrStrNoError) */
-#if CYTHON_FAST_THREAD_STATE
-static CYTHON_INLINE void __Pyx_ErrRestoreInState(PyThreadState *tstate, PyObject *type, PyObject *value, PyObject *tb) {
-#if PY_VERSION_HEX >= 0x030C00A6
-    PyObject *tmp_value;
-    assert(type == NULL || (value != NULL && type == (PyObject*) Py_TYPE(value)));
-    if (value) {
-        #if CYTHON_COMPILING_IN_CPYTHON
-        if (unlikely(((PyBaseExceptionObject*) value)->traceback != tb))
-        #endif
-            PyException_SetTraceback(value, tb);
-    }
-    tmp_value = tstate->current_exception;
-    tstate->current_exception = value;
-    Py_XDECREF(tmp_value);
-    Py_XDECREF(type);
-    Py_XDECREF(tb);
-#else
-    PyObject *tmp_type, *tmp_value, *tmp_tb;
-    tmp_type = tstate->curexc_type;
-    tmp_value = tstate->curexc_value;
-    tmp_tb = tstate->curexc_traceback;
-    tstate->curexc_type = type;
-    tstate->curexc_value = value;
-    tstate->curexc_traceback = tb;
-    Py_XDECREF(tmp_type);
-    Py_XDECREF(tmp_value);
-    Py_XDECREF(tmp_tb);
-#endif
-}
-static CYTHON_INLINE void __Pyx_ErrFetchInState(PyThreadState *tstate, PyObject **type, PyObject **value, PyObject **tb) {
-#if PY_VERSION_HEX >= 0x030C00A6
-    PyObject* exc_value;
-    exc_value = tstate->current_exception;
-    tstate->current_exception = 0;
-    *value = exc_value;
-    *type = NULL;
-    *tb = NULL;
-    if (exc_value) {
-        *type = (PyObject*) Py_TYPE(exc_value);
-        Py_INCREF(*type);
-        #if CYTHON_COMPILING_IN_CPYTHON
-        *tb = ((PyBaseExceptionObject*) exc_value)->traceback;
-        Py_XINCREF(*tb);
-        #else
-        *tb = PyException_GetTraceback(exc_value);
-        #endif
+#if CYTHON_USE_TYPE_SLOTS && !CYTHON_COMPILING_IN_PYPY
+    {
+        PyMappingMethods *mm = Py_TYPE(o)->tp_as_mapping;
+        PySequenceMethods *sm = Py_TYPE(o)->tp_as_sequence;
+        if (!is_list && mm && mm->mp_subscript) {
+            PyObject *r, *key = PyLong_FromSsize_t(i);
+            if (unlikely(!key)) return NULL;
+            r = mm->mp_subscript(o, key);
+            Py_DECREF(key);
+            return r;
+        }
+        if (is_list || likely(sm && sm->sq_item)) {
+            if (wraparound && unlikely(i < 0) && likely(sm->sq_length)) {
+                Py_ssize_t l = sm->sq_length(o);
+                if (likely(l >= 0)) {
+                    i += l;
+                } else {
+                    if (!PyErr_ExceptionMatches(PyExc_OverflowError))
+                        return NULL;
+                    PyErr_Clear();
+                }
+            }
+            return sm->sq_item(o, i);
+        }
     }
 #else
-    *type = tstate->curexc_type;
-    *value = tstate->curexc_value;
-    *tb = tstate->curexc_traceback;
-    tstate->curexc_type = 0;
-    tstate->curexc_value = 0;
-    tstate->curexc_traceback = 0;
-#endif
-}
-#endif
-
-/* PyObjectGetAttrStr (used by PyObjectGetAttrStrNoError) */
-#if CYTHON_USE_TYPE_SLOTS
-static CYTHON_INLINE PyObject* __Pyx_PyObject_GetAttrStr(PyObject* obj, PyObject* attr_name) {
-    PyTypeObject* tp = Py_TYPE(obj);
-    if (likely(tp->tp_getattro))
-        return tp->tp_getattro(obj, attr_name);
-    return PyObject_GetAttr(obj, attr_name);
-}
-#endif
-
-/* PyObjectGetAttrStrNoError (used by GetBuiltinName) */
-#if __PYX_LIMITED_VERSION_HEX < 0x030d0000
-static void __Pyx_PyObject_GetAttrStr_ClearAttributeError(void) {
-    __Pyx_PyThreadState_declare
-    __Pyx_PyThreadState_assign
-    if (likely(__Pyx_PyErr_ExceptionMatches(PyExc_AttributeError)))
-        __Pyx_PyErr_Clear();
-}
-#endif
-static CYTHON_INLINE PyObject* __Pyx_PyObject_GetAttrStrNoError(PyObject* obj, PyObject* attr_name) {
-    PyObject *result;
-#if __PYX_LIMITED_VERSION_HEX >= 0x030d0000
-    (void) PyObject_GetOptionalAttr(obj, attr_name, &result);
-    return result;
-#else
-#if CYTHON_COMPILING_IN_CPYTHON && CYTHON_USE_TYPE_SLOTS
-    PyTypeObject* tp = Py_TYPE(obj);
-    if (likely(tp->tp_getattro == PyObject_GenericGetAttr)) {
-        return _PyObject_GenericGetAttrWithDict(obj, attr_name, NULL, 1);
+    if (is_list || !PyMapping_Check(o)) {
+        return PySequence_GetItem(o, i);
     }
 #endif
-    result = __Pyx_PyObject_GetAttrStr(obj, attr_name);
-    if (unlikely(!result)) {
-        __Pyx_PyObject_GetAttrStr_ClearAttributeError();
-    }
-    return result;
-#endif
-}
-
-/* GetBuiltinName */
-static PyObject *__Pyx_GetBuiltinName(PyObject *name) {
-    PyObject* result = __Pyx_PyObject_GetAttrStrNoError(__pyx_mstate_global->__pyx_b, name);
-    if (unlikely(!result) && !PyErr_Occurred()) {
-        PyErr_Format(PyExc_NameError,
-            "name '%U' is not defined", name);
-    }
-    return result;
+    (void)wraparound;
+    (void)boundscheck;
+    return __Pyx_GetItemInt_Generic(o, PyLong_FromSsize_t(i));
 }
 
 /* TupleAndListFromArray (used by fastcall) */
@@ -4259,6 +4125,16 @@ static CYTHON_INLINE PyObject* __Pyx_PyObject_CallOneArg(PyObject *func, PyObjec
     PyObject *args[2] = {NULL, arg};
     return __Pyx_PyObject_FastCall(func, args+1, 1 | __Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET);
 }
+
+/* PyObjectGetAttrStr (used by UnpackUnboundCMethod) */
+#if CYTHON_USE_TYPE_SLOTS
+static CYTHON_INLINE PyObject* __Pyx_PyObject_GetAttrStr(PyObject* obj, PyObject* attr_name) {
+    PyTypeObject* tp = Py_TYPE(obj);
+    if (likely(tp->tp_getattro))
+        return tp->tp_getattro(obj, attr_name);
+    return PyObject_GetAttr(obj, attr_name);
+}
+#endif
 
 /* UnpackUnboundCMethod (used by CallUnboundCMethod0) */
 #if CYTHON_COMPILING_IN_LIMITED_API && __PYX_LIMITED_VERSION_HEX < 0x030C0000
@@ -4927,6 +4803,113 @@ static void __Pyx_RaiseArgtupleInvalid(
                  (num_expected == 1) ? "" : "s", num_found);
 }
 
+/* ArgTypeTestFunc (used by ArgTypeTest) */
+static int __Pyx__ArgTypeTest(PyObject *obj, PyTypeObject *type, const char *name, int exact)
+{
+    __Pyx_TypeName type_name;
+    __Pyx_TypeName obj_type_name;
+    PyObject *extra_info = __pyx_mstate_global->__pyx_empty_unicode;
+    int from_annotation_subclass = 0;
+    if (unlikely(!type)) {
+        PyErr_SetString(PyExc_SystemError, "Missing type object");
+        return 0;
+    }
+    else if (!exact) {
+        if (likely(__Pyx_TypeCheck(obj, type))) return 1;
+    } else if (exact == 2) {
+        if (__Pyx_TypeCheck(obj, type)) {
+            from_annotation_subclass = 1;
+            extra_info = __pyx_mstate_global->__pyx_kp_u_Note_that_Cython_is_deliberately;
+        }
+    }
+    type_name = __Pyx_PyType_GetFullyQualifiedName(type);
+    obj_type_name = __Pyx_PyType_GetFullyQualifiedName(Py_TYPE(obj));
+    PyErr_Format(PyExc_TypeError,
+        "Argument '%.200s' has incorrect type (expected " __Pyx_FMT_TYPENAME
+        ", got " __Pyx_FMT_TYPENAME ")"
+#if __PYX_LIMITED_VERSION_HEX < 0x030C0000
+        "%s%U"
+#endif
+        , name, type_name, obj_type_name
+#if __PYX_LIMITED_VERSION_HEX < 0x030C0000
+        , (from_annotation_subclass ? ". " : ""), extra_info
+#endif
+        );
+#if __PYX_LIMITED_VERSION_HEX >= 0x030C0000
+    if (exact == 2 && from_annotation_subclass) {
+        PyObject *res;
+        PyObject *vargs[2];
+        vargs[0] = PyErr_GetRaisedException();
+        vargs[1] = extra_info;
+        res = PyObject_VectorcallMethod(__pyx_mstate_global->__pyx_kp_u_add_note, vargs, 2, NULL);
+        Py_XDECREF(res);
+        PyErr_SetRaisedException(vargs[0]);
+    }
+#endif
+    __Pyx_DECREF_TypeName(type_name);
+    __Pyx_DECREF_TypeName(obj_type_name);
+    return 0;
+}
+
+/* PyErrFetchRestore (used by RaiseException) */
+#if CYTHON_FAST_THREAD_STATE
+static CYTHON_INLINE void __Pyx_ErrRestoreInState(PyThreadState *tstate, PyObject *type, PyObject *value, PyObject *tb) {
+#if PY_VERSION_HEX >= 0x030C00A6
+    PyObject *tmp_value;
+    assert(type == NULL || (value != NULL && type == (PyObject*) Py_TYPE(value)));
+    if (value) {
+        #if CYTHON_COMPILING_IN_CPYTHON
+        if (unlikely(((PyBaseExceptionObject*) value)->traceback != tb))
+        #endif
+            PyException_SetTraceback(value, tb);
+    }
+    tmp_value = tstate->current_exception;
+    tstate->current_exception = value;
+    Py_XDECREF(tmp_value);
+    Py_XDECREF(type);
+    Py_XDECREF(tb);
+#else
+    PyObject *tmp_type, *tmp_value, *tmp_tb;
+    tmp_type = tstate->curexc_type;
+    tmp_value = tstate->curexc_value;
+    tmp_tb = tstate->curexc_traceback;
+    tstate->curexc_type = type;
+    tstate->curexc_value = value;
+    tstate->curexc_traceback = tb;
+    Py_XDECREF(tmp_type);
+    Py_XDECREF(tmp_value);
+    Py_XDECREF(tmp_tb);
+#endif
+}
+static CYTHON_INLINE void __Pyx_ErrFetchInState(PyThreadState *tstate, PyObject **type, PyObject **value, PyObject **tb) {
+#if PY_VERSION_HEX >= 0x030C00A6
+    PyObject* exc_value;
+    exc_value = tstate->current_exception;
+    tstate->current_exception = 0;
+    *value = exc_value;
+    *type = NULL;
+    *tb = NULL;
+    if (exc_value) {
+        *type = (PyObject*) Py_TYPE(exc_value);
+        Py_INCREF(*type);
+        #if CYTHON_COMPILING_IN_CPYTHON
+        *tb = ((PyBaseExceptionObject*) exc_value)->traceback;
+        Py_XINCREF(*tb);
+        #else
+        *tb = PyException_GetTraceback(exc_value);
+        #endif
+    }
+#else
+    *type = tstate->curexc_type;
+    *value = tstate->curexc_value;
+    *tb = tstate->curexc_traceback;
+    tstate->curexc_type = 0;
+    tstate->curexc_value = 0;
+    tstate->curexc_traceback = 0;
+#endif
+}
+#endif
+
 /* RaiseException */
 static void __Pyx_Raise(PyObject *type, PyObject *value, PyObject *tb, PyObject *cause) {
     PyObject* owned_instance = NULL;
@@ -5034,283 +5017,6 @@ bad:
     Py_XDECREF(owned_instance);
     return;
 }
-
-/* RaiseTooManyValuesToUnpack */
-static CYTHON_INLINE void __Pyx_RaiseTooManyValuesError(Py_ssize_t expected) {
-    PyErr_Format(PyExc_ValueError,
-                 "too many values to unpack (expected %" CYTHON_FORMAT_SSIZE_T "d)", expected);
-}
-
-/* RaiseNeedMoreValuesToUnpack */
-static CYTHON_INLINE void __Pyx_RaiseNeedMoreValuesError(Py_ssize_t index) {
-    PyErr_Format(PyExc_ValueError,
-                 "need more than %" CYTHON_FORMAT_SSIZE_T "d value%.1s to unpack",
-                 index, (index == 1) ? "" : "s");
-}
-
-/* IterFinish */
-static CYTHON_INLINE int __Pyx_IterFinish(void) {
-    PyObject* exc_type;
-    __Pyx_PyThreadState_declare
-    __Pyx_PyThreadState_assign
-    exc_type = __Pyx_PyErr_CurrentExceptionType();
-    if (unlikely(exc_type)) {
-        if (unlikely(!__Pyx_PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration)))
-            return -1;
-        __Pyx_PyErr_Clear();
-        return 0;
-    }
-    return 0;
-}
-
-/* UnpackItemEndCheck */
-static int __Pyx_IternextUnpackEndCheck(PyObject *retval, Py_ssize_t expected) {
-    if (unlikely(retval)) {
-        Py_DECREF(retval);
-        __Pyx_RaiseTooManyValuesError(expected);
-        return -1;
-    }
-    return __Pyx_IterFinish();
-}
-
-/* GetException */
-#if CYTHON_FAST_THREAD_STATE
-static int __Pyx__GetException(PyThreadState *tstate, PyObject **type, PyObject **value, PyObject **tb)
-#else
-static int __Pyx_GetException(PyObject **type, PyObject **value, PyObject **tb)
-#endif
-{
-    PyObject *local_type = NULL, *local_value, *local_tb = NULL;
-#if CYTHON_FAST_THREAD_STATE
-    PyObject *tmp_type, *tmp_value, *tmp_tb;
-  #if PY_VERSION_HEX >= 0x030C0000
-    local_value = tstate->current_exception;
-    tstate->current_exception = 0;
-  #else
-    local_type = tstate->curexc_type;
-    local_value = tstate->curexc_value;
-    local_tb = tstate->curexc_traceback;
-    tstate->curexc_type = 0;
-    tstate->curexc_value = 0;
-    tstate->curexc_traceback = 0;
-  #endif
-#elif __PYX_LIMITED_VERSION_HEX > 0x030C0000
-    local_value = PyErr_GetRaisedException();
-#else
-    PyErr_Fetch(&local_type, &local_value, &local_tb);
-#endif
-#if __PYX_LIMITED_VERSION_HEX > 0x030C0000
-    if (likely(local_value)) {
-        local_type = (PyObject*) Py_TYPE(local_value);
-        Py_INCREF(local_type);
-        local_tb = PyException_GetTraceback(local_value);
-    }
-#else
-    PyErr_NormalizeException(&local_type, &local_value, &local_tb);
-#if CYTHON_FAST_THREAD_STATE
-    if (unlikely(tstate->curexc_type))
-#else
-    if (unlikely(PyErr_Occurred()))
-#endif
-        goto bad;
-    if (local_tb) {
-        if (unlikely(PyException_SetTraceback(local_value, local_tb) < 0))
-            goto bad;
-    }
-#endif // __PYX_LIMITED_VERSION_HEX > 0x030C0000
-    Py_XINCREF(local_tb);
-    Py_XINCREF(local_type);
-    Py_XINCREF(local_value);
-    *type = local_type;
-    *value = local_value;
-    *tb = local_tb;
-#if CYTHON_FAST_THREAD_STATE
-    #if CYTHON_USE_EXC_INFO_STACK
-    {
-        _PyErr_StackItem *exc_info = tstate->exc_info;
-      #if PY_VERSION_HEX >= 0x030B00a4
-        tmp_value = exc_info->exc_value;
-        exc_info->exc_value = local_value;
-        tmp_type = NULL;
-        tmp_tb = NULL;
-        Py_XDECREF(local_type);
-        Py_XDECREF(local_tb);
-      #else
-        tmp_type = exc_info->exc_type;
-        tmp_value = exc_info->exc_value;
-        tmp_tb = exc_info->exc_traceback;
-        exc_info->exc_type = local_type;
-        exc_info->exc_value = local_value;
-        exc_info->exc_traceback = local_tb;
-      #endif
-    }
-    #else
-    tmp_type = tstate->exc_type;
-    tmp_value = tstate->exc_value;
-    tmp_tb = tstate->exc_traceback;
-    tstate->exc_type = local_type;
-    tstate->exc_value = local_value;
-    tstate->exc_traceback = local_tb;
-    #endif
-    Py_XDECREF(tmp_type);
-    Py_XDECREF(tmp_value);
-    Py_XDECREF(tmp_tb);
-#elif __PYX_LIMITED_VERSION_HEX >= 0x030b0000
-    PyErr_SetHandledException(local_value);
-    Py_XDECREF(local_value);
-    Py_XDECREF(local_type);
-    Py_XDECREF(local_tb);
-#else
-    PyErr_SetExcInfo(local_type, local_value, local_tb);
-#endif
-    return 0;
-#if __PYX_LIMITED_VERSION_HEX <= 0x030C0000
-bad:
-    *type = 0;
-    *value = 0;
-    *tb = 0;
-    Py_XDECREF(local_type);
-    Py_XDECREF(local_value);
-    Py_XDECREF(local_tb);
-    return -1;
-#endif
-}
-
-/* SwapException */
-#if CYTHON_FAST_THREAD_STATE
-static CYTHON_INLINE void __Pyx__ExceptionSwap(PyThreadState *tstate, PyObject **type, PyObject **value, PyObject **tb) {
-    PyObject *tmp_type, *tmp_value, *tmp_tb;
-  #if CYTHON_USE_EXC_INFO_STACK && PY_VERSION_HEX >= 0x030B00a4
-    _PyErr_StackItem *exc_info = tstate->exc_info;
-    tmp_value = exc_info->exc_value;
-    exc_info->exc_value = *value;
-    if (tmp_value == NULL || tmp_value == Py_None) {
-        Py_XDECREF(tmp_value);
-        tmp_value = NULL;
-        tmp_type = NULL;
-        tmp_tb = NULL;
-    } else {
-        tmp_type = (PyObject*) Py_TYPE(tmp_value);
-        Py_INCREF(tmp_type);
-        #if CYTHON_COMPILING_IN_CPYTHON
-        tmp_tb = ((PyBaseExceptionObject*) tmp_value)->traceback;
-        Py_XINCREF(tmp_tb);
-        #else
-        tmp_tb = PyException_GetTraceback(tmp_value);
-        #endif
-    }
-  #elif CYTHON_USE_EXC_INFO_STACK
-    _PyErr_StackItem *exc_info = tstate->exc_info;
-    tmp_type = exc_info->exc_type;
-    tmp_value = exc_info->exc_value;
-    tmp_tb = exc_info->exc_traceback;
-    exc_info->exc_type = *type;
-    exc_info->exc_value = *value;
-    exc_info->exc_traceback = *tb;
-  #else
-    tmp_type = tstate->exc_type;
-    tmp_value = tstate->exc_value;
-    tmp_tb = tstate->exc_traceback;
-    tstate->exc_type = *type;
-    tstate->exc_value = *value;
-    tstate->exc_traceback = *tb;
-  #endif
-    *type = tmp_type;
-    *value = tmp_value;
-    *tb = tmp_tb;
-}
-#else
-static CYTHON_INLINE void __Pyx_ExceptionSwap(PyObject **type, PyObject **value, PyObject **tb) {
-    PyObject *tmp_type, *tmp_value, *tmp_tb;
-    PyErr_GetExcInfo(&tmp_type, &tmp_value, &tmp_tb);
-    PyErr_SetExcInfo(*type, *value, *tb);
-    *type = tmp_type;
-    *value = tmp_value;
-    *tb = tmp_tb;
-}
-#endif
-
-/* GetTopmostException (used by SaveResetException) */
-#if CYTHON_USE_EXC_INFO_STACK && CYTHON_FAST_THREAD_STATE
-static _PyErr_StackItem *
-__Pyx_PyErr_GetTopmostException(PyThreadState *tstate)
-{
-    _PyErr_StackItem *exc_info = tstate->exc_info;
-    while ((exc_info->exc_value == NULL || exc_info->exc_value == Py_None) &&
-           exc_info->previous_item != NULL)
-    {
-        exc_info = exc_info->previous_item;
-    }
-    return exc_info;
-}
-#endif
-
-/* SaveResetException */
-#if CYTHON_FAST_THREAD_STATE
-static CYTHON_INLINE void __Pyx__ExceptionSave(PyThreadState *tstate, PyObject **type, PyObject **value, PyObject **tb) {
-  #if CYTHON_USE_EXC_INFO_STACK && PY_VERSION_HEX >= 0x030B00a4
-    _PyErr_StackItem *exc_info = __Pyx_PyErr_GetTopmostException(tstate);
-    PyObject *exc_value = exc_info->exc_value;
-    if (exc_value == NULL || exc_value == Py_None) {
-        *value = NULL;
-        *type = NULL;
-        *tb = NULL;
-    } else {
-        *value = exc_value;
-        Py_INCREF(*value);
-        *type = (PyObject*) Py_TYPE(exc_value);
-        Py_INCREF(*type);
-        *tb = PyException_GetTraceback(exc_value);
-    }
-  #elif CYTHON_USE_EXC_INFO_STACK
-    _PyErr_StackItem *exc_info = __Pyx_PyErr_GetTopmostException(tstate);
-    *type = exc_info->exc_type;
-    *value = exc_info->exc_value;
-    *tb = exc_info->exc_traceback;
-    Py_XINCREF(*type);
-    Py_XINCREF(*value);
-    Py_XINCREF(*tb);
-  #else
-    *type = tstate->exc_type;
-    *value = tstate->exc_value;
-    *tb = tstate->exc_traceback;
-    Py_XINCREF(*type);
-    Py_XINCREF(*value);
-    Py_XINCREF(*tb);
-  #endif
-}
-static CYTHON_INLINE void __Pyx__ExceptionReset(PyThreadState *tstate, PyObject *type, PyObject *value, PyObject *tb) {
-  #if CYTHON_USE_EXC_INFO_STACK && PY_VERSION_HEX >= 0x030B00a4
-    _PyErr_StackItem *exc_info = tstate->exc_info;
-    PyObject *tmp_value = exc_info->exc_value;
-    exc_info->exc_value = value;
-    Py_XDECREF(tmp_value);
-    Py_XDECREF(type);
-    Py_XDECREF(tb);
-  #else
-    PyObject *tmp_type, *tmp_value, *tmp_tb;
-    #if CYTHON_USE_EXC_INFO_STACK
-    _PyErr_StackItem *exc_info = tstate->exc_info;
-    tmp_type = exc_info->exc_type;
-    tmp_value = exc_info->exc_value;
-    tmp_tb = exc_info->exc_traceback;
-    exc_info->exc_type = type;
-    exc_info->exc_value = value;
-    exc_info->exc_traceback = tb;
-    #else
-    tmp_type = tstate->exc_type;
-    tmp_value = tstate->exc_value;
-    tmp_tb = tstate->exc_traceback;
-    tstate->exc_type = type;
-    tstate->exc_value = value;
-    tstate->exc_traceback = tb;
-    #endif
-    Py_XDECREF(tmp_type);
-    Py_XDECREF(tmp_value);
-    Py_XDECREF(tmp_tb);
-  #endif
-}
-#endif
 
 /* dict_setdefault (used by FetchCommonType) */
 static CYTHON_INLINE PyObject *__Pyx_PyDict_SetDefault(PyObject *d, PyObject *key, PyObject *default_value) {
@@ -6877,6 +6583,76 @@ static CYTHON_INLINE int __Pyx_object_dict_version_matches(PyObject* obj, PY_UIN
 }
 #endif
 
+/* PyErrExceptionMatches (used by PyObjectGetAttrStrNoError) */
+#if CYTHON_FAST_THREAD_STATE
+static int __Pyx_PyErr_ExceptionMatchesTuple(PyObject *exc_type, PyObject *tuple) {
+    Py_ssize_t i, n;
+    n = PyTuple_GET_SIZE(tuple);
+    for (i=0; i<n; i++) {
+        if (exc_type == PyTuple_GET_ITEM(tuple, i)) return 1;
+    }
+    for (i=0; i<n; i++) {
+        if (__Pyx_PyErr_GivenExceptionMatches(exc_type, PyTuple_GET_ITEM(tuple, i))) return 1;
+    }
+    return 0;
+}
+static CYTHON_INLINE int __Pyx_PyErr_ExceptionMatchesInState(PyThreadState* tstate, PyObject* err) {
+    int result;
+    PyObject *exc_type;
+#if PY_VERSION_HEX >= 0x030C00A6
+    PyObject *current_exception = tstate->current_exception;
+    if (unlikely(!current_exception)) return 0;
+    exc_type = (PyObject*) Py_TYPE(current_exception);
+    if (exc_type == err) return 1;
+#else
+    exc_type = tstate->curexc_type;
+    if (exc_type == err) return 1;
+    if (unlikely(!exc_type)) return 0;
+#endif
+    #if CYTHON_AVOID_BORROWED_REFS
+    Py_INCREF(exc_type);
+    #endif
+    if (unlikely(PyTuple_Check(err))) {
+        result = __Pyx_PyErr_ExceptionMatchesTuple(exc_type, err);
+    } else {
+        result = __Pyx_PyErr_GivenExceptionMatches(exc_type, err);
+    }
+    #if CYTHON_AVOID_BORROWED_REFS
+    Py_DECREF(exc_type);
+    #endif
+    return result;
+}
+#endif
+
+/* PyObjectGetAttrStrNoError (used by CLineInTraceback) */
+#if __PYX_LIMITED_VERSION_HEX < 0x030d0000
+static void __Pyx_PyObject_GetAttrStr_ClearAttributeError(void) {
+    __Pyx_PyThreadState_declare
+    __Pyx_PyThreadState_assign
+    if (likely(__Pyx_PyErr_ExceptionMatches(PyExc_AttributeError)))
+        __Pyx_PyErr_Clear();
+}
+#endif
+static CYTHON_INLINE PyObject* __Pyx_PyObject_GetAttrStrNoError(PyObject* obj, PyObject* attr_name) {
+    PyObject *result;
+#if __PYX_LIMITED_VERSION_HEX >= 0x030d0000
+    (void) PyObject_GetOptionalAttr(obj, attr_name, &result);
+    return result;
+#else
+#if CYTHON_COMPILING_IN_CPYTHON && CYTHON_USE_TYPE_SLOTS
+    PyTypeObject* tp = Py_TYPE(obj);
+    if (likely(tp->tp_getattro == PyObject_GenericGetAttr)) {
+        return _PyObject_GenericGetAttrWithDict(obj, attr_name, NULL, 1);
+    }
+#endif
+    result = __Pyx_PyObject_GetAttrStr(obj, attr_name);
+    if (unlikely(!result)) {
+        __Pyx_PyObject_GetAttrStr_ClearAttributeError();
+    }
+    return result;
+#endif
+}
+
 /* CLineInTraceback (used by AddTraceback) */
 #if CYTHON_CLINE_IN_TRACEBACK && CYTHON_CLINE_IN_TRACEBACK_RUNTIME
 #if CYTHON_COMPILING_IN_LIMITED_API && __PYX_LIMITED_VERSION_HEX < 0x030A0000
@@ -7193,256 +6969,6 @@ bad:
         return (target_type) value;\
     }
 
-/* CIntFromPy */
-static CYTHON_INLINE rci_t __Pyx_PyLong_As_rci_t(PyObject *x) {
-#ifdef __Pyx_HAS_GCC_DIAGNOSTIC
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wconversion"
-#endif
-    const rci_t neg_one = (rci_t) -1, const_zero = (rci_t) 0;
-#ifdef __Pyx_HAS_GCC_DIAGNOSTIC
-#pragma GCC diagnostic pop
-#endif
-    const int is_unsigned = neg_one > const_zero;
-    if (unlikely(!PyLong_Check(x))) {
-        rci_t val;
-        PyObject *tmp = __Pyx_PyNumber_Long(x);
-        if (!tmp) return (rci_t) -1;
-        val = __Pyx_PyLong_As_rci_t(tmp);
-        Py_DECREF(tmp);
-        return val;
-    }
-    if (is_unsigned) {
-#if CYTHON_USE_PYLONG_INTERNALS
-        if (unlikely(__Pyx_PyLong_IsNeg(x))) {
-            goto raise_neg_overflow;
-        } else if (__Pyx_PyLong_IsCompact(x)) {
-            __PYX_VERIFY_RETURN_INT(rci_t, __Pyx_compact_upylong, __Pyx_PyLong_CompactValueUnsigned(x))
-        } else {
-            const digit* digits = __Pyx_PyLong_Digits(x);
-            assert(__Pyx_PyLong_DigitCount(x) > 1);
-            switch (__Pyx_PyLong_DigitCount(x)) {
-                case 2:
-                    if ((8 * sizeof(rci_t) > 1 * PyLong_SHIFT)) {
-                        if ((8 * sizeof(unsigned long) > 2 * PyLong_SHIFT)) {
-                            __PYX_VERIFY_RETURN_INT(rci_t, unsigned long, (((((unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
-                        } else if ((8 * sizeof(rci_t) >= 2 * PyLong_SHIFT)) {
-                            return (rci_t) (((((rci_t)digits[1]) << PyLong_SHIFT) | (rci_t)digits[0]));
-                        }
-                    }
-                    break;
-                case 3:
-                    if ((8 * sizeof(rci_t) > 2 * PyLong_SHIFT)) {
-                        if ((8 * sizeof(unsigned long) > 3 * PyLong_SHIFT)) {
-                            __PYX_VERIFY_RETURN_INT(rci_t, unsigned long, (((((((unsigned long)digits[2]) << PyLong_SHIFT) | (unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
-                        } else if ((8 * sizeof(rci_t) >= 3 * PyLong_SHIFT)) {
-                            return (rci_t) (((((((rci_t)digits[2]) << PyLong_SHIFT) | (rci_t)digits[1]) << PyLong_SHIFT) | (rci_t)digits[0]));
-                        }
-                    }
-                    break;
-                case 4:
-                    if ((8 * sizeof(rci_t) > 3 * PyLong_SHIFT)) {
-                        if ((8 * sizeof(unsigned long) > 4 * PyLong_SHIFT)) {
-                            __PYX_VERIFY_RETURN_INT(rci_t, unsigned long, (((((((((unsigned long)digits[3]) << PyLong_SHIFT) | (unsigned long)digits[2]) << PyLong_SHIFT) | (unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
-                        } else if ((8 * sizeof(rci_t) >= 4 * PyLong_SHIFT)) {
-                            return (rci_t) (((((((((rci_t)digits[3]) << PyLong_SHIFT) | (rci_t)digits[2]) << PyLong_SHIFT) | (rci_t)digits[1]) << PyLong_SHIFT) | (rci_t)digits[0]));
-                        }
-                    }
-                    break;
-            }
-        }
-#endif
-#if CYTHON_COMPILING_IN_CPYTHON && PY_VERSION_HEX < 0x030C00A7
-        if (unlikely(Py_SIZE(x) < 0)) {
-            goto raise_neg_overflow;
-        }
-#else
-        {
-            int result = PyObject_RichCompareBool(x, Py_False, Py_LT);
-            if (unlikely(result < 0))
-                return (rci_t) -1;
-            if (unlikely(result == 1))
-                goto raise_neg_overflow;
-        }
-#endif
-        if ((sizeof(rci_t) <= sizeof(unsigned long))) {
-            __PYX_VERIFY_RETURN_INT_EXC(rci_t, unsigned long, PyLong_AsUnsignedLong(x))
-        } else if ((sizeof(rci_t) <= sizeof(unsigned PY_LONG_LONG))) {
-            __PYX_VERIFY_RETURN_INT_EXC(rci_t, unsigned PY_LONG_LONG, PyLong_AsUnsignedLongLong(x))
-        }
-    } else {
-#if CYTHON_USE_PYLONG_INTERNALS
-        if (__Pyx_PyLong_IsCompact(x)) {
-            __PYX_VERIFY_RETURN_INT(rci_t, __Pyx_compact_pylong, __Pyx_PyLong_CompactValue(x))
-        } else {
-            const digit* digits = __Pyx_PyLong_Digits(x);
-            assert(__Pyx_PyLong_DigitCount(x) > 1);
-            switch (__Pyx_PyLong_SignedDigitCount(x)) {
-                case -2:
-                    if ((8 * sizeof(rci_t) - 1 > 1 * PyLong_SHIFT)) {
-                        if ((8 * sizeof(unsigned long) > 2 * PyLong_SHIFT)) {
-                            __PYX_VERIFY_RETURN_INT(rci_t, long, -(long) (((((unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
-                        } else if ((8 * sizeof(rci_t) - 1 > 2 * PyLong_SHIFT)) {
-                            return (rci_t) (((rci_t)-1)*(((((rci_t)digits[1]) << PyLong_SHIFT) | (rci_t)digits[0])));
-                        }
-                    }
-                    break;
-                case 2:
-                    if ((8 * sizeof(rci_t) > 1 * PyLong_SHIFT)) {
-                        if ((8 * sizeof(unsigned long) > 2 * PyLong_SHIFT)) {
-                            __PYX_VERIFY_RETURN_INT(rci_t, unsigned long, (((((unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
-                        } else if ((8 * sizeof(rci_t) - 1 > 2 * PyLong_SHIFT)) {
-                            return (rci_t) ((((((rci_t)digits[1]) << PyLong_SHIFT) | (rci_t)digits[0])));
-                        }
-                    }
-                    break;
-                case -3:
-                    if ((8 * sizeof(rci_t) - 1 > 2 * PyLong_SHIFT)) {
-                        if ((8 * sizeof(unsigned long) > 3 * PyLong_SHIFT)) {
-                            __PYX_VERIFY_RETURN_INT(rci_t, long, -(long) (((((((unsigned long)digits[2]) << PyLong_SHIFT) | (unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
-                        } else if ((8 * sizeof(rci_t) - 1 > 3 * PyLong_SHIFT)) {
-                            return (rci_t) (((rci_t)-1)*(((((((rci_t)digits[2]) << PyLong_SHIFT) | (rci_t)digits[1]) << PyLong_SHIFT) | (rci_t)digits[0])));
-                        }
-                    }
-                    break;
-                case 3:
-                    if ((8 * sizeof(rci_t) > 2 * PyLong_SHIFT)) {
-                        if ((8 * sizeof(unsigned long) > 3 * PyLong_SHIFT)) {
-                            __PYX_VERIFY_RETURN_INT(rci_t, unsigned long, (((((((unsigned long)digits[2]) << PyLong_SHIFT) | (unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
-                        } else if ((8 * sizeof(rci_t) - 1 > 3 * PyLong_SHIFT)) {
-                            return (rci_t) ((((((((rci_t)digits[2]) << PyLong_SHIFT) | (rci_t)digits[1]) << PyLong_SHIFT) | (rci_t)digits[0])));
-                        }
-                    }
-                    break;
-                case -4:
-                    if ((8 * sizeof(rci_t) - 1 > 3 * PyLong_SHIFT)) {
-                        if ((8 * sizeof(unsigned long) > 4 * PyLong_SHIFT)) {
-                            __PYX_VERIFY_RETURN_INT(rci_t, long, -(long) (((((((((unsigned long)digits[3]) << PyLong_SHIFT) | (unsigned long)digits[2]) << PyLong_SHIFT) | (unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
-                        } else if ((8 * sizeof(rci_t) - 1 > 4 * PyLong_SHIFT)) {
-                            return (rci_t) (((rci_t)-1)*(((((((((rci_t)digits[3]) << PyLong_SHIFT) | (rci_t)digits[2]) << PyLong_SHIFT) | (rci_t)digits[1]) << PyLong_SHIFT) | (rci_t)digits[0])));
-                        }
-                    }
-                    break;
-                case 4:
-                    if ((8 * sizeof(rci_t) > 3 * PyLong_SHIFT)) {
-                        if ((8 * sizeof(unsigned long) > 4 * PyLong_SHIFT)) {
-                            __PYX_VERIFY_RETURN_INT(rci_t, unsigned long, (((((((((unsigned long)digits[3]) << PyLong_SHIFT) | (unsigned long)digits[2]) << PyLong_SHIFT) | (unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
-                        } else if ((8 * sizeof(rci_t) - 1 > 4 * PyLong_SHIFT)) {
-                            return (rci_t) ((((((((((rci_t)digits[3]) << PyLong_SHIFT) | (rci_t)digits[2]) << PyLong_SHIFT) | (rci_t)digits[1]) << PyLong_SHIFT) | (rci_t)digits[0])));
-                        }
-                    }
-                    break;
-            }
-        }
-#endif
-        if ((sizeof(rci_t) <= sizeof(long))) {
-            __PYX_VERIFY_RETURN_INT_EXC(rci_t, long, PyLong_AsLong(x))
-        } else if ((sizeof(rci_t) <= sizeof(PY_LONG_LONG))) {
-            __PYX_VERIFY_RETURN_INT_EXC(rci_t, PY_LONG_LONG, PyLong_AsLongLong(x))
-        }
-    }
-    {
-        rci_t val;
-        int ret = -1;
-#if PY_VERSION_HEX >= 0x030d00A6 && !CYTHON_COMPILING_IN_LIMITED_API
-        Py_ssize_t bytes_copied = PyLong_AsNativeBytes(
-            x, &val, sizeof(val), Py_ASNATIVEBYTES_NATIVE_ENDIAN | (is_unsigned ? Py_ASNATIVEBYTES_UNSIGNED_BUFFER | Py_ASNATIVEBYTES_REJECT_NEGATIVE : 0));
-        if (unlikely(bytes_copied == -1)) {
-        } else if (unlikely(bytes_copied > (Py_ssize_t) sizeof(val))) {
-            goto raise_overflow;
-        } else {
-            ret = 0;
-        }
-#elif PY_VERSION_HEX < 0x030d0000 && !(CYTHON_COMPILING_IN_PYPY || CYTHON_COMPILING_IN_LIMITED_API) || defined(_PyLong_AsByteArray)
-        int one = 1; int is_little = (int)*(unsigned char *)&one;
-        unsigned char *bytes = (unsigned char *)&val;
-        ret = _PyLong_AsByteArray((PyLongObject *)x,
-                                    bytes, sizeof(val),
-                                    is_little, !is_unsigned);
-#else
-        PyObject *v;
-        PyObject *stepval = NULL, *mask = NULL, *shift = NULL;
-        int bits, remaining_bits, is_negative = 0;
-        int chunk_size = (sizeof(long) < 8) ? 30 : 62;
-        if (likely(PyLong_CheckExact(x))) {
-            v = __Pyx_NewRef(x);
-        } else {
-            v = PyNumber_Long(x);
-            if (unlikely(!v)) return (rci_t) -1;
-            assert(PyLong_CheckExact(v));
-        }
-        {
-            int result = PyObject_RichCompareBool(v, Py_False, Py_LT);
-            if (unlikely(result < 0)) {
-                Py_DECREF(v);
-                return (rci_t) -1;
-            }
-            is_negative = result == 1;
-        }
-        if (is_unsigned && unlikely(is_negative)) {
-            Py_DECREF(v);
-            goto raise_neg_overflow;
-        } else if (is_negative) {
-            stepval = PyNumber_Invert(v);
-            Py_DECREF(v);
-            if (unlikely(!stepval))
-                return (rci_t) -1;
-        } else {
-            stepval = v;
-        }
-        v = NULL;
-        val = (rci_t) 0;
-        mask = PyLong_FromLong((1L << chunk_size) - 1); if (unlikely(!mask)) goto done;
-        shift = PyLong_FromLong(chunk_size); if (unlikely(!shift)) goto done;
-        for (bits = 0; bits < (int) sizeof(rci_t) * 8 - chunk_size; bits += chunk_size) {
-            PyObject *tmp, *digit;
-            long idigit;
-            digit = PyNumber_And(stepval, mask);
-            if (unlikely(!digit)) goto done;
-            idigit = PyLong_AsLong(digit);
-            Py_DECREF(digit);
-            if (unlikely(idigit < 0)) goto done;
-            val |= ((rci_t) idigit) << bits;
-            tmp = PyNumber_Rshift(stepval, shift);
-            if (unlikely(!tmp)) goto done;
-            Py_DECREF(stepval); stepval = tmp;
-        }
-        Py_DECREF(shift); shift = NULL;
-        Py_DECREF(mask); mask = NULL;
-        {
-            long idigit = PyLong_AsLong(stepval);
-            if (unlikely(idigit < 0)) goto done;
-            remaining_bits = ((int) sizeof(rci_t) * 8) - bits - (is_unsigned ? 0 : 1);
-            if (unlikely(idigit >= (1L << remaining_bits)))
-                goto raise_overflow;
-            val |= ((rci_t) idigit) << bits;
-        }
-        if (!is_unsigned) {
-            if (unlikely(val & (((rci_t) 1) << (sizeof(rci_t) * 8 - 1))))
-                goto raise_overflow;
-            if (is_negative)
-                val = ~val;
-        }
-        ret = 0;
-    done:
-        Py_XDECREF(shift);
-        Py_XDECREF(mask);
-        Py_XDECREF(stepval);
-#endif
-        if (unlikely(ret))
-            return (rci_t) -1;
-        return val;
-    }
-raise_overflow:
-    PyErr_SetString(PyExc_OverflowError,
-        "value too large to convert to rci_t");
-    return (rci_t) -1;
-raise_neg_overflow:
-    PyErr_SetString(PyExc_OverflowError,
-        "can't convert negative value to rci_t");
-    return (rci_t) -1;
-}
-
 /* PyObjectVectorCallKwBuilder (used by CIntToPy) */
 #if CYTHON_VECTORCALL
 static int __Pyx_VectorcallBuilder_AddArg(PyObject *key, PyObject *value, PyObject *builder, PyObject **args, int n) {
@@ -7472,114 +6998,6 @@ CYTHON_UNUSED static int __Pyx_VectorcallBuilder_AddArg_Check(PyObject *key, PyO
         return -1;
     }
     return PyDict_SetItem(builder, key, value);
-}
-#endif
-
-/* CIntToPy */
-static CYTHON_INLINE PyObject* __Pyx_PyLong_From_BIT(BIT value) {
-#ifdef __Pyx_HAS_GCC_DIAGNOSTIC
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wconversion"
-#endif
-    const BIT neg_one = (BIT) -1, const_zero = (BIT) 0;
-#ifdef __Pyx_HAS_GCC_DIAGNOSTIC
-#pragma GCC diagnostic pop
-#endif
-    const int is_unsigned = neg_one > const_zero;
-    if (is_unsigned) {
-        if (sizeof(BIT) < sizeof(long)) {
-            return PyLong_FromLong((long) value);
-        } else if (sizeof(BIT) <= sizeof(unsigned long)) {
-            return PyLong_FromUnsignedLong((unsigned long) value);
-#if !CYTHON_COMPILING_IN_PYPY
-        } else if (sizeof(BIT) <= sizeof(unsigned PY_LONG_LONG)) {
-            return PyLong_FromUnsignedLongLong((unsigned PY_LONG_LONG) value);
-#endif
-        }
-    } else {
-        if (sizeof(BIT) <= sizeof(long)) {
-            return PyLong_FromLong((long) value);
-        } else if (sizeof(BIT) <= sizeof(PY_LONG_LONG)) {
-            return PyLong_FromLongLong((PY_LONG_LONG) value);
-        }
-    }
-    {
-        unsigned char *bytes = (unsigned char *)&value;
-#if !CYTHON_COMPILING_IN_LIMITED_API && PY_VERSION_HEX >= 0x030d00A4
-        if (is_unsigned) {
-            return PyLong_FromUnsignedNativeBytes(bytes, sizeof(value), -1);
-        } else {
-            return PyLong_FromNativeBytes(bytes, sizeof(value), -1);
-        }
-#elif !CYTHON_COMPILING_IN_LIMITED_API && PY_VERSION_HEX < 0x030d0000
-        int one = 1; int little = (int)*(unsigned char *)&one;
-        return _PyLong_FromByteArray(bytes, sizeof(BIT),
-                                     little, !is_unsigned);
-#else
-        int one = 1; int little = (int)*(unsigned char *)&one;
-        PyObject *from_bytes, *result = NULL, *kwds = NULL;
-        PyObject *py_bytes = NULL, *order_str = NULL;
-        from_bytes = PyObject_GetAttrString((PyObject*)&PyLong_Type, "from_bytes");
-        if (!from_bytes) return NULL;
-        py_bytes = PyBytes_FromStringAndSize((char*)bytes, sizeof(BIT));
-        if (!py_bytes) goto limited_bad;
-        order_str = PyUnicode_FromString(little ? "little" : "big");
-        if (!order_str) goto limited_bad;
-        {
-            PyObject *args[3+(CYTHON_VECTORCALL ? 1 : 0)] = { NULL, py_bytes, order_str };
-            if (!is_unsigned) {
-                kwds = __Pyx_MakeVectorcallBuilderKwds(1);
-                if (!kwds) goto limited_bad;
-                if (__Pyx_VectorcallBuilder_AddArgStr("signed", __Pyx_NewRef(Py_True), kwds, args+3, 0) < 0) goto limited_bad;
-            }
-            result = __Pyx_Object_Vectorcall_CallFromBuilder(from_bytes, args+1, 2 | __Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET, kwds);
-        }
-        limited_bad:
-        Py_XDECREF(kwds);
-        Py_XDECREF(order_str);
-        Py_XDECREF(py_bytes);
-        Py_XDECREF(from_bytes);
-        return result;
-#endif
-    }
-}
-
-/* FormatTypeName */
-#if CYTHON_COMPILING_IN_LIMITED_API && __PYX_LIMITED_VERSION_HEX < 0x030d0000
-static __Pyx_TypeName
-__Pyx_PyType_GetFullyQualifiedName(PyTypeObject* tp)
-{
-    PyObject *module = NULL, *name = NULL, *result = NULL;
-    #if __PYX_LIMITED_VERSION_HEX < 0x030b0000
-    name = __Pyx_PyObject_GetAttrStr((PyObject *)tp,
-                                               __pyx_mstate_global->__pyx_n_u_qualname);
-    #else
-    name = PyType_GetQualName(tp);
-    #endif
-    if (unlikely(name == NULL) || unlikely(!PyUnicode_Check(name))) goto bad;
-    module = __Pyx_PyObject_GetAttrStr((PyObject *)tp,
-                                               __pyx_mstate_global->__pyx_n_u_module);
-    if (unlikely(module == NULL) || unlikely(!PyUnicode_Check(module))) goto bad;
-    if (PyUnicode_CompareWithASCIIString(module, "builtins") == 0) {
-        result = name;
-        name = NULL;
-        goto done;
-    }
-    result = PyUnicode_FromFormat("%U.%U", module, name);
-    if (unlikely(result == NULL)) goto bad;
-  done:
-    Py_XDECREF(name);
-    Py_XDECREF(module);
-    return result;
-  bad:
-    PyErr_Clear();
-    if (name) {
-        result = name;
-        name = NULL;
-    } else {
-        result = __Pyx_NewRef(__pyx_mstate_global->__pyx_kp_u_);
-    }
-    goto done;
 }
 #endif
 
@@ -7651,6 +7069,295 @@ static CYTHON_INLINE PyObject* __Pyx_PyLong_From_long(long value) {
 #endif
     }
 }
+
+/* CIntFromPy */
+static CYTHON_INLINE size_t __Pyx_PyLong_As_size_t(PyObject *x) {
+#ifdef __Pyx_HAS_GCC_DIAGNOSTIC
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#endif
+    const size_t neg_one = (size_t) -1, const_zero = (size_t) 0;
+#ifdef __Pyx_HAS_GCC_DIAGNOSTIC
+#pragma GCC diagnostic pop
+#endif
+    const int is_unsigned = neg_one > const_zero;
+    if (unlikely(!PyLong_Check(x))) {
+        size_t val;
+        PyObject *tmp = __Pyx_PyNumber_Long(x);
+        if (!tmp) return (size_t) -1;
+        val = __Pyx_PyLong_As_size_t(tmp);
+        Py_DECREF(tmp);
+        return val;
+    }
+    if (is_unsigned) {
+#if CYTHON_USE_PYLONG_INTERNALS
+        if (unlikely(__Pyx_PyLong_IsNeg(x))) {
+            goto raise_neg_overflow;
+        } else if (__Pyx_PyLong_IsCompact(x)) {
+            __PYX_VERIFY_RETURN_INT(size_t, __Pyx_compact_upylong, __Pyx_PyLong_CompactValueUnsigned(x))
+        } else {
+            const digit* digits = __Pyx_PyLong_Digits(x);
+            assert(__Pyx_PyLong_DigitCount(x) > 1);
+            switch (__Pyx_PyLong_DigitCount(x)) {
+                case 2:
+                    if ((8 * sizeof(size_t) > 1 * PyLong_SHIFT)) {
+                        if ((8 * sizeof(unsigned long) > 2 * PyLong_SHIFT)) {
+                            __PYX_VERIFY_RETURN_INT(size_t, unsigned long, (((((unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
+                        } else if ((8 * sizeof(size_t) >= 2 * PyLong_SHIFT)) {
+                            return (size_t) (((((size_t)digits[1]) << PyLong_SHIFT) | (size_t)digits[0]));
+                        }
+                    }
+                    break;
+                case 3:
+                    if ((8 * sizeof(size_t) > 2 * PyLong_SHIFT)) {
+                        if ((8 * sizeof(unsigned long) > 3 * PyLong_SHIFT)) {
+                            __PYX_VERIFY_RETURN_INT(size_t, unsigned long, (((((((unsigned long)digits[2]) << PyLong_SHIFT) | (unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
+                        } else if ((8 * sizeof(size_t) >= 3 * PyLong_SHIFT)) {
+                            return (size_t) (((((((size_t)digits[2]) << PyLong_SHIFT) | (size_t)digits[1]) << PyLong_SHIFT) | (size_t)digits[0]));
+                        }
+                    }
+                    break;
+                case 4:
+                    if ((8 * sizeof(size_t) > 3 * PyLong_SHIFT)) {
+                        if ((8 * sizeof(unsigned long) > 4 * PyLong_SHIFT)) {
+                            __PYX_VERIFY_RETURN_INT(size_t, unsigned long, (((((((((unsigned long)digits[3]) << PyLong_SHIFT) | (unsigned long)digits[2]) << PyLong_SHIFT) | (unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
+                        } else if ((8 * sizeof(size_t) >= 4 * PyLong_SHIFT)) {
+                            return (size_t) (((((((((size_t)digits[3]) << PyLong_SHIFT) | (size_t)digits[2]) << PyLong_SHIFT) | (size_t)digits[1]) << PyLong_SHIFT) | (size_t)digits[0]));
+                        }
+                    }
+                    break;
+            }
+        }
+#endif
+#if CYTHON_COMPILING_IN_CPYTHON && PY_VERSION_HEX < 0x030C00A7
+        if (unlikely(Py_SIZE(x) < 0)) {
+            goto raise_neg_overflow;
+        }
+#else
+        {
+            int result = PyObject_RichCompareBool(x, Py_False, Py_LT);
+            if (unlikely(result < 0))
+                return (size_t) -1;
+            if (unlikely(result == 1))
+                goto raise_neg_overflow;
+        }
+#endif
+        if ((sizeof(size_t) <= sizeof(unsigned long))) {
+            __PYX_VERIFY_RETURN_INT_EXC(size_t, unsigned long, PyLong_AsUnsignedLong(x))
+        } else if ((sizeof(size_t) <= sizeof(unsigned PY_LONG_LONG))) {
+            __PYX_VERIFY_RETURN_INT_EXC(size_t, unsigned PY_LONG_LONG, PyLong_AsUnsignedLongLong(x))
+        }
+    } else {
+#if CYTHON_USE_PYLONG_INTERNALS
+        if (__Pyx_PyLong_IsCompact(x)) {
+            __PYX_VERIFY_RETURN_INT(size_t, __Pyx_compact_pylong, __Pyx_PyLong_CompactValue(x))
+        } else {
+            const digit* digits = __Pyx_PyLong_Digits(x);
+            assert(__Pyx_PyLong_DigitCount(x) > 1);
+            switch (__Pyx_PyLong_SignedDigitCount(x)) {
+                case -2:
+                    if ((8 * sizeof(size_t) - 1 > 1 * PyLong_SHIFT)) {
+                        if ((8 * sizeof(unsigned long) > 2 * PyLong_SHIFT)) {
+                            __PYX_VERIFY_RETURN_INT(size_t, long, -(long) (((((unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
+                        } else if ((8 * sizeof(size_t) - 1 > 2 * PyLong_SHIFT)) {
+                            return (size_t) (((size_t)-1)*(((((size_t)digits[1]) << PyLong_SHIFT) | (size_t)digits[0])));
+                        }
+                    }
+                    break;
+                case 2:
+                    if ((8 * sizeof(size_t) > 1 * PyLong_SHIFT)) {
+                        if ((8 * sizeof(unsigned long) > 2 * PyLong_SHIFT)) {
+                            __PYX_VERIFY_RETURN_INT(size_t, unsigned long, (((((unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
+                        } else if ((8 * sizeof(size_t) - 1 > 2 * PyLong_SHIFT)) {
+                            return (size_t) ((((((size_t)digits[1]) << PyLong_SHIFT) | (size_t)digits[0])));
+                        }
+                    }
+                    break;
+                case -3:
+                    if ((8 * sizeof(size_t) - 1 > 2 * PyLong_SHIFT)) {
+                        if ((8 * sizeof(unsigned long) > 3 * PyLong_SHIFT)) {
+                            __PYX_VERIFY_RETURN_INT(size_t, long, -(long) (((((((unsigned long)digits[2]) << PyLong_SHIFT) | (unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
+                        } else if ((8 * sizeof(size_t) - 1 > 3 * PyLong_SHIFT)) {
+                            return (size_t) (((size_t)-1)*(((((((size_t)digits[2]) << PyLong_SHIFT) | (size_t)digits[1]) << PyLong_SHIFT) | (size_t)digits[0])));
+                        }
+                    }
+                    break;
+                case 3:
+                    if ((8 * sizeof(size_t) > 2 * PyLong_SHIFT)) {
+                        if ((8 * sizeof(unsigned long) > 3 * PyLong_SHIFT)) {
+                            __PYX_VERIFY_RETURN_INT(size_t, unsigned long, (((((((unsigned long)digits[2]) << PyLong_SHIFT) | (unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
+                        } else if ((8 * sizeof(size_t) - 1 > 3 * PyLong_SHIFT)) {
+                            return (size_t) ((((((((size_t)digits[2]) << PyLong_SHIFT) | (size_t)digits[1]) << PyLong_SHIFT) | (size_t)digits[0])));
+                        }
+                    }
+                    break;
+                case -4:
+                    if ((8 * sizeof(size_t) - 1 > 3 * PyLong_SHIFT)) {
+                        if ((8 * sizeof(unsigned long) > 4 * PyLong_SHIFT)) {
+                            __PYX_VERIFY_RETURN_INT(size_t, long, -(long) (((((((((unsigned long)digits[3]) << PyLong_SHIFT) | (unsigned long)digits[2]) << PyLong_SHIFT) | (unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
+                        } else if ((8 * sizeof(size_t) - 1 > 4 * PyLong_SHIFT)) {
+                            return (size_t) (((size_t)-1)*(((((((((size_t)digits[3]) << PyLong_SHIFT) | (size_t)digits[2]) << PyLong_SHIFT) | (size_t)digits[1]) << PyLong_SHIFT) | (size_t)digits[0])));
+                        }
+                    }
+                    break;
+                case 4:
+                    if ((8 * sizeof(size_t) > 3 * PyLong_SHIFT)) {
+                        if ((8 * sizeof(unsigned long) > 4 * PyLong_SHIFT)) {
+                            __PYX_VERIFY_RETURN_INT(size_t, unsigned long, (((((((((unsigned long)digits[3]) << PyLong_SHIFT) | (unsigned long)digits[2]) << PyLong_SHIFT) | (unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
+                        } else if ((8 * sizeof(size_t) - 1 > 4 * PyLong_SHIFT)) {
+                            return (size_t) ((((((((((size_t)digits[3]) << PyLong_SHIFT) | (size_t)digits[2]) << PyLong_SHIFT) | (size_t)digits[1]) << PyLong_SHIFT) | (size_t)digits[0])));
+                        }
+                    }
+                    break;
+            }
+        }
+#endif
+        if ((sizeof(size_t) <= sizeof(long))) {
+            __PYX_VERIFY_RETURN_INT_EXC(size_t, long, PyLong_AsLong(x))
+        } else if ((sizeof(size_t) <= sizeof(PY_LONG_LONG))) {
+            __PYX_VERIFY_RETURN_INT_EXC(size_t, PY_LONG_LONG, PyLong_AsLongLong(x))
+        }
+    }
+    {
+        size_t val;
+        int ret = -1;
+#if PY_VERSION_HEX >= 0x030d00A6 && !CYTHON_COMPILING_IN_LIMITED_API
+        Py_ssize_t bytes_copied = PyLong_AsNativeBytes(
+            x, &val, sizeof(val), Py_ASNATIVEBYTES_NATIVE_ENDIAN | (is_unsigned ? Py_ASNATIVEBYTES_UNSIGNED_BUFFER | Py_ASNATIVEBYTES_REJECT_NEGATIVE : 0));
+        if (unlikely(bytes_copied == -1)) {
+        } else if (unlikely(bytes_copied > (Py_ssize_t) sizeof(val))) {
+            goto raise_overflow;
+        } else {
+            ret = 0;
+        }
+#elif PY_VERSION_HEX < 0x030d0000 && !(CYTHON_COMPILING_IN_PYPY || CYTHON_COMPILING_IN_LIMITED_API) || defined(_PyLong_AsByteArray)
+        int one = 1; int is_little = (int)*(unsigned char *)&one;
+        unsigned char *bytes = (unsigned char *)&val;
+        ret = _PyLong_AsByteArray((PyLongObject *)x,
+                                    bytes, sizeof(val),
+                                    is_little, !is_unsigned);
+#else
+        PyObject *v;
+        PyObject *stepval = NULL, *mask = NULL, *shift = NULL;
+        int bits, remaining_bits, is_negative = 0;
+        int chunk_size = (sizeof(long) < 8) ? 30 : 62;
+        if (likely(PyLong_CheckExact(x))) {
+            v = __Pyx_NewRef(x);
+        } else {
+            v = PyNumber_Long(x);
+            if (unlikely(!v)) return (size_t) -1;
+            assert(PyLong_CheckExact(v));
+        }
+        {
+            int result = PyObject_RichCompareBool(v, Py_False, Py_LT);
+            if (unlikely(result < 0)) {
+                Py_DECREF(v);
+                return (size_t) -1;
+            }
+            is_negative = result == 1;
+        }
+        if (is_unsigned && unlikely(is_negative)) {
+            Py_DECREF(v);
+            goto raise_neg_overflow;
+        } else if (is_negative) {
+            stepval = PyNumber_Invert(v);
+            Py_DECREF(v);
+            if (unlikely(!stepval))
+                return (size_t) -1;
+        } else {
+            stepval = v;
+        }
+        v = NULL;
+        val = (size_t) 0;
+        mask = PyLong_FromLong((1L << chunk_size) - 1); if (unlikely(!mask)) goto done;
+        shift = PyLong_FromLong(chunk_size); if (unlikely(!shift)) goto done;
+        for (bits = 0; bits < (int) sizeof(size_t) * 8 - chunk_size; bits += chunk_size) {
+            PyObject *tmp, *digit;
+            long idigit;
+            digit = PyNumber_And(stepval, mask);
+            if (unlikely(!digit)) goto done;
+            idigit = PyLong_AsLong(digit);
+            Py_DECREF(digit);
+            if (unlikely(idigit < 0)) goto done;
+            val |= ((size_t) idigit) << bits;
+            tmp = PyNumber_Rshift(stepval, shift);
+            if (unlikely(!tmp)) goto done;
+            Py_DECREF(stepval); stepval = tmp;
+        }
+        Py_DECREF(shift); shift = NULL;
+        Py_DECREF(mask); mask = NULL;
+        {
+            long idigit = PyLong_AsLong(stepval);
+            if (unlikely(idigit < 0)) goto done;
+            remaining_bits = ((int) sizeof(size_t) * 8) - bits - (is_unsigned ? 0 : 1);
+            if (unlikely(idigit >= (1L << remaining_bits)))
+                goto raise_overflow;
+            val |= ((size_t) idigit) << bits;
+        }
+        if (!is_unsigned) {
+            if (unlikely(val & (((size_t) 1) << (sizeof(size_t) * 8 - 1))))
+                goto raise_overflow;
+            if (is_negative)
+                val = ~val;
+        }
+        ret = 0;
+    done:
+        Py_XDECREF(shift);
+        Py_XDECREF(mask);
+        Py_XDECREF(stepval);
+#endif
+        if (unlikely(ret))
+            return (size_t) -1;
+        return val;
+    }
+raise_overflow:
+    PyErr_SetString(PyExc_OverflowError,
+        "value too large to convert to size_t");
+    return (size_t) -1;
+raise_neg_overflow:
+    PyErr_SetString(PyExc_OverflowError,
+        "can't convert negative value to size_t");
+    return (size_t) -1;
+}
+
+/* FormatTypeName */
+#if CYTHON_COMPILING_IN_LIMITED_API && __PYX_LIMITED_VERSION_HEX < 0x030d0000
+static __Pyx_TypeName
+__Pyx_PyType_GetFullyQualifiedName(PyTypeObject* tp)
+{
+    PyObject *module = NULL, *name = NULL, *result = NULL;
+    #if __PYX_LIMITED_VERSION_HEX < 0x030b0000
+    name = __Pyx_PyObject_GetAttrStr((PyObject *)tp,
+                                               __pyx_mstate_global->__pyx_n_u_qualname);
+    #else
+    name = PyType_GetQualName(tp);
+    #endif
+    if (unlikely(name == NULL) || unlikely(!PyUnicode_Check(name))) goto bad;
+    module = __Pyx_PyObject_GetAttrStr((PyObject *)tp,
+                                               __pyx_mstate_global->__pyx_n_u_module);
+    if (unlikely(module == NULL) || unlikely(!PyUnicode_Check(module))) goto bad;
+    if (PyUnicode_CompareWithASCIIString(module, "builtins") == 0) {
+        result = name;
+        name = NULL;
+        goto done;
+    }
+    result = PyUnicode_FromFormat("%U.%U", module, name);
+    if (unlikely(result == NULL)) goto bad;
+  done:
+    Py_XDECREF(name);
+    Py_XDECREF(module);
+    return result;
+  bad:
+    PyErr_Clear();
+    if (name) {
+        result = name;
+        name = NULL;
+    } else {
+        result = __Pyx_NewRef(__pyx_mstate_global->__pyx_kp_u_);
+    }
+    goto done;
+}
+#endif
 
 /* CIntFromPy */
 static CYTHON_INLINE long __Pyx_PyLong_As_long(PyObject *x) {

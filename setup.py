@@ -20,6 +20,12 @@ extensions = [
         extra_compile_args=["-fopenmp"],
         extra_link_args=["-fopenmp"],
     ),
+    Extension(
+        "scloop.utils.linear_algebra_gf2.utils.distance_metrics",
+        sources=["./src/scloop/utils/distance_metrics/frechet.pyx"],
+        include_dirs=["./src/scloop/utils/distance_metrics/discrete-frechet-distance"],
+        language="c++",
+    ),
 ]
 
 setup(ext_modules=cythonize(extensions, compiler_directives={"language_level": "3"}))

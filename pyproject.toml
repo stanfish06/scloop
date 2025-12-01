@@ -11,8 +11,6 @@ requires-python = ">=3.12"
 classifiers = [
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: 3.12",
-  "Programming Language :: Python :: 3.13",
-  "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
   "cython>=3.0.12",
@@ -53,6 +51,36 @@ explicit = true
 
 [tool.ruff]
 format.indent-style = "space"
+format.quote-style = "double"
+
+[tool.pyproject-fmt]
+column_width = 120
+indent = 2
+keep_full_version = false
+max_supported_python = "3.12"
+
+[tool.pyright]
+include = [ "src" ]
+exclude = [
+  "**/__pycache__",
+  "examples",
+  "**/*.pyx",
+  "**/*.pxd",
+]
+
+reportMissingImports = "error"
+reportMissingTypeStubs = false
+
+pythonVersion = "3.12"
+pythonPlatform = "Linux"
+
+executionEnvironments = [
+  { root = "src" },
+]
+
+venvPath = "/home/stanfish/Git/scloop"
+venv = ".venv"
+
 # archive
 # [build-system]
 # build-backend = "setuptools.build_meta"
@@ -73,4 +101,3 @@ format.indent-style = "space"
 #     "./src/scloop/utils/linear_algebra_gf2/include",
 #   ] },
 # ]
-format.quote-style = "double"

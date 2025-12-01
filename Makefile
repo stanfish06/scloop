@@ -4,6 +4,7 @@ PROJECT_ROOT := $(shell pwd)
 
 M4RI_SRC := $(PROJECT_ROOT)/src/scloop/utils/linear_algebra_gf2/m4ri
 M4RI_PREFIX := $(PROJECT_ROOT)/src/scloop/utils/linear_algebra_gf2
+DM_PREFIX := $(PROJECT_ROOT)/src/scloop/utils/distance_metrics
 
 build-m4ri:
 	cd $(M4RI_SRC) && \
@@ -27,5 +28,6 @@ clean:
 	rm -rf dist/ *.egg-info
 	cd $(M4RI_SRC) && $(MAKE) clean || true
 	rm -rf $(M4RI_PREFIX)/include $(M4RI_PREFIX)/lib*.a $(M4RI_PREFIX)/lib*.so* $(M4RI_PREFIX)/lib*.la $(M4RI_PREFIX)/pkgconfig
+	rm -f $(DM_PREFIX)/*.so
 
 rebuild: clean build
