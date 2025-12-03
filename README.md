@@ -33,6 +33,7 @@ src/scloop/
 ├── benchmarking
 │   └── __init__.py
 ├── data
+│   ├── analysis_containers.py
 │   ├── containers.py
 │   ├── __init__.py
 │   ├── metadata.py
@@ -52,6 +53,10 @@ src/scloop/
 │   ├── __init__.py
 │   └── plot.py
 ├── preprocessing
+│   ├── delve
+│   │   ├── delve.py
+│   │   ├── __init__.py
+│   │   └── kh.py
 │   ├── downsample.py
 │   ├── __init__.py
 │   └── prepare.py
