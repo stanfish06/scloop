@@ -1,6 +1,25 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+# [tool.setuptools]
+# package-dir = { "" = "src" }
+# ext-modules = [
+#   { name = "scloop.data.ripser_lib", sources = [
+#     "./src/scloop/data/ripser_lib.pyx",
+#     "./src/scloop/data/ripser.cpp",
+#   ], language = "c++", optional = false },
+#   { name = "scloop.utils.linear_algebra_gf2.m4ri_lib", sources = [
+#     "./src/scloop/utils/linear_algebra_gf2/m4ri_lib.pyx",
+#   ], language = "c", optional = false, libraries = ["m4ri"], extra-objects = [
+#     "./src/scloop/utils/linear_algebra_gf2/libm4ri.a",
+#   ], include-dirs = [
+#     "./src/scloop/utils/linear_algebra_gf2/include",
+#   ] },
+# ]
+requires = [ "cython>=3.0.12", "setuptools>=74.1" ]
+
 [project]
 name = "scloop"
-version = "0.1.0"
+version = "0.1.1"
 description = "single-cell loop analysis"
 readme = "README.md"
 authors = [
@@ -83,23 +102,3 @@ executionEnvironments = [
 
 venvPath = "/home/stanfish/Git/scloop"
 venv = ".venv"
-
-[build-system]
-build-backend = "setuptools.build_meta"
-requires = ["Cython>=3.0.12", "setuptools>=74.1"]
-
-# [tool.setuptools]
-# package-dir = { "" = "src" }
-# ext-modules = [
-#   { name = "scloop.data.ripser_lib", sources = [
-#     "./src/scloop/data/ripser_lib.pyx",
-#     "./src/scloop/data/ripser.cpp",
-#   ], language = "c++", optional = false },
-#   { name = "scloop.utils.linear_algebra_gf2.m4ri_lib", sources = [
-#     "./src/scloop/utils/linear_algebra_gf2/m4ri_lib.pyx",
-#   ], language = "c", optional = false, libraries = ["m4ri"], extra-objects = [
-#     "./src/scloop/utils/linear_algebra_gf2/libm4ri.a",
-#   ], include-dirs = [
-#     "./src/scloop/utils/linear_algebra_gf2/include",
-#   ] },
-# ]
