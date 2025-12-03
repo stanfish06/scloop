@@ -16,6 +16,7 @@ class BootstrapAnalysis:
     loop_rank: pd.DataFrame = Field(default_factory=pd.DataFrame)
     parameters: dict = Field(default_factory=dict)
 
+
 @dataclass(config=ConfigDict(arbitrary_types_allowed=True))
 class HodgeAnalysis:
     loop_id: str
@@ -24,11 +25,13 @@ class HodgeAnalysis:
     loops_edges_embedding: list[np.ndarray] = Field(default_factory=list)
     parameters: dict = Field(default_factory=dict)
 
+
 @dataclass(config=ConfigDict(arbitrary_types_allowed=True))
 class PseudotimeAnalysis:
     edge_pseudotime_deltas: np.ndarray = Field(default_factory=lambda: np.array([]))
     pseudotime_source: str = ""
     parameters: dict = Field(default_factory=dict)
+
 
 @dataclass(config=ConfigDict(arbitrary_types_allowed=True))
 class VelocityAnalysis:

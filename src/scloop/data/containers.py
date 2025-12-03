@@ -6,9 +6,11 @@ from .analysis_containers import BootstrapAnalysis, HodgeAnalysis
 from anndata import AnnData
 import numpy as np
 
-'''
+"""
 store core homology data and associated analysis data
-'''
+"""
+
+
 @dataclass(config=ConfigDict(arbitrary_types_allowed=True))
 class HomologyData:
     meta: ScloopMeta

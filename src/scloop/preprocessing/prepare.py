@@ -10,7 +10,8 @@ from scipy.sparse import issparse
 from ..data.types import FeatureSelectionMethod, EmbeddingMethod, EmbeddingNeighbors
 from ..data.metadata import PreprocessMeta, ScloopMeta
 
-__all__ = ['prepare_adata']
+__all__ = ["prepare_adata"]
+
 
 @validate_call(config={"arbitrary_types_allowed": True})
 def _normalize_and_select_hvg(
@@ -105,11 +106,11 @@ def prepare_adata(
     n_top_genes: int = 2000,
     embedding_method: EmbeddingMethod = "diffmap",
     embedding_neighbors: EmbeddingNeighbors = "pca",
-    scale_before_pca = False,
+    scale_before_pca=False,
     n_pca_comps: int = 100,
     n_neighbors: int = 25,
-    n_diffusion_comps : int = 25,
-    scvi_key: str = 'X_scvi',
+    n_diffusion_comps: int = 25,
+    scvi_key: str = "X_scvi",
     copy: bool = False,
 ):
     """
@@ -126,10 +127,13 @@ def prepare_adata(
     """
     adata = adata.copy() if copy else adata
 
-    needs_pca = "X_pca" not in adata.obsm and "pca" in (embedding_method, embedding_neighbors)
+    needs_pca = "X_pca" not in adata.obsm and "pca" in (
+        embedding_method,
+        embedding_neighbors,
+    )
     needs_diffmap = "X_diffmap" not in adata.obsm and embedding_method == "diffmap"
     needs_hvg = feature_selection_method == "hvg"
-    needs_scvi = feature_selection_method == 'scvi'
+    needs_scvi = feature_selection_method == "scvi"
 
     _normalize_and_select_hvg(
         adata,
@@ -138,17 +142,25 @@ def prepare_adata(
         target_sum,
         n_top_genes,
         batch_key,
-        subset = False
+        subset=False,
     )
 
     if needs_pca:
         if scale_before_pca:
             sc.pp.scale(adata)
-        sc.pp.pca(adata, n_comps=n_pca_comps)
+        sc.pp.pca(adata, n_comps=n_pca_comps, use_highly_variable=needs_hvg)
 
     if needs_diffmap:
-        sc.pp.neighbors(adata, method="gauss", n_neighbors=n_neighbors, key_added="neighbors_scloop", use_rep=embedding_neighbors)
-        sc.tl.diffmap(adata, n_comps=n_diffusion_comps, neighbors_key="neighbors_scloop")
+        sc.pp.neighbors(
+            adata,
+            method="gauss",
+            n_neighbors=n_neighbors,
+            key_added="neighbors_scloop",
+            use_rep=embedding_method if embedding_neighbors != "pca" else None,
+        )
+        sc.tl.diffmap(
+            adata, n_comps=n_diffusion_comps, neighbors_key="neighbors_scloop"
+        )
 
     if needs_scvi:
         if scvi_key not in adata.obsm:
@@ -161,7 +173,9 @@ def prepare_adata(
         batch_key=batch_key if feature_selection_method == "hvg" else None,
         n_top_genes=n_top_genes if feature_selection_method == "hvg" else None,
         embedding_method=embedding_method,
-        embedding_neighbors=embedding_neighbors if embedding_method in ("pca", "diffmap") else None,
+        embedding_neighbors=embedding_neighbors
+        if embedding_method in ("pca", "diffmap")
+        else None,
         scale_before_pca=scale_before_pca,
         n_pca_comps=n_pca_comps if needs_pca else None,
         n_neighbors=n_neighbors,

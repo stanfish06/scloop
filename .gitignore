@@ -18,6 +18,7 @@ wheels/
 .specify/
 todo/
 *.ipynb
+.vscode/
 
 # Refactor planning
 REFACTOR_PLAN.md

@@ -14,6 +14,7 @@ classifiers = [
 ]
 dependencies = [
   "cython>=3.0.12",
+  "numba>=0.62.1",
   "numpy<2",
   "pandas",
   "pip>=25.2",
@@ -21,11 +22,13 @@ dependencies = [
   "pytest>=8.4",
   "rich>=14",
   "scanpy[leiden]>=1.11.2",
+  "scikit-misc>=0.5.2",
   "statsmodels==0.14.4",
   "tensorflow>=2.18.1",
   "torch",
   "torchdyn>=1.0.6",
   "torchvision",
+  "tqdm-joblib>=0.0.5",
   "umap-learn>=0.5.7",
 ]
 
