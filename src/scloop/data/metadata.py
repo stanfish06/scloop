@@ -10,7 +10,7 @@ class PreprocessMeta(BaseModel):
     feature_selection_method: FeatureSelectionMethod
     batch_key: str | None = None
     n_top_genes: int | None = None
-    embedding_method: EmbeddingMethod
+    embedding_method: EmbeddingMethod | None = None
     embedding_neighbors: EmbeddingNeighbors | None = None
     scale_before_pca: bool
     n_pca_comps: int | None = None
