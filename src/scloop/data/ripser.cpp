@@ -653,12 +653,14 @@ public:
 				bool should_add = false;
 				bool is_redundant = false;
 				// Check if triangle is part of any tetrahedron
-				if (!tetrads.has_next(false)) {
+				// IMPORTANT: Use has_next() (not has_next(false)) to enumerate ALL tetrahedra
+				// has_next(false) skips some cofacets for efficiency, which breaks our counting logic
+				if (!tetrads.has_next()) {
 					// Standalone triangle - always include
 					should_add = true;
 				} else {
 					// Process all tetrahedra containing this triangle
-					while (tetrads.has_next(false)) {
+					while (tetrads.has_next()) {
 						auto tetrad = tetrads.next();
 						if (get_diameter(tetrad) > threshold) {
 							// Skip tetrahedra outside the filtered complex
