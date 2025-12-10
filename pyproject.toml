@@ -34,6 +34,7 @@ classifiers = [
 ]
 dependencies = [
   "cython>=3.0.12",
+  "igraph>=0.11.0",
   "numba>=0.62.1",
   "numpy<2",
   "pandas",

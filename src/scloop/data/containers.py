@@ -8,6 +8,7 @@ from anndata import AnnData
 from sklearn.neighbors import radius_neighbors_graph
 from scipy.sparse import csr_matrix
 from .ripser_lib import ripser
+from .loop_reconstruction import reconstruct_n_loop_representatives
 import numpy as np
 
 """
