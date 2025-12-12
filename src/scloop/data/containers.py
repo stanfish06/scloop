@@ -13,6 +13,7 @@ from ..computing.homology import (
     compute_sparse_pairwise_distance,
 )
 from .analysis_containers import BootstrapAnalysis, HodgeAnalysis
+from .loop_reconstruction import reconstruct_n_loop_representatives
 from .metadata import ScloopMeta
 from .types import Diameter_t, Index_t, IndexListDistMatrix, Size_t
 from .utils import decode_edges, decode_triangles
@@ -79,7 +80,10 @@ class HomologyData:
 
     meta: ScloopMeta
     persistence_diagram: list[np.ndarray] | None = None
-    loop_representatives: list[list[np.ndarray]] | None = None
+    loop_representatives: list[list[list[int]]] | None = None
+    cocycles: list | None = None
+    pairwise_distance_matrix: csr_matrix | None = None
+    pairwise_vertex_indices: list[int] | None = None
     boundary_matrix_d1: BoundaryMatrixD1 | None = None
     bootstrap_data: BootstrapAnalysis | None = None
     hodge_data: HodgeAnalysis | None = None
@@ -106,7 +110,12 @@ class HomologyData:
         bootstrap: bool = False,
         **nei_kwargs,
     ) -> None:
-        persistence_diagram, _, _ = compute_persistence_diagram_and_cocycles(
+        (
+            persistence_diagram,
+            cocycles,
+            vertex_indices,
+            sparse_pairwise_distance_matrix,
+        ) = compute_persistence_diagram_and_cocycles(
             adata=adata,
             meta=self.meta,
             thresh=thresh,
@@ -114,17 +123,26 @@ class HomologyData:
             **nei_kwargs,
         )
         self.persistence_diagram = persistence_diagram
+        self.cocycles = cocycles
+        self.pairwise_distance_matrix = sparse_pairwise_distance_matrix
+        self.pairwise_vertex_indices = vertex_indices
 
     def _compute_boundary_matrix(
         self, adata: AnnData, thresh: Diameter_t | None = None, **nei_kwargs
     ) -> None:
         assert self.meta.preprocess
         assert self.meta.preprocess.num_vertices
-        result, edge_ids, trig_ids, sparse_pairwise_distance_matrix = (
-            compute_boundary_matrix_data(
-                adata=adata, meta=self.meta, thresh=thresh, **nei_kwargs
-            )
+        (
+            result,
+            edge_ids,
+            trig_ids,
+            sparse_pairwise_distance_matrix,
+            vertex_indices,
+        ) = compute_boundary_matrix_data(
+            adata=adata, meta=self.meta, thresh=thresh, **nei_kwargs
         )
+        self.pairwise_distance_matrix = sparse_pairwise_distance_matrix
+        self.pairwise_vertex_indices = vertex_indices
         edge_ids_1d = np.array(edge_ids).flatten()
         # reindex edges (also keep as colllection of triplets, easier to subset later)
         edge_ids_reindex = np.searchsorted(edge_ids_1d, edge_ids)
@@ -147,5 +165,57 @@ class HomologyData:
             col_simplex_diams=result.triangle_diameters,
         )
 
-    def _compute_loop_representatives(self):
-        pass
+    def _compute_loop_representatives(
+        self,
+        loop_idx: int,
+        n: int = 8,
+        life_pct: float = 0.1,
+        n_force_deviate: int = 4,
+        n_reps_per_loop: int = 8,
+        loop_lower_pct: float = 5,
+        loop_upper_pct: float = 95,
+        n_max_cocycles: int = 10,
+    ):
+        assert self.persistence_diagram is not None
+        assert self.cocycles is not None
+        assert self.pairwise_distance_matrix is not None
+
+        births, deaths = self.persistence_diagram[1]
+        loop_birth = float(births[loop_idx])
+        loop_death = float(deaths[loop_idx])
+
+        dm = self.pairwise_distance_matrix.tocoo()
+        edge_weights: dict[tuple[int, int], float] = {}
+        for i, j, w in zip(dm.row.tolist(), dm.col.tolist(), dm.data.tolist()):
+            if i == j:
+                continue
+            key = (i, j) if i < j else (j, i)
+            if key not in edge_weights or w < edge_weights[key]:
+                edge_weights[key] = float(w)
+        if not edge_weights:
+            return [], []
+
+        edges = list(edge_weights.keys())
+        edge_births = np.array([edge_weights[e] for e in edges], dtype=float)
+
+        loops, dists = reconstruct_n_loop_representatives(
+            cocycles_dim1=self.cocycles[1][loop_idx],
+            edges=edges,
+            edge_births=edge_births,
+            loop_birth=loop_birth,
+            loop_death=loop_death,
+            n=n,
+            life_pct=life_pct,
+            n_force_deviate=n_force_deviate,
+            n_reps_per_loop=n_reps_per_loop,
+            loop_lower_pct=loop_lower_pct,
+            loop_upper_pct=loop_upper_pct,
+            n_max_cocycles=n_max_cocycles,
+        )
+
+        if self.loop_representatives is None:
+            self.loop_representatives = []
+        while len(self.loop_representatives) <= loop_idx:
+            self.loop_representatives.append([])
+        self.loop_representatives[loop_idx] = loops
+        return loops, dists

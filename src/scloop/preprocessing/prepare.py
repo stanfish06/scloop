@@ -176,12 +176,12 @@ def prepare_adata(
         if scvi_key not in adata.obsm:
             raise ValueError(f"scvi key {scvi_key} does not exist in adata.obsm")
 
-    '''
+    """
     ========= downsample =========
     - minimize bottleneck distance
     - keep rare cell types
     ==============================
-    '''
+    """
     if embedding_downsample is None:
         embedding_downsample = embedding_method
     if downsample:
@@ -190,7 +190,7 @@ def prepare_adata(
             embedding_method=embedding_downsample,
             groupby=groupby_downsample,
             n=n_downsample,
-            random_state=random_state_downsample
+            random_state=random_state_downsample,
         )
     else:
         indices_downsample = None
@@ -211,7 +211,9 @@ def prepare_adata(
         n_diffusion_comps=n_diffusion_comps if needs_diffmap else None,
         scvi_key=scvi_key if needs_scvi else None,
         indices_downsample=indices_downsample,
-        num_vertices=len(indices_downsample) if indices_downsample is not None else adata.shape[0]
+        num_vertices=len(indices_downsample)
+        if indices_downsample is not None
+        else adata.shape[0],
     )
 
     if "scloop_meta" not in adata.uns:

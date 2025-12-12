@@ -1,7 +1,13 @@
 # Copyright 2025 Zhiyuan Yu (Heemskerk's lab, University of Michigan)
 from pydantic import BaseModel
 
-from .types import EmbeddingMethod, EmbeddingNeighbors, FeatureSelectionMethod, Size_t, IndexListDownSample
+from .types import (
+    EmbeddingMethod,
+    EmbeddingNeighbors,
+    FeatureSelectionMethod,
+    IndexListDownSample,
+    Size_t,
+)
 
 
 class PreprocessMeta(BaseModel):
