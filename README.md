@@ -46,10 +46,14 @@ src/scloop/
 │   └── __init__.py
 ├── benchmarking
 │   └── __init__.py
+├── computing
+│   ├── homology.py
+│   └── __init__.py
 ├── data
 │   ├── analysis_containers.py
 │   ├── containers.py
 │   ├── __init__.py
+│   ├── loop_reconstruction.py
 │   ├── metadata.py
 │   ├── ripser.cpp
 │   ├── ripser.hpp
@@ -76,7 +80,8 @@ src/scloop/
 │   └── prepare.py
 ├── py.typed
 ├── tools
-│   └── __init__.py
+│   ├── __init__.py
+│   └── _loops.py
 └── utils
     ├── distance_metrics
     │   ├── discrete-frechet-distance
