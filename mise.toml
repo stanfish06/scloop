@@ -51,5 +51,13 @@ run = [
 	"tree -L 3 -I '__pycache__|*.pyc|*.so|archive|m4ri|*~' src/scloop/"
 ]
 
+[tasks.bump]
+run = [
+    "uv version --bump patch",
+    "git tag $(uv version --short)",
+    "git push --tags",
+    "git push"
+]
+
 [tasks.kernel]
 run = "uv run ipython kernel install --name 'scLoop' --user"
