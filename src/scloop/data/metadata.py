@@ -1,7 +1,7 @@
 # Copyright 2025 Zhiyuan Yu (Heemskerk's lab, University of Michigan)
 from pydantic import BaseModel
 
-from .types import EmbeddingMethod, EmbeddingNeighbors, FeatureSelectionMethod, Size_t
+from .types import EmbeddingMethod, EmbeddingNeighbors, FeatureSelectionMethod, Size_t, IndexListDownSample
 
 
 class PreprocessMeta(BaseModel):
@@ -17,7 +17,7 @@ class PreprocessMeta(BaseModel):
     n_neighbors: int
     n_diffusion_comps: int | None = None
     scvi_key: str | None = None
-    downsample_indices: list | None = None
+    indices_downsample: IndexListDownSample | None = None
     num_vertices: Size_t | None = None
 
 

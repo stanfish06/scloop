@@ -20,9 +20,7 @@ from .utils import decode_edges, decode_triangles
 
 class BoundaryMatrix(BaseModel):
     num_vertices: Size_t
-    data: tuple[
-        list[Index_t], list[Index_t]
-    ]  # in coo format (row indices, col indices) of ones
+    data: tuple[list, list]  # in coo format (row indices, col indices) of ones
     shape: tuple[Size_t, Size_t]
     row_simplex_ids: list[Index_t]
     col_simplex_ids: list[Index_t]
@@ -64,6 +62,8 @@ class BoundaryMatrix(BaseModel):
 
 
 class BoundaryMatrixD1(BoundaryMatrix):
+    data: tuple[list[list[Index_t]], list[list[Index_t]]]
+
     def row_simplex_decode(self) -> list[tuple[Index_t, Index_t]]:
         return decode_edges(np.array(self.row_simplex_ids), self.num_vertices)
 
@@ -120,16 +120,30 @@ class HomologyData:
     ) -> None:
         assert self.meta.preprocess
         assert self.meta.preprocess.num_vertices
-        result, *_ = compute_boundary_matrix_data(
-            adata=adata, meta=self.meta, thresh=thresh, **nei_kwargs
+        result, edge_ids, trig_ids, sparse_pairwise_distance_matrix = (
+            compute_boundary_matrix_data(
+                adata=adata, meta=self.meta, thresh=thresh, **nei_kwargs
+            )
         )
+        edge_ids_1d = np.array(edge_ids).flatten()
+        # reindex edges (also keep as colllection of triplets, easier to subset later)
+        edge_ids_reindex = np.searchsorted(edge_ids_1d, edge_ids)
+        edge_diameters = decode_edges(edge_ids_1d, self.meta.preprocess.num_vertices)
+        edge_diameters = [
+            sparse_pairwise_distance_matrix[i][j] for i, j in edge_diameters
+        ]
         self.boundary_matrix_d1 = BoundaryMatrixD1(
             num_vertices=self.meta.preprocess.num_vertices,
-            data=([], []),
-            shape=(0, 0),
-            row_simplex_ids=[],
-            col_simplex_ids=[],
-            row_simplex_diams=[],
+            data=(
+                edge_ids_reindex.tolist(),
+                np.repeat(
+                    np.expand_dims(np.arange(edge_ids_reindex.shape[0]), 1), 3, axis=1
+                ).tolist(),
+            ),
+            shape=(len(edge_ids_1d), len(trig_ids)),
+            row_simplex_ids=edge_ids_1d.tolist(),
+            col_simplex_ids=trig_ids,
+            row_simplex_diams=edge_diameters,
             col_simplex_diams=result.triangle_diameters,
         )
 
