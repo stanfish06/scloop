@@ -52,14 +52,16 @@ def encode_triangles_and_edges(triangles, num_vertices):
     trig_ids = []
     edge_ids = []
     for trig in triangles:
-        ids = []
-        ids.append(edge_idx_encode(i=trig[0], j=trig[1], num_vertices=num_vertices))
-        ids.append(edge_idx_encode(i=trig[0], j=trig[2], num_vertices=num_vertices))
-        ids.append(edge_idx_encode(i=trig[1], j=trig[2], num_vertices=num_vertices))
+        i0 = trig[0]
+        i1 = trig[1]
+        i2 = trig[2]
+        ids = [
+            edge_idx_encode(i=i0, j=i1, num_vertices=num_vertices),
+            edge_idx_encode(i=i0, j=i2, num_vertices=num_vertices),
+            edge_idx_encode(i=i1, j=i2, num_vertices=num_vertices),
+        ]
         edge_ids.append(ids)
         trig_ids.append(
-            triangle_idx_encode(
-                i=trig[0], j=trig[1], k=trig[2], num_vertices=num_vertices
-            )
+            triangle_idx_encode(i=i0, j=i1, k=i2, num_vertices=num_vertices)
         )
     return edge_ids, trig_ids

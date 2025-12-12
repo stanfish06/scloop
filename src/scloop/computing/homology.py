@@ -59,11 +59,11 @@ def compute_persistence_diagram_and_cocycles(
         adata=adata, meta=meta, bootstrap=bootstrap, thresh=thresh, **nei_kwargs
     )
     result = ripser(
-        distance_matrix=sparse_pairwise_distance_matrix,
+        distance_matrix=sparse_pairwise_distance_matrix.tocoo(copy=False),
         modulus=2,
         dim_max=1,
         threshold=thresh,
-        do_cocyles=True,
+        do_cocycles=True,
     )
     return (
         result.births_and_deaths_by_dim,
@@ -81,8 +81,12 @@ def compute_boundary_matrix_data(
     sparse_pairwise_distance_matrix, vertex_indices = compute_sparse_pairwise_distance(
         adata=adata, meta=meta, bootstrap=False, thresh=thresh, **nei_kwargs
     )
-    result = get_boundary_matrix(sparse_pairwise_distance_matrix, thresh)
-    edge_ids, trig_ids = encode_triangles_and_edges(
-        np.array(result.triangle_vertices), meta.preprocess.num_vertices
-    )
+    result = get_boundary_matrix(sparse_pairwise_distance_matrix.tocoo(), thresh)
+    triangles = np.asarray(result.triangle_vertices, dtype=np.int64)
+    if len(triangles) == 0:
+        edge_ids, trig_ids = [], []
+    else:
+        edge_ids, trig_ids = encode_triangles_and_edges(
+            triangles, meta.preprocess.num_vertices
+        )
     return result, edge_ids, trig_ids, sparse_pairwise_distance_matrix, vertex_indices

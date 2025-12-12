@@ -83,7 +83,7 @@ class HomologyData:
     loop_representatives: list[list[list[int]]] | None = None
     cocycles: list | None = None
     pairwise_distance_matrix: csr_matrix | None = None
-    pairwise_vertex_indices: list[int] | None = None
+    selected_vertex_indices: list[int] | None = None
     boundary_matrix_d1: BoundaryMatrixD1 | None = None
     bootstrap_data: BootstrapAnalysis | None = None
     hodge_data: HodgeAnalysis | None = None
@@ -125,7 +125,7 @@ class HomologyData:
         self.persistence_diagram = persistence_diagram
         self.cocycles = cocycles
         self.pairwise_distance_matrix = sparse_pairwise_distance_matrix
-        self.pairwise_vertex_indices = vertex_indices
+        self.selected_vertex_indices = vertex_indices
 
     def _compute_boundary_matrix(
         self, adata: AnnData, thresh: Diameter_t | None = None, **nei_kwargs
@@ -142,13 +142,13 @@ class HomologyData:
             adata=adata, meta=self.meta, thresh=thresh, **nei_kwargs
         )
         self.pairwise_distance_matrix = sparse_pairwise_distance_matrix
-        self.pairwise_vertex_indices = vertex_indices
+        self.selected_vertex_indices = vertex_indices
         edge_ids_1d = np.array(edge_ids).flatten()
         # reindex edges (also keep as colllection of triplets, easier to subset later)
         edge_ids_reindex = np.searchsorted(edge_ids_1d, edge_ids)
         edge_diameters = decode_edges(edge_ids_1d, self.meta.preprocess.num_vertices)
         edge_diameters = [
-            sparse_pairwise_distance_matrix[i][j] for i, j in edge_diameters
+            sparse_pairwise_distance_matrix[i, j] for i, j in edge_diameters
         ]
         self.boundary_matrix_d1 = BoundaryMatrixD1(
             num_vertices=self.meta.preprocess.num_vertices,
