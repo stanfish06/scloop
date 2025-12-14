@@ -3,20 +3,26 @@ from abc import abstractmethod
 
 import numpy as np
 from anndata import AnnData
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
 from pydantic.dataclasses import dataclass
 from scipy.sparse import csr_matrix, triu
 
 from ..computing.homology import (
     compute_boundary_matrix_data,
+    compute_loop_homological_equivalence,
     compute_persistence_diagram_and_cocycles,
 )
 from .analysis_containers import BootstrapAnalysis, HodgeAnalysis
 from .loop_reconstruction import reconstruct_n_loop_representatives
 from .metadata import BootstrapMeta, ScloopMeta
-from tqdm import tqdm
 from .types import Diameter_t, Index_t, IndexListDownSample, Size_t
-from .utils import decode_edges, decode_triangles, extract_edges_from_coo
+from .utils import (
+    decode_edges,
+    decode_triangles,
+    edge_ids_to_rows,
+    extract_edges_from_coo,
+    loop_vertices_to_edge_ids,
+)
 
 
 class BoundaryMatrix(BaseModel):
@@ -63,7 +69,7 @@ class BoundaryMatrix(BaseModel):
 
 
 class BoundaryMatrixD1(BoundaryMatrix):
-    data: tuple[list[list[Index_t]], list[list[Index_t]]]
+    data: tuple[list[Index_t], list[Index_t]]
 
     def row_simplex_decode(self) -> list[tuple[Index_t, Index_t]]:
         return decode_edges(np.array(self.row_simplex_ids), self.num_vertices)
@@ -85,6 +91,25 @@ class HomologyData:
     boundary_matrix_d1: BoundaryMatrixD1 | None = None
     bootstrap_data: BootstrapAnalysis | None = None
     hodge_data: HodgeAnalysis | None = None
+
+    def _loops_to_edge_mask(self, loops: list[list[int]]) -> np.ndarray:
+        assert self.boundary_matrix_d1 is not None
+        num_vertices = self.boundary_matrix_d1.num_vertices
+        n_edges = self.boundary_matrix_d1.shape[0]
+
+        edge_row_ids = np.full(num_vertices * num_vertices, -1, dtype=np.int64)
+        for row_idx, edge_id in enumerate(self.boundary_matrix_d1.row_simplex_ids):
+            edge_row_ids[edge_id] = row_idx
+
+        mask = np.zeros((len(loops), n_edges), dtype=bool)
+        for idx, loop in enumerate(loops):
+            edge_ids = loop_vertices_to_edge_ids(
+                np.asarray(loop, dtype=np.int64), num_vertices
+            )
+            row_ids = edge_ids_to_rows(edge_ids, edge_row_ids)
+            if row_ids.size > 0:
+                mask[idx, row_ids] = True
+        return mask
 
     def _compute_homology(
         self,
@@ -174,7 +199,9 @@ class HomologyData:
             loop_deaths = np.array(self.persistence_diagram[1][1], dtype=np.float32)
             cocycles = self.cocycles[1]
             if self.meta.preprocess.indices_downsample is not None:
-                vertex_ids: IndexListDownSample = self.meta.preprocess.indices_downsample
+                vertex_ids: IndexListDownSample = (
+                    self.meta.preprocess.indices_downsample
+                )
             else:
                 vertex_ids = (
                     np.arange(pairwise_distance_matrix.shape[0])
@@ -197,7 +224,9 @@ class HomologyData:
                 dtype=np.float32,
             )  # type: ignore[attr-defined]
             cocycles = self.bootstrap_data.cocycles[idx_bootstrap][1]  # type: ignore[attr-defined]
-            vertex_ids: IndexListDownSample = self.meta.bootstrap.indices_resample[idx_bootstrap]
+            vertex_ids: IndexListDownSample = self.meta.bootstrap.indices_resample[
+                idx_bootstrap
+            ]
 
         if loop_births.size == 0:
             return [], []
@@ -260,6 +289,42 @@ class HomologyData:
             else:
                 bootstrap_data.loop_representatives[idx_bootstrap][loop_idx] = loops  # type: ignore[attr-defined]
 
+    def assess_bootstrap_homology_equivalence(
+        self,
+        source_class_idx: int,
+        target_class_idx: int | None = None,
+        idx_bootstrap: int = 0,
+        n_pairs_check: int = 10,
+    ) -> bool:
+        assert self.boundary_matrix_d1 is not None
+        assert self.loop_representatives is not None
+        assert self.bootstrap_data is not None
+        if target_class_idx is None:
+            target_class_idx = source_class_idx
+        if idx_bootstrap >= len(self.bootstrap_data.loop_representatives):  # type: ignore[attr-defined]
+            return False
+        if source_class_idx >= len(self.loop_representatives):
+            return False
+        boot_loops_all = self.bootstrap_data.loop_representatives[idx_bootstrap]  # type: ignore[attr-defined]
+        if target_class_idx >= len(boot_loops_all):
+            return False
+
+        source_loops = self.loop_representatives[source_class_idx]
+        target_loops = boot_loops_all[target_class_idx]
+        if len(source_loops) == 0 or len(target_loops) == 0:
+            return False
+
+        mask_a = self._loops_to_edge_mask(source_loops)
+        mask_b = self._loops_to_edge_mask(target_loops)
+
+        results, _ = compute_loop_homological_equivalence(
+            boundary_matrix_d1=self.boundary_matrix_d1,
+            loop_mask_a=mask_a,
+            loop_mask_b=mask_b,
+            n_pairs_check=n_pairs_check,
+        )
+        return any(r == 0 for r in results)
+
     def _bootstrap(
         self,
         adata: AnnData,
@@ -292,7 +357,7 @@ class HomologyData:
                 thresh=thresh,
                 bootstrap=True,
                 noise_scale=noise_scale,
-                **nei_kwargs
+                **nei_kwargs,
             )
             self._compute_loop_representatives(
                 pairwise_distance_matrix=pairwise_distance_matrix,

@@ -61,5 +61,10 @@ run = [
     "git push"
 ]
 
+[tasks.lint]
+run = [
+    "uv run ty check",
+]
+
 [tasks.kernel]
 run = "uv run ipython kernel install --name 'scLoop' --user"

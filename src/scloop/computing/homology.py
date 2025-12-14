@@ -1,6 +1,8 @@
 # Copyright 2025 Zhiyuan Yu (Heemskerk's lab, University of Michigan)
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 from anndata import AnnData
 from scipy.sparse import csr_matrix
@@ -10,6 +12,10 @@ from ..data.metadata import ScloopMeta
 from ..data.ripser_lib import get_boundary_matrix, ripser
 from ..data.types import Diameter_t, IndexListDistMatrix
 from ..data.utils import encode_triangles_and_edges
+from ..utils.linear_algebra_gf2.m4ri_lib import solve_multiple_gf2
+
+if TYPE_CHECKING:
+    from ..data.containers import BoundaryMatrixD1
 
 
 def compute_sparse_pairwise_distance(
@@ -59,7 +65,12 @@ def compute_persistence_diagram_and_cocycles(
     **nei_kwargs,
 ) -> tuple[list, list, IndexListDistMatrix | None, csr_matrix]:
     sparse_pairwise_distance_matrix, boot_idx = compute_sparse_pairwise_distance(
-        adata=adata, meta=meta, bootstrap=bootstrap, noise_scale=noise_scale, thresh=thresh, **nei_kwargs
+        adata=adata,
+        meta=meta,
+        bootstrap=bootstrap,
+        noise_scale=noise_scale,
+        thresh=thresh,
+        **nei_kwargs,
     )
     result = ripser(
         distance_matrix=sparse_pairwise_distance_matrix.tocoo(copy=False),
@@ -93,3 +104,41 @@ def compute_boundary_matrix_data(
             triangles, meta.preprocess.num_vertices
         )
     return result, edge_ids, trig_ids, sparse_pairwise_distance_matrix, vertex_indices
+
+
+def compute_loop_homological_equivalence(
+    boundary_matrix_d1: "BoundaryMatrixD1",
+    loop_mask_a: np.ndarray,
+    loop_mask_b: np.ndarray,
+    n_pairs_check: int = 3,
+) -> tuple[list, list]:
+    """
+    Parameters
+    ---------
+    loop_mask_a: np.ndarray
+        Boolean mask of shape (n_a, n_edges); True where edge (row) is in the loop
+    loop_mask_b: np.ndarray
+        Boolean mask of shape (n_b, n_edges)
+    """
+    assert loop_mask_a.shape[1] == boundary_matrix_d1.shape[0]
+    assert loop_mask_b.shape[1] == boundary_matrix_d1.shape[0]
+
+    # in F2, sum is just xor
+    loop_sums = loop_mask_a[:, None, :] ^ loop_mask_b[None, :, :]
+    loop_sums = loop_sums.reshape(-1, loop_sums.shape[-1])
+    if loop_sums.shape[0] == 0:
+        return [], []
+    n_pairs_check = min(n_pairs_check, loop_sums.shape[0])
+
+    one_idx_b_list = [
+        np.flatnonzero(loop_sums[i]).astype(int).tolist() for i in range(n_pairs_check)
+    ]
+    results, solutions = solve_multiple_gf2(
+        one_ridx_A=boundary_matrix_d1.data[0],
+        one_cidx_A=boundary_matrix_d1.data[1],
+        nrow_A=boundary_matrix_d1.shape[0],
+        ncol_A=boundary_matrix_d1.shape[1],
+        one_idx_b_list=one_idx_b_list,
+    )
+
+    return results, solutions

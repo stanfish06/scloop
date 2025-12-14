@@ -85,3 +85,40 @@ def extract_edges_from_coo(rows, cols, data):
         count += 1
 
     return edges[:count], weights[:count]
+
+
+@jit(nopython=True)
+def loop_vertices_to_edge_ids(
+    loop_vertices: np.ndarray, num_vertices: Size_t
+) -> np.ndarray:
+    """
+    Encode a loop represented by vertex indices into edge ids (edge_idx_encode),
+    closing the loop back to the starting vertex.
+    """
+    n = loop_vertices.shape[0]
+    if n == 0:
+        return np.empty(0, dtype=np.int64)
+
+    edge_ids = np.empty(n, dtype=np.int64)
+    for k in range(n):
+        i = loop_vertices[k]
+        j = loop_vertices[(k + 1) % n]
+        edge_ids[k] = edge_idx_encode(int(i), int(j), num_vertices)
+    return edge_ids
+
+
+@jit(nopython=True)
+def edge_ids_to_rows(edge_ids: np.ndarray, edge_row_ids: np.ndarray) -> np.ndarray:
+    """
+    Map encoded edge ids to row indices
+    where index is edge id and value is row index or -1 if absent.
+    """
+    n = edge_ids.shape[0]
+    rows = np.empty(n, dtype=np.int64)
+    count = 0
+    for k in range(n):
+        row = edge_row_ids[edge_ids[k]]
+        if row >= 0:
+            rows[count] = row
+            count += 1
+    return rows[:count]

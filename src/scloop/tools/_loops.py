@@ -1,9 +1,6 @@
 # Copyright 2025 Zhiyuan Yu (Heemskerk's lab, University of Michigan)
 from __future__ import annotations
 
-from typing import Sequence
-
-import numpy as np
 from anndata import AnnData
 
 from ..data.containers import HomologyData
@@ -17,6 +14,7 @@ def _get_scloop_meta(adata: AnnData) -> ScloopMeta:
     if isinstance(meta, dict):
         meta = ScloopMeta(**meta)
     return meta
+
 
 def find_loops(
     adata: AnnData,
@@ -33,6 +31,6 @@ def find_loops(
     hd._compute_loop_representatives(  # type: ignore[attr-defined]
         pairwise_distance_matrix=sparse_dist_mat,
         vertex_ids=meta.preprocess.indices_downsample,
-        top_k=top_k
+        top_k=top_k,
     )
     adata.uns["scloop"] = hd

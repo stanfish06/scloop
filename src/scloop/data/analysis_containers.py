@@ -5,12 +5,14 @@ import numpy as np
 from pydantic import ConfigDict, Field
 from pydantic.dataclasses import dataclass
 
+
 @dataclass
 class BootstrapAnalysis:
     num_bootstraps: int = 0
     persistence_diagrams: list[list] = Field(default_factory=list)
     cocycles: list[list] = Field(default_factory=list)
     loop_representatives: list[list[list[list[int]]]] = Field(default_factory=list)
+
 
 @dataclass(config=ConfigDict(arbitrary_types_allowed=True))
 class HodgeAnalysis:
