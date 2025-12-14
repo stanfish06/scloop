@@ -14,7 +14,8 @@ from ..computing.homology import (
 from .analysis_containers import BootstrapAnalysis, HodgeAnalysis
 from .loop_reconstruction import reconstruct_n_loop_representatives
 from .metadata import ScloopMeta
-from .types import Diameter_t, Index_t, Size_t
+from tqdm import tqdm
+from .types import Diameter_t, Index_t, IndexListDownSample, Size_t
 from .utils import decode_edges, decode_triangles, extract_edges_from_coo
 
 
@@ -153,7 +154,6 @@ class HomologyData:
     def _compute_loop_representatives(
         self,
         pairwise_distance_matrix: csr_matrix,
-        vertex_ids: list[int],  # important, must be the indicies in original data
         top_k: int = 1,  # top k homology classes to compute representatives
         bootstrap: bool = False,
         idx_bootstrap: int = 0,
@@ -165,16 +165,29 @@ class HomologyData:
         loop_lower_t_pct: float = 5,
         loop_upper_t_pct: float = 95,
     ):
+        assert pairwise_distance_matrix.shape is not None
+        assert self.meta.preprocess is not None
         if not bootstrap:
             assert self.persistence_diagram is not None
             assert self.cocycles is not None
             loop_births = np.array(self.persistence_diagram[1][0], dtype=np.float32)
             loop_deaths = np.array(self.persistence_diagram[1][1], dtype=np.float32)
             cocycles = self.cocycles[1]
+            if self.meta.preprocess.indices_downsample is not None:
+                vertex_ids: IndexListDownSample = self.meta.preprocess.indices_downsample
+            else:
+                vertex_ids = (
+                    np.arange(pairwise_distance_matrix.shape[0])
+                    .astype(np.int64)
+                    .tolist()
+                )
         else:
             assert self.bootstrap_data is not None
             assert len(self.bootstrap_data.persistence_diagrams) > idx_bootstrap  # type: ignore[attr-defined]
-            assert len(self.bootstrap_data.cocyles) > idx_bootstrap  # type: ignore[attr-defined]
+            assert len(self.bootstrap_data.cocycles) > idx_bootstrap  # type: ignore[attr-defined]
+            assert self.meta.bootstrap is not None
+            assert self.meta.bootstrap.indices_resample is not None
+            assert len(self.meta.bootstrap.indices_resample) > idx_bootstrap
             loop_births = np.array(
                 self.bootstrap_data.persistence_diagrams[idx_bootstrap][1][0],
                 dtype=np.float32,
@@ -183,7 +196,16 @@ class HomologyData:
                 self.bootstrap_data.persistence_diagrams[idx_bootstrap][1][1],
                 dtype=np.float32,
             )  # type: ignore[attr-defined]
-            cocycles = self.bootstrap_data.cocyles[idx_bootstrap].cocycles[1]  # type: ignore[attr-defined]
+            cocycles = self.bootstrap_data.cocycles[idx_bootstrap].cocycles[1]  # type: ignore[attr-defined]
+            vertex_ids: IndexListDownSample = self.meta.bootstrap.indices_resample[idx_bootstrap]
+
+        if loop_births.size == 0:
+            return [], []
+        if top_k is None:
+            top_k = loop_births.size
+        if top_k <= 0:
+            return [], []
+        top_k = min(top_k, loop_births.size)
 
         # get top k homology classes
         indices_top_k = np.argpartition(loop_deaths - loop_births, -top_k)[-top_k:]
@@ -241,104 +263,38 @@ class HomologyData:
     def _bootstrap(
         self,
         adata: AnnData,
-        n: int,
+        n_bootstrap: int,
         thresh: Diameter_t | None = None,
+        top_k: int = 1,
         noise_scale: float = 1e-3,
         n_reps_per_loop: int = 8,
         life_pct: float = 0.1,
+        n_cocycles_used: int = 10,
         n_force_deviate: int = 4,
-        loop_lower_pct: float = 5,
-        loop_upper_pct: float = 95,
-        n_max_cocycles: int = 10,
+        k_yen: int = 8,
+        loop_lower_t_pct: float = 5,
+        loop_upper_t_pct: float = 95,
         verbose: bool = True,
         **nei_kwargs,
-    ):
-        pass
-        # from tqdm import tqdm
-        # from sklearn.neighbors import radius_neighbors_graph
-
-        # assert self.meta.preprocess is not None
-        # assert self.boundary_matrix_d1 is not None, "Run find_loops first"
-
-        # self.bootstrap_data = BootstrapAnalysis(num_bootstraps=n)
-
-        # emb_key = f"X_{self.meta.preprocess.embedding_method}"
-        # X_orig = adata.obsm[emb_key]
-
-        # if self.meta.preprocess.indices_downsample is not None:
-        #     X_orig = X_orig[self.meta.preprocess.indices_downsample]
-
-        # n_cells = X_orig.shape[0]
-
-        # for boot_iter in tqdm(range(n), desc="Bootstrap", disable=not verbose):
-        #     boot_indices = np.random.choice(n_cells, size=n_cells, replace=True)
-        #     X_boot = X_orig[boot_indices] + np.random.normal(
-        #         scale=noise_scale, size=X_orig.shape
-        #     )
-
-        #     sparse_dist_mat = radius_neighbors_graph(
-        #         X=X_boot,
-        #         radius=thresh,
-        #         mode='distance',
-        #         metric='euclidean',
-        #         **nei_kwargs,
-        #     )
-
-        #     from .ripser_lib import ripser
-        #     result = ripser(
-        #         distance_matrix=sparse_dist_mat.tocoo(copy=False),
-        #         modulus=2,
-        #         dim_max=1,
-        #         threshold=thresh,
-        #         do_cocycles=True,
-        #     )
-
-        #     bootstrap_data = self.bootstrap_data
-        #     bootstrap_data.persistence_diagrams.append(result.births_and_deaths_by_dim)
-        #     bootstrap_data.cocycles.append(result.cocycles_by_dim)
-
-        #     births_1, deaths_1 = result.births_and_deaths_by_dim[1]
-        #     if len(births_1) == 0:
-        #         bootstrap_data.loop_representatives.append([])
-        #         continue
-
-        #     n_loops_boot = len(births_1)
-        #     boot_loops_all = []
-
-        #     from scipy.sparse import triu
-        #     dm_upper = triu(sparse_dist_mat, k=1).tocoo()
-
-        #     for loop_idx in range(n_loops_boot):
-        #         loop_birth = float(births_1[loop_idx])
-        #         loop_death = float(deaths_1[loop_idx])
-
-        #         edges_array, edge_births = extract_edges_from_coo(dm_upper.row, dm_upper.col, dm_upper.data)
-
-        #         if len(edges_array) == 0:
-        #             boot_loops_all.append([])
-        #             continue
-
-        #         edges = [(int(e[0]), int(e[1])) for e in edges_array]
-
-        #         loops_local, _ = reconstruct_n_loop_representatives(
-        #             cocycles_dim1=result.cocycles_by_dim[1][loop_idx],
-        #             edges=edges,
-        #             edge_births=edge_births,
-        #             loop_birth=loop_birth,
-        #             loop_death=loop_death,
-        #             n=n_reps_per_loop,
-        #             life_pct=life_pct,
-        #             n_force_deviate=n_force_deviate,
-        #             n_reps_per_loop=n_reps_per_loop,
-        #             loop_lower_pct=loop_lower_pct,
-        #             loop_upper_pct=loop_upper_pct,
-        #             n_max_cocycles=n_max_cocycles,
-        #         )
-
-        #         loops = [
-        #             [boot_indices[v] for v in loop]
-        #             for loop in loops_local
-        #         ]
-        #         boot_loops_all.append(loops)
-
-        #     bootstrap_data.loop_representatives.append(boot_loops_all)
+    ) -> None:
+        for idx_bootstrap in range(n_bootstrap):
+            pairwise_distance_matrix = self._compute_homology(
+                adata=adata,
+                thresh=thresh,
+                bootstrap=True,
+                noise_scale=noise_scale,
+                **nei_kwargs
+            )
+            self._compute_loop_representatives(
+                pairwise_distance_matrix=pairwise_distance_matrix,
+                idx_bootstrap=idx_bootstrap,
+                top_k=top_k,
+                bootstrap=True,
+                n_reps_per_loop=n_reps_per_loop,
+                life_pct=life_pct,
+                n_cocycles_used=n_cocycles_used,
+                n_force_deviate=n_force_deviate,
+                k_yen=k_yen,
+                loop_lower_t_pct=loop_lower_t_pct,
+                loop_upper_t_pct=loop_upper_t_pct,
+            )

@@ -55,10 +55,11 @@ def compute_persistence_diagram_and_cocycles(
     meta: ScloopMeta,
     thresh: Diameter_t | None = None,
     bootstrap: bool = False,
+    noise_scale: float = 1e3,
     **nei_kwargs,
 ) -> tuple[list, list, IndexListDistMatrix | None, csr_matrix]:
     sparse_pairwise_distance_matrix, boot_idx = compute_sparse_pairwise_distance(
-        adata=adata, meta=meta, bootstrap=bootstrap, thresh=thresh, **nei_kwargs
+        adata=adata, meta=meta, bootstrap=bootstrap, noise_scale=noise_scale, thresh=thresh, **nei_kwargs
     )
     result = ripser(
         distance_matrix=sparse_pairwise_distance_matrix.tocoo(copy=False),
