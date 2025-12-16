@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, ValidationInfo, field_validator
 from pydantic.dataclasses import dataclass
 from scipy.sparse import csr_matrix, triu
 from scipy.spatial.distance import directed_hausdorff
+from rich.progress import Progress, TextColumn, BarColumn, TaskProgressColumn, TimeElapsedColumn, TimeRemainingColumn, SpinnerColumn
 
 from ..computing.homology import (
     compute_boundary_matrix_data,
@@ -109,17 +110,19 @@ class HomologyData:
         num_vertices = self.boundary_matrix_d1.num_vertices
         n_edges = self.boundary_matrix_d1.shape[0]
 
-        edge_row_ids = np.full(num_vertices * num_vertices, -1, dtype=np.int64)
-        for row_idx, edge_id in enumerate(self.boundary_matrix_d1.row_simplex_ids):
-            edge_row_ids[edge_id] = row_idx
+        edge_lookup = {
+            int(edge_id): row_idx
+            for row_idx, edge_id in enumerate(self.boundary_matrix_d1.row_simplex_ids)
+        }
 
         mask = np.zeros((len(loops), n_edges), dtype=bool)
         for idx, loop in enumerate(loops):
             edge_ids = loop_vertices_to_edge_ids(
                 np.asarray(loop, dtype=np.int64), num_vertices
             )
-            row_ids = edge_ids_to_rows(edge_ids, edge_row_ids)
-            if row_ids.size > 0:
+            row_ids = [edge_lookup.get(int(eid), -1) for eid in edge_ids]
+            row_ids = [rid for rid in row_ids if rid >= 0]
+            if row_ids:
                 mask[idx, row_ids] = True
         return mask
 
@@ -161,18 +164,17 @@ class HomologyData:
             result,
             edge_ids,
             trig_ids,
-            sparse_pairwise_distance_matrix,
+            edge_diameters,
+            _,
             _,
         ) = compute_boundary_matrix_data(
             adata=adata, meta=self.meta, thresh=thresh, **nei_kwargs
         )
-        edge_ids_1d = np.array(edge_ids).flatten()
-        # reindex edges (also keep as colllection of triplets, easier to subset later)
+        edge_ids_flat = np.array(edge_ids, dtype=np.int64).flatten()
+        edge_diams_flat = np.array(edge_diameters, dtype=float)
+        edge_ids_1d, uniq_idx = np.unique(edge_ids_flat, return_index=True)
+        row_simplex_diams = edge_diams_flat[uniq_idx]
         edge_ids_reindex = np.searchsorted(edge_ids_1d, edge_ids)
-        edge_diameters = decode_edges(edge_ids_1d, self.meta.preprocess.num_vertices)
-        edge_diameters = [
-            sparse_pairwise_distance_matrix[i, j] for i, j in edge_diameters
-        ]
         self.boundary_matrix_d1 = BoundaryMatrixD1(
             num_vertices=self.meta.preprocess.num_vertices,
             data=(
@@ -186,7 +188,7 @@ class HomologyData:
             shape=(len(edge_ids_1d), len(trig_ids)),
             row_simplex_ids=edge_ids_1d.tolist(),
             col_simplex_ids=trig_ids,
-            row_simplex_diams=edge_diameters,
+            row_simplex_diams=row_simplex_diams.tolist(),
             col_simplex_diams=result.triangle_diameters,
         )
 
@@ -395,12 +397,12 @@ class HomologyData:
         if top_k == 0:
             return
         indices_top_k = np.argpartition(loop_deaths - loop_births, -top_k)[-top_k:]
-        for loop_idx in indices_top_k:
+        for track_idx, loop_idx in enumerate(indices_top_k):
             birth = float(loop_births[loop_idx])
             death = float(loop_deaths[loop_idx])
-            if loop_idx not in self.bootstrap_data.loop_tracks:
-                self.bootstrap_data.loop_tracks[loop_idx] = LoopTrack(
-                    source_class_idx=loop_idx, birth_root=birth, death_root=death
+            if track_idx not in self.bootstrap_data.loop_tracks:
+                self.bootstrap_data.loop_tracks[track_idx] = LoopTrack(
+                    source_class_idx=track_idx, birth_root=birth, death_root=death
                 )
 
     def _bootstrap(
@@ -418,7 +420,7 @@ class HomologyData:
         loop_lower_t_pct: float = 2.5,
         loop_upper_t_pct: float = 97.5,
         n_pairs_check_equivalence: int = 4,
-        n_max_workers: int = 4,
+        n_max_workers: int = 8,
         k_neighbors_check_equivalence: int = 3,
         verbose: bool = False,
         **nei_kwargs,
@@ -432,65 +434,75 @@ class HomologyData:
             else:
                 self.meta.bootstrap.indices_resample.clear()
 
-        for idx_bootstrap in range(n_bootstrap):
-            pairwise_distance_matrix = self._compute_homology(
-                adata=adata,
-                thresh=thresh,
-                bootstrap=True,
-                noise_scale=noise_scale,
-                **nei_kwargs,
-            )
-            self._compute_loop_representatives(
-                pairwise_distance_matrix=pairwise_distance_matrix,
-                idx_bootstrap=idx_bootstrap,
-                top_k=top_k,
-                bootstrap=True,
-                n_reps_per_loop=n_reps_per_loop,
-                life_pct=life_pct,
-                n_cocycles_used=n_cocycles_used,
-                n_force_deviate=n_force_deviate,
-                k_yen=k_yen,
-                loop_lower_t_pct=loop_lower_t_pct,
-                loop_upper_t_pct=loop_upper_t_pct,
-            )
-            """
-            ============= geometric matching =============
-            - find loop neighbors using hausdorff/frechet
-            - reduce computation load
-            ==============================================
-            """
-            n_original_loop_classes = len(self.loop_representatives)
-            n_bootstrap_loop_classes = len(
-                self.bootstrap_data.loop_representatives[idx_bootstrap]
-            )
+        progress_main = Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TaskProgressColumn(),
+            TimeRemainingColumn(),
+            TimeElapsedColumn()
+        )
 
-            if n_original_loop_classes == 0 or n_bootstrap_loop_classes == 0:
-                continue
+        with progress_main:
+            for idx_bootstrap in progress_main.track(range(n_bootstrap)):
+                pairwise_distance_matrix = self._compute_homology(
+                    adata=adata,
+                    thresh=thresh,
+                    bootstrap=True,
+                    noise_scale=noise_scale,
+                    **nei_kwargs,
+                )
+                self._compute_loop_representatives(
+                    pairwise_distance_matrix=pairwise_distance_matrix,
+                    idx_bootstrap=idx_bootstrap,
+                    top_k=top_k,
+                    bootstrap=True,
+                    n_reps_per_loop=n_reps_per_loop,
+                    life_pct=life_pct,
+                    n_cocycles_used=n_cocycles_used,
+                    n_force_deviate=n_force_deviate,
+                    k_yen=k_yen,
+                    loop_lower_t_pct=loop_lower_t_pct,
+                    loop_upper_t_pct=loop_upper_t_pct,
+                )
+                """
+                ============= geometric matching =============
+                - find loop neighbors using hausdorff/frechet
+                - reduce computation load
+                ==============================================
+                """
+                n_original_loop_classes = len(self.loop_representatives)
+                n_bootstrap_loop_classes = len(
+                    self.bootstrap_data.loop_representatives[idx_bootstrap]
+                )
 
-            pairwise_result_matrix = np.full(
-                (n_original_loop_classes, n_bootstrap_loop_classes), np.nan
-            )
+                if n_original_loop_classes == 0 or n_bootstrap_loop_classes == 0:
+                    continue
 
-            with ThreadPoolExecutor(max_workers=n_max_workers) as executor:
-                tasks = {}
-                for i in range(n_original_loop_classes):
-                    for j in range(n_bootstrap_loop_classes):
-                        task = executor.submit(
-                            self._assess_bootstrap_geometric_equivalence,
-                            adata,
-                            i,
-                            j,
-                            idx_bootstrap,
-                        )
-                        tasks[task] = (i, j)
+                pairwise_result_matrix = np.full(
+                    (n_original_loop_classes, n_bootstrap_loop_classes), np.nan
+                )
 
-                for task in as_completed(tasks):
-                    src_idx, tgt_idx, distance = task.result()
-                    pairwise_result_matrix[src_idx, tgt_idx] = distance
+                with ThreadPoolExecutor(max_workers=n_max_workers) as executor:
+                    tasks = {}
+                    for i in range(n_original_loop_classes):
+                        for j in range(n_bootstrap_loop_classes):
+                            task = executor.submit(
+                                self._assess_bootstrap_geometric_equivalence,
+                                adata,
+                                i,
+                                j,
+                                idx_bootstrap,
+                            )
+                            tasks[task] = (i, j)
 
-            neighbor_indices, neighbor_distances = nearest_neighbor_per_row(
-                pairwise_result_matrix, k_neighbors_check_equivalence
-            )
+                    for task in as_completed(tasks):
+                        src_idx, tgt_idx, distance = task.result()
+                        pairwise_result_matrix[src_idx, tgt_idx] = distance
+
+                neighbor_indices, neighbor_distances = nearest_neighbor_per_row(
+                    pairwise_result_matrix, k_neighbors_check_equivalence
+                )
             """
             ========= homological matching =========
             - gf2 regression

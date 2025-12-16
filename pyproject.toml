@@ -41,7 +41,7 @@ dependencies = [
   "pip>=25.2",
   "pydantic>=2.11.4",
   "pytest>=8.4",
-  "rich>=14",
+  "rich==14.2",
   "scanpy[leiden]>=1.11.2",
   "scikit-misc>=0.5.2",
   "statsmodels==0.14.4",

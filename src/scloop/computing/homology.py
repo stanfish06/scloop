@@ -101,14 +101,36 @@ def compute_boundary_matrix_data(
         adata=adata, meta=meta, bootstrap=False, thresh=thresh, **nei_kwargs
     )
     result = get_boundary_matrix(sparse_pairwise_distance_matrix.tocoo(), thresh)
-    triangles = np.asarray(result.triangle_vertices, dtype=np.int64)
-    if len(triangles) == 0:
-        edge_ids, trig_ids = [], []
+    triangles_local = np.asarray(result.triangle_vertices, dtype=np.int64)
+    if len(triangles_local) == 0:
+        edge_ids, trig_ids, edge_diameters = [], [], []
     else:
+        if vertex_indices is None:
+            vertex_indices_np = np.arange(sparse_pairwise_distance_matrix.shape[0])
+        else:
+            vertex_indices_np = np.asarray(vertex_indices, dtype=np.int64)
+        triangles = vertex_indices_np[triangles_local]
         edge_ids, trig_ids = encode_triangles_and_edges(
             triangles, meta.preprocess.num_vertices
         )
-    return result, edge_ids, trig_ids, sparse_pairwise_distance_matrix, vertex_indices
+        edge_diameters = []
+        for tri_local in triangles_local:
+            i0, i1, i2 = int(tri_local[0]), int(tri_local[1]), int(tri_local[2])
+            edge_diameters.extend(
+                [
+                    sparse_pairwise_distance_matrix[i0, i1],
+                    sparse_pairwise_distance_matrix[i0, i2],
+                    sparse_pairwise_distance_matrix[i1, i2],
+                ]
+            )
+    return (
+        result,
+        edge_ids,
+        trig_ids,
+        edge_diameters,
+        sparse_pairwise_distance_matrix,
+        vertex_indices,
+    )
 
 
 def compute_loop_homological_equivalence(
