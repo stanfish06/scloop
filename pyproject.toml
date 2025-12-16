@@ -53,6 +53,11 @@ dependencies = [
   "umap-learn>=0.5.7",
 ]
 
+[dependency-groups]
+dev = [
+  "ty>=0.0.1a34",
+]
+
 [tool.uv]
 package = true
 
@@ -106,8 +111,3 @@ executionEnvironments = [
 
 venvPath = "/home/stanfish/Git/scloop"
 venv = ".venv"
-
-[dependency-groups]
-dev = [
-    "ty>=0.0.1a34",
-]

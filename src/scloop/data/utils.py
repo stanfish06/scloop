@@ -122,3 +122,45 @@ def edge_ids_to_rows(edge_ids: np.ndarray, edge_row_ids: np.ndarray) -> np.ndarr
             rows[count] = row
             count += 1
     return rows[:count]
+
+
+@jit(nopython=True)
+def nearest_neighbor_per_row(
+    distance_matrix: np.ndarray, k: int
+) -> tuple[np.ndarray, np.ndarray]:
+    n_rows, n_cols = distance_matrix.shape
+    neighbor_indices = np.empty((n_rows, k), dtype=np.int64)
+    neighbor_distances = np.empty((n_rows, k), dtype=np.float64)
+
+    for si in range(n_rows):
+        distances = distance_matrix[si, :]
+        valid_count = 0
+        valid_indices = np.empty(n_cols, dtype=np.int64)
+        valid_distances = np.empty(n_cols, dtype=np.float64)
+
+        for j in range(n_cols):
+            if not np.isnan(distances[j]):
+                valid_indices[valid_count] = j
+                valid_distances[valid_count] = distances[j]
+                valid_count += 1
+
+        if valid_count == 0:
+            neighbor_indices[si, :] = -1
+            neighbor_distances[si, :] = np.nan
+            continue
+
+        valid_indices = valid_indices[:valid_count]
+        valid_distances = valid_distances[:valid_count]
+
+        n_keep = min(valid_count, k)
+        sorted_idx = np.argsort(valid_distances)[:n_keep]
+
+        for idx in range(n_keep):
+            neighbor_indices[si, idx] = valid_indices[sorted_idx[idx]]
+            neighbor_distances[si, idx] = valid_distances[sorted_idx[idx]]
+
+        for idx in range(n_keep, k):
+            neighbor_indices[si, idx] = -1
+            neighbor_distances[si, idx] = np.nan
+
+    return neighbor_indices, neighbor_distances

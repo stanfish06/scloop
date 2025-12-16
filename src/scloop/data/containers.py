@@ -1,11 +1,13 @@
 # Copyright 2025 Zhiyuan Yu (Heemskerk's lab, University of Michigan)
 from abc import ABC, abstractmethod
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import numpy as np
 from anndata import AnnData
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 from pydantic.dataclasses import dataclass
 from scipy.sparse import csr_matrix, triu
+from scipy.spatial.distance import directed_hausdorff
 
 from ..computing.homology import (
     compute_boundary_matrix_data,
@@ -22,6 +24,7 @@ from .utils import (
     edge_ids_to_rows,
     extract_edges_from_coo,
     loop_vertices_to_edge_ids,
+    nearest_neighbor_per_row,
 )
 
 
@@ -289,30 +292,74 @@ class HomologyData:
             else:
                 bootstrap_data.loop_representatives[idx_bootstrap][loop_idx] = loops  # type: ignore[attr-defined]
 
+    def _assess_bootstrap_geometric_equivalence(
+        self,
+        adata: AnnData,
+        source_class_idx: int,
+        target_class_idx: int,
+        idx_bootstrap: int = 0,
+    ) -> tuple[int, int, float]:
+        assert self.loop_representatives is not None
+        assert self.bootstrap_data is not None
+        assert self.meta.preprocess.embedding_method is not None
+
+        if idx_bootstrap >= len(self.bootstrap_data.loop_representatives):
+            return (source_class_idx, target_class_idx, np.nan)
+        if source_class_idx >= len(self.loop_representatives):
+            return (source_class_idx, target_class_idx, np.nan)
+
+        boot_loops_all = self.bootstrap_data.loop_representatives[idx_bootstrap]
+        if target_class_idx >= len(boot_loops_all):
+            return (source_class_idx, target_class_idx, np.nan)
+
+        source_loops = self.loop_representatives[source_class_idx]
+        target_loops = boot_loops_all[target_class_idx]
+
+        if len(source_loops) == 0 or len(target_loops) == 0:
+            return (source_class_idx, target_class_idx, np.nan)
+
+        emb = adata.obsm[f"X_{self.meta.preprocess.embedding_method}"]
+        distances = []
+        for source_loop in source_loops:
+            for target_loop in target_loops:
+                source_coords = emb[source_loop]
+                target_coords = emb[target_loop]
+                try:
+                    dist = max(
+                        directed_hausdorff(source_coords, target_coords)[0],
+                        directed_hausdorff(target_coords, source_coords)[0],
+                    )
+                    distances.append(dist)
+                except (ValueError, IndexError):
+                    distances.append(np.nan)
+
+        mean_distance = np.nanmean(distances) if distances else np.nan
+        return (source_class_idx, target_class_idx, mean_distance)
+
     def _assess_bootstrap_homology_equivalence(
         self,
         source_class_idx: int,
         target_class_idx: int | None = None,
         idx_bootstrap: int = 0,
         n_pairs_check: int = 10,
-    ) -> bool:
+    ) -> tuple[int, int, bool]:
         assert self.boundary_matrix_d1 is not None
         assert self.loop_representatives is not None
         assert self.bootstrap_data is not None
         if target_class_idx is None:
             target_class_idx = source_class_idx
-        if idx_bootstrap >= len(self.bootstrap_data.loop_representatives):  # type: ignore[attr-defined]
-            return False
+        if idx_bootstrap >= len(self.bootstrap_data.loop_representatives):
+            return (source_class_idx, target_class_idx, False)
         if source_class_idx >= len(self.loop_representatives):
-            return False
-        boot_loops_all = self.bootstrap_data.loop_representatives[idx_bootstrap]  # type: ignore[attr-defined]
+            return (source_class_idx, target_class_idx, False)
+        boot_loops_all = self.bootstrap_data.loop_representatives[idx_bootstrap]
         if target_class_idx >= len(boot_loops_all):
-            return False
+            return (source_class_idx, target_class_idx, False)
 
         source_loops = self.loop_representatives[source_class_idx]
         target_loops = boot_loops_all[target_class_idx]
         if len(source_loops) == 0 or len(target_loops) == 0:
-            return False
+            return (source_class_idx, target_class_idx, False)
 
         mask_a = self._loops_to_edge_mask(source_loops)
         mask_b = self._loops_to_edge_mask(target_loops)
@@ -323,7 +370,7 @@ class HomologyData:
             loop_mask_b=mask_b,
             n_pairs_check=n_pairs_check,
         )
-        return any(r == 0 for r in results)
+        return (source_class_idx, target_class_idx, any(r == 0 for r in results))
 
     def _bootstrap(
         self,
@@ -340,6 +387,8 @@ class HomologyData:
         loop_lower_t_pct: float = 5,
         loop_upper_t_pct: float = 95,
         n_pairs_check_equivalence: int = 4,
+        n_max_workers: int = 4,
+        k_neighbors_check_equivalence: int = 3,
         verbose: bool = True,
         **nei_kwargs,
     ) -> None:
@@ -374,24 +423,65 @@ class HomologyData:
                 loop_upper_t_pct=loop_upper_t_pct,
             )
             """
-            ========= geometric matching =========
-            - find loop neighbors using frechet
+            ============= geometric matching =============
+            - find loop neighbors using hausdorff/frechet
             - reduce computation load
-            ======================================
+            ==============================================
             """
-            # n_source_
-            # for i in range(len(self.loop_representatives)):
-            #     for j in range(len(self.bootstrap_data)):
-                    
+            n_original_loop_classes = len(self.loop_representatives)
+            n_bootstrap_loop_classes = len(
+                self.bootstrap_data.loop_representatives[idx_bootstrap]
+            )
+
+            if n_original_loop_classes == 0 or n_bootstrap_loop_classes == 0:
+                continue
+
+            pairwise_result_matrix = np.full(
+                (n_original_loop_classes, n_bootstrap_loop_classes), np.nan
+            )
+
+            with ThreadPoolExecutor(max_workers=n_max_workers) as executor:
+                tasks = {}
+                for i in range(n_original_loop_classes):
+                    for j in range(n_bootstrap_loop_classes):
+                        task = executor.submit(
+                            self._assess_bootstrap_geometric_equivalence,
+                            i,
+                            j,
+                            idx_bootstrap,
+                        )
+                        tasks[task] = (i, j)
+
+                for task in as_completed(tasks):
+                    src_idx, tgt_idx, distance = task.result()
+                    pairwise_result_matrix[src_idx, tgt_idx] = distance
+
+            neighbor_indices, neighbor_distances = nearest_neighbor_per_row(
+                pairwise_result_matrix, k_neighbors_check_equivalence
+            )
 
             """
             ========= homological matching =========
             - gf2 regression
             ========================================
             """
-            self._assess_bootstrap_homology_equivalence(
-                source_class_idx=0,
-                target_class_idx=0,
-                idx_bootstrap=idx_bootstrap,
-                n_pairs_check=n_pairs_check_equivalence,
-            )
+            with ThreadPoolExecutor(max_workers=n_max_workers) as executor:
+                tasks = {}
+                for si in range(n_original_loop_classes):
+                    for k in range(k_neighbors_check_equivalence):
+                        tj = neighbor_indices[si, k]
+                        if tj >= 0:
+                            task = executor.submit(
+                                self._assess_bootstrap_homology_equivalence,
+                                si,
+                                tj,
+                                idx_bootstrap,
+                                n_pairs_check_equivalence,
+                            )
+                            tasks[task] = (si, tj, neighbor_distances[si, k])
+
+                for task in as_completed(tasks):
+                    si, tj, geom_dist = tasks[task]
+                    _, _, is_equivalent = task.result()
+                    if is_equivalent:
+                        pass

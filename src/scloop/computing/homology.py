@@ -9,10 +9,15 @@ from scipy.sparse import csr_matrix
 from sklearn.neighbors import radius_neighbors_graph
 
 from ..data.metadata import ScloopMeta
-from ..data.ripser_lib import get_boundary_matrix, ripser  # type: ignore[import-not-found]
+from ..data.ripser_lib import (  # type: ignore[import-not-found]
+    get_boundary_matrix,
+    ripser,
+)
 from ..data.types import Diameter_t, IndexListDistMatrix
 from ..data.utils import encode_triangles_and_edges
-from ..utils.linear_algebra_gf2.m4ri_lib import solve_multiple_gf2  # type: ignore[import-not-found]
+from ..utils.linear_algebra_gf2.m4ri_lib import (
+    solve_multiple_gf2,  # type: ignore[import-not-found]
+)
 
 if TYPE_CHECKING:
     from ..data.containers import BoundaryMatrixD1
