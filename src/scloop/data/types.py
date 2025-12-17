@@ -11,6 +11,7 @@ LoopDistMethod = Literal["hausdorff", "frechet"]
 Index_t = Annotated[int, Field(ge=0)]
 Size_t = Annotated[int, Field(ge=0)]
 Diameter_t = Annotated[float, Field(ge=0)]
+PositiveFloat = Annotated[float, Field(ge=0)]
 SizeDownSample = Annotated[
     int, Field(ge=2, description="Sample to this number of cells")
 ]
@@ -30,5 +31,3 @@ IndexListSimplex: TypeAlias = Annotated[
     list[Index_t],
     Field(min_length=0, description="Unique indicies for simplicies"),
 ]
-
-DimensionsHomology: TypeAlias = Annotated[list[Index_t], Field(min_length=0)]

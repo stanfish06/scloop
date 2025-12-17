@@ -7,73 +7,209 @@ import numpy as np
 from anndata import AnnData
 from matplotlib.axes import Axes
 from pydantic import ConfigDict, validate_call
-from scipy.stats import binom, gamma
+from scipy.stats import binom
 
+from ..data.analysis_containers import BootstrapAnalysis
 from ..data.containers import HomologyData
-from ..data.types import DimensionsHomology, Index_t
+from ..data.types import Index_t, PositiveFloat
 
 __all__ = [
-    "lifetimes",
+    "hist_lifetimes",
+    "bar_lifetimes",
     "presence",
     "persistence_diagram",
-    "lifetime_bars",
     "loops",
 ]
 
 
-def lifetimes(
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
+def _create_figure_standard(
+    figsize: tuple[PositiveFloat, PositiveFloat] = (5, 5),
+    dpi: PositiveFloat = 300,
+    kwargs_figure: dict | None = None,
+    kwargs_axes: dict | None = None,
+    kwargs_layout: dict | None = None,
+) -> Axes:
+    fig = plt.figure(figsize=figsize, dpi=dpi, **(kwargs_figure or {}))
+    ax: Axes = fig.add_axes(**(kwargs_axes or {}))
+    fig.tight_layout(**(kwargs_layout or {}))
+    return ax
+
+
+def _get_homology_data(adata: AnnData, key_homology: str) -> HomologyData:
+    assert adata.uns[key_homology] is not None
+    assert type(adata.uns[key_homology]) is HomologyData
+    return adata.uns[key_homology]
+
+
+def _get_track_loop_indices(data: HomologyData, track_id: int) -> list[tuple[int, int]]:
+    if data.bootstrap_data is None:
+        return []
+    track = data.bootstrap_data.loop_tracks.get(track_id)
+    if track is None:
+        return []
+    tracked_pairs = [(0, track.source_class_idx)]
+    tracked_pairs.extend(
+        (match.idx_bootstrap + 1, match.target_class_idx) for match in track.matches
+    )
+    return tracked_pairs
+
+
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
+def hist_lifetimes(
     adata: AnnData,
     key_homology: str = "scloop",
-    dimensions_homology: DimensionsHomology | Index_t = 1,
+    dimension_homology: Index_t = 1,
+    show_bootstrap: bool = True,
+    figsize: tuple[float, float] = (5, 5),
+    dpi: float = 300,
     ax: Axes | None = None,
-    **kwargs_plot,
+    kwargs_figure: dict | None = None,
+    kwargs_axes: dict | None = None,
+    kwargs_layout: dict | None = None,
+    kwargs_hist: dict | None = None,
 ) -> Axes:
     assert adata.uns[key_homology] is not None
+    assert type(adata.uns[key_homology]) is HomologyData
     data: HomologyData = adata.uns[key_homology]
 
-    if ax is None:
-        fig, ax = plt.subplots(figsize=kwargs_plot.pop("figsize", (5, 5)))
-        created_fig = True
-    else:
-        created_fig = False
+    ax = (
+        _create_figure_standard(
+            figsize=figsize,
+            dpi=dpi,
+            kwargs_figure=kwargs_figure,
+            kwargs_axes=kwargs_axes,
+            kwargs_layout=kwargs_layout,
+        )
+        if ax is None
+        else ax
+    )
+    lifetime_full = data.persistence_diagram
+    assert lifetime_full is not None
+    assert dimension_homology < len(lifetime_full)
+
+    if show_bootstrap and data.bootstrap_data is not None:
+        bootstrap_data: BootstrapAnalysis = data.bootstrap_data
+        lifetime_bootstrap: list = bootstrap_data.persistence_diagrams
+        if len(lifetime_bootstrap) > 0:
+            lifetime_full = np.concatenate(
+                [
+                    lifetime_full[dimension_homology],
+                    np.concatenate(
+                        [p[dimension_homology] for p in lifetime_bootstrap], axis=1
+                    ),
+                ],
+                axis=1,
+            )
+    lifetime_full = lifetime_full[1] - lifetime_full[0]
+    _, bins, _ = ax.hist(lifetime_full, **(kwargs_hist or {}))
+
+    return ax
+
+
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
+def bar_lifetimes(
+    adata: AnnData,
+    key_homology: str = "scloop",
+    track_ids: list[int] | None = None,
+    ax: Axes | None = None,
+    *,
+    dimension_homology: Index_t = 1,
+    show_bootstrap: bool = True,
+    figsize: tuple[float, float] = (5, 5),
+    dpi: float = 300,
+    kwargs_figure: dict | None = None,
+    kwargs_axes: dict | None = None,
+    kwargs_layout: dict | None = None,
+    **kwargs,
+) -> Axes:
+    data = _get_homology_data(adata, key_homology)
+    track_ids = track_ids or []
+
+    n_tracks = len(track_ids)
+    if n_tracks > 0:
+        block_size = 5
+        cmap = glasbey.create_block_palette(block_sizes=[block_size] * n_tracks)
+        cmap = [cmap[i : i + block_size] for i in range(0, len(cmap), block_size)]
+    ax = (
+        _create_figure_standard(
+            figsize=figsize,
+            dpi=dpi,
+            kwargs_figure=kwargs_figure,
+            kwargs_axes=kwargs_axes,
+            kwargs_layout=kwargs_layout,
+        )
+        if ax is None
+        else ax
+    )
 
     lifetime_full = data.persistence_diagram
+    assert lifetime_full is not None
+    assert dimension_homology < len(lifetime_full)
 
-    if len(data.bootstrap_data.persistence_diagrams) > 0:
-        lifetime_full = np.concatenate(
+    lifetimes = []
+    indices = []
+    base_diag = lifetime_full[dimension_homology]
+    base_lifetimes = np.asarray(base_diag[1]) - np.asarray(base_diag[0])
+    lifetimes.append(base_lifetimes)
+    indices.append(
+        np.vstack(
             [
-                lifetime_full,
-                np.concatenate(data.persistence_diagram_boot),
+                np.zeros_like(base_lifetimes, dtype=int),
+                np.arange(base_lifetimes.size, dtype=int),
             ]
-        )
-    lifetime_full = lifetime_full[:, 1] - lifetime_full[:, 0]
-    _, bins, _ = ax.hist(lifetime_full, bins="fd", density=True)
-    params = data.parameters["gamma_fit"]
-    ax.plot(
-        np.linspace((bins[0] + bins[1]) / 2, np.max(lifetime_full), 1000),
-        gamma.pdf(
-            np.linspace((bins[0] + bins[1]) / 2, np.max(lifetime_full), 1000),
-            params[0],
-            loc=params[1],
-            scale=params[2],
-        ),
-        **kwargs_plot,
-    )
-    ax.axvline(
-        gamma.ppf(
-            0.95,
-            params[0],
-            loc=params[1],
-            scale=params[2],
-        ),
-        0,
-        1,
-        color="red",
-        **kwargs_plot,
+        ).T
     )
 
-    if created_fig:
-        fig.tight_layout()
+    if show_bootstrap and data.bootstrap_data is not None:
+        bootstrap_data: BootstrapAnalysis = data.bootstrap_data
+        for idx_boot, diag in enumerate(bootstrap_data.persistence_diagrams):
+            if dimension_homology >= len(diag):
+                continue
+            boot_diag = diag[dimension_homology]
+            boot_lifetimes = np.asarray(boot_diag[1]) - np.asarray(boot_diag[0])
+            lifetimes.append(boot_lifetimes)
+            indices.append(
+                np.vstack(
+                    [
+                        np.full_like(boot_lifetimes, idx_boot + 1, dtype=int),
+                        np.arange(boot_lifetimes.size, dtype=int),
+                    ]
+                ).T
+            )
+
+    if len(lifetimes) == 0:
+        return ax
+
+    lifetime_full_arr = np.concatenate(lifetimes)
+    idx_matrix = np.vstack(indices)
+
+    sort_idx = np.argsort(np.argsort(lifetime_full_arr))
+    ax.barh(
+        sort_idx,
+        lifetime_full_arr,
+        color="lightgray",
+        linewidth=0,
+        **kwargs,
+    )
+    for i, src_tid in enumerate(track_ids):
+        tracked_pairs = _get_track_loop_indices(data, src_tid)
+        loc_idx = []
+        for tid in tracked_pairs:
+            match = np.logical_and(
+                idx_matrix[:, 0] == tid[0], idx_matrix[:, 1] == tid[1]
+            )
+            if np.any(match):
+                loc_idx.append(np.where(match)[0][0])
+        if len(loc_idx) == 0:
+            continue
+        ax.barh(
+            sort_idx[loc_idx],
+            lifetime_full_arr[loc_idx],
+            color=cmap[i][int(np.floor(block_size / 2))],
+            linewidth=0,
+            **kwargs,
+        )
 
     return ax
 
@@ -83,36 +219,62 @@ def presence(
     adata: AnnData,
     key_homology: str = "scloop",
     ax: Axes | None = None,
+    *,
+    figsize: tuple[float, float] = (5, 5),
+    dpi: float = 300,
+    kwargs_figure: dict | None = None,
+    kwargs_axes: dict | None = None,
+    kwargs_layout: dict | None = None,
     **kwargs,
 ) -> Axes:
-    data: HomologyData = adata.uns[key_homology]
+    data = _get_homology_data(adata, key_homology)
+    bootstrap_data = data.bootstrap_data
 
-    if ax is None:
-        fig, ax = plt.subplots(figsize=kwargs.pop("figsize", (5, 5)))
-        created_fig = True
-    else:
-        created_fig = False
-
-    occurance, count = np.unique(
-        [len(track["loops"]) - 1 for src_loop, track in data.tracks.items()],
-        return_counts=True,
-    )
-    mean_presence_prob = data.parameters["binom_fit"]
-    ax.bar(occurance, count / np.sum(count), **kwargs)
-    ax.bar(
-        range(data.n_booted),
-        binom.pmf(range(data.n_booted), data.n_booted, mean_presence_prob),
-        **kwargs,
-    )
-    ax.axvline(
-        binom.ppf(0.95, data.n_booted, mean_presence_prob),
-        0,
-        1,
-        color="red",
+    ax = (
+        _create_figure_standard(
+            figsize=figsize,
+            dpi=dpi,
+            kwargs_figure=kwargs_figure,
+            kwargs_axes=kwargs_axes,
+            kwargs_layout=kwargs_layout,
+        )
+        if ax is None
+        else ax
     )
 
-    if created_fig:
-        fig.tight_layout()
+    if bootstrap_data is None or len(bootstrap_data.loop_tracks) == 0:
+        return ax
+
+    n_bootstraps = bootstrap_data.num_bootstraps
+    if n_bootstraps == 0:
+        n_bootstraps = len(bootstrap_data.persistence_diagrams)
+
+    presence_counts = [
+        len({m.idx_bootstrap for m in track.matches})
+        for track in bootstrap_data.loop_tracks.values()
+    ]
+    presence_probs = [
+        track.presence_prob(n_bootstraps)
+        for track in bootstrap_data.loop_tracks.values()
+    ]
+
+    occurance, count = np.unique(presence_counts, return_counts=True)
+    if count.size > 0:
+        ax.bar(occurance, count / np.sum(count), **kwargs)
+    if n_bootstraps > 0 and len(presence_probs) > 0:
+        mean_presence_prob = float(np.mean(presence_probs))
+        ax.bar(
+            range(n_bootstraps + 1),
+            binom.pmf(range(n_bootstraps + 1), n_bootstraps, mean_presence_prob),
+            alpha=0.5,
+            **kwargs,
+        )
+        ax.axvline(
+            binom.ppf(0.95, n_bootstraps, mean_presence_prob),
+            0,
+            1,
+            color="red",
+        )
 
     return ax
 
@@ -121,58 +283,87 @@ def presence(
 def persistence_diagram(
     adata: AnnData,
     key_homology: str = "scloop",
-    track_ids: list = [],
+    track_ids: list[int] | None = None,
     ax: Axes | None = None,
+    *,
+    dimension_homology: Index_t = 1,
+    show_bootstrap: bool = True,
     s: float = 1,
+    figsize: tuple[float, float] = (5, 5),
+    dpi: float = 300,
+    kwargs_figure: dict | None = None,
+    kwargs_axes: dict | None = None,
+    kwargs_layout: dict | None = None,
     **kwargs,
 ) -> Axes:
-    data: HomologyData = adata.uns[key_homology]
+    data = _get_homology_data(adata, key_homology)
+    track_ids = track_ids or []
 
     n_tracks = len(track_ids)
     if n_tracks > 0:
         block_size = 5
         cmap = glasbey.create_block_palette(block_sizes=[block_size] * n_tracks)
         cmap = [cmap[i : i + block_size] for i in range(0, len(cmap), block_size)]
-    if ax is None:
-        fig, ax = plt.subplots(figsize=kwargs.pop("figsize", (5, 5)))
-        created_fig = True
-    else:
-        created_fig = False
-
-    ax.scatter(
-        data.persistence_diagram[:, 0],
-        data.persistence_diagram[:, 1],
-        color="lightgray",
-        s=s,
-        **kwargs,
-    )
-    for ph_boot in data.persistence_diagram_boot:
-        ax.scatter(
-            ph_boot[:, 0],
-            ph_boot[:, 1],
-            color="lightgray",
-            s=s,
-            **kwargs,
+    ax = (
+        _create_figure_standard(
+            figsize=figsize,
+            dpi=dpi,
+            kwargs_figure=kwargs_figure,
+            kwargs_axes=kwargs_axes,
+            kwargs_layout=kwargs_layout,
         )
+        if ax is None
+        else ax
+    )
+
+    diag = data.persistence_diagram
+    assert diag is not None
+    assert dimension_homology < len(diag)
+
+    base_diag = diag[dimension_homology]
+    base_births = np.asarray(base_diag[0])
+    base_deaths = np.asarray(base_diag[1])
+
+    ax.scatter(base_births, base_deaths, color="lightgray", s=s, **kwargs)
+
+    if show_bootstrap and data.bootstrap_data is not None:
+        for diag_boot in data.bootstrap_data.persistence_diagrams:
+            if dimension_homology >= len(diag_boot):
+                continue
+            births_boot = np.asarray(diag_boot[dimension_homology][0])
+            deaths_boot = np.asarray(diag_boot[dimension_homology][1])
+            ax.scatter(births_boot, deaths_boot, color="lightgray", s=s, **kwargs)
+
     for i, src_tid in enumerate(track_ids):
-        tracks = data.tracks[src_tid]["loops"]
-        for tid in tracks:
-            if tid[0] == 0:
+        tracked_pairs = _get_track_loop_indices(data, src_tid)
+        for tid in tracked_pairs:
+            if tid[0] == 0 and tid[1] < base_births.size:
                 ax.scatter(
-                    data.persistence_diagram[tid[1], 0],
-                    data.persistence_diagram[tid[1], 1],
+                    base_births[tid[1]],
+                    base_deaths[tid[1]],
                     color=cmap[i][int(np.floor(block_size / 2))],
                     s=s,
                     **kwargs,
                 )
-            else:
-                ax.scatter(
-                    data.persistence_diagram_boot[tid[0] - 1][tid[1], 0],
-                    data.persistence_diagram_boot[tid[0] - 1][tid[1], 1],
-                    color=cmap[i][int(np.floor(block_size / 2))],
-                    s=s,
-                    **kwargs,
-                )
+            elif (
+                tid[0] > 0
+                and data.bootstrap_data is not None
+                and (tid[0] - 1) < len(data.bootstrap_data.persistence_diagrams)
+            ):
+                diag_boot = data.bootstrap_data.persistence_diagrams[tid[0] - 1]
+                if dimension_homology >= len(diag_boot):
+                    continue
+                births_boot = np.asarray(diag_boot[dimension_homology][0])
+                deaths_boot = np.asarray(diag_boot[dimension_homology][1])
+                if tid[1] < births_boot.size:
+                    ax.scatter(
+                        births_boot[tid[1]],
+                        deaths_boot[tid[1]],
+                        color=cmap[i][int(np.floor(block_size / 2))],
+                        s=s,
+                        **kwargs,
+                    )
+
     xlim = ax.get_xlim()
     ylim = ax.get_ylim()
     min_val = min(xlim[0], ylim[0])
@@ -191,88 +382,6 @@ def persistence_diagram(
     ax.set_xticks(ticks, tick_labs)
     ax.set_yticks(ticks, tick_labs)
 
-    if created_fig:
-        fig.tight_layout()
-
-    return ax
-
-
-@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
-def lifetime_bars(
-    adata: AnnData,
-    key_homology: str = "scloop",
-    track_ids: list = [],
-    ax: Axes | None = None,
-    **kwargs,
-) -> Axes:
-    data: HomologyData = adata.uns[key_homology]
-
-    n_tracks = len(track_ids)
-    if n_tracks > 0:
-        block_size = 5
-        cmap = glasbey.create_block_palette(block_sizes=[block_size] * n_tracks)
-        cmap = [cmap[i : i + block_size] for i in range(0, len(cmap), block_size)]
-    if ax is None:
-        fig, ax = plt.subplots(figsize=kwargs.pop("figsize", (5, 5)))
-        created_fig = True
-    else:
-        created_fig = False
-
-    lifetime_full = data.persistence_diagram
-    if data.persistence_diagram_boot:
-        lifetime_full = np.concatenate(
-            [
-                lifetime_full,
-                np.concatenate(data.persistence_diagram_boot),
-            ]
-        )
-    lifetime_full = lifetime_full[:, 1] - lifetime_full[:, 0]
-    idx = np.vstack(
-        [
-            np.repeat(0, data.persistence_diagram.shape[0]),
-            np.arange(data.persistence_diagram.shape[0]),
-        ]
-    ).T
-    if data.persistence_diagram_boot:
-        idx = np.concatenate(
-            [
-                idx,
-                np.concatenate(
-                    [
-                        np.vstack(
-                            [np.repeat(i + 1, ph.shape[0]), np.arange(ph.shape[0])]
-                        ).T
-                        for i, ph in enumerate(data.persistence_diagram_boot)
-                    ]
-                ),
-            ]
-        )
-    sort_idx = np.argsort(np.argsort(lifetime_full))
-    ax.barh(
-        sort_idx,
-        lifetime_full,
-        color="lightgray",
-        linewidth=0,
-        **kwargs,
-    )
-    for i, src_tid in enumerate(track_ids):
-        tracks = data.tracks[src_tid]["loops"]
-        loc_idx = []
-        for tid in tracks:
-            loc_idx.append(
-                np.where(np.logical_and(idx[:, 0] == tid[0], idx[:, 1] == tid[1]))[0][0]
-            )
-        ax.barh(
-            sort_idx[loc_idx],
-            lifetime_full[loc_idx],
-            color=cmap[i][int(np.floor(block_size / 2))],
-            linewidth=0,
-            **kwargs,
-        )
-
-    if created_fig:
-        fig.tight_layout()
-
     return ax
 
 
@@ -280,42 +389,92 @@ def lifetime_bars(
 def loops(
     adata: AnnData,
     key_homology: str = "scloop",
-    track_ids: list = [],
-    components: list = [0, 1],
+    track_ids: list[int] | None = None,
+    components: list[int] | tuple[int, int] = (0, 1),
     ax: Axes | None = None,
+    *,
     s: float = 1,
+    figsize: tuple[float, float] = (5, 5),
+    dpi: float = 300,
+    kwargs_figure: dict | None = None,
+    kwargs_axes: dict | None = None,
+    kwargs_layout: dict | None = None,
     **kwargs,
 ) -> Axes:
-    data: HomologyData = adata.uns[key_homology]
+    data = _get_homology_data(adata, key_homology)
+    track_ids = track_ids or []
+    if len(components) != 2:
+        raise ValueError("components must contain exactly two entries.")
 
     n_tracks = len(track_ids)
     if n_tracks > 0:
         block_size = 5
         cmap = glasbey.create_block_palette(block_sizes=[block_size] * n_tracks)
         cmap = [cmap[i : i + block_size] for i in range(0, len(cmap), block_size)]
-    if ax is None:
-        fig, ax = plt.subplots(figsize=kwargs.pop("figsize", (5, 5)))
-        created_fig = True
-    else:
-        created_fig = False
+    ax = (
+        _create_figure_standard(
+            figsize=figsize,
+            dpi=dpi,
+            kwargs_figure=kwargs_figure,
+            kwargs_axes=kwargs_axes,
+            kwargs_layout=kwargs_layout,
+        )
+        if ax is None
+        else ax
+    )
+
+    if data.meta.preprocess is None or data.meta.preprocess.embedding_method is None:
+        raise ValueError("Embedding information is required to plot loops.")
+
+    emb_key = f"X_{data.meta.preprocess.embedding_method}"
+    if emb_key not in adata.obsm:
+        raise KeyError(f"Embedding {emb_key} not found in adata.obsm.")
+
+    emb = adata.obsm[emb_key]
+    vertex_indices = (
+        data.meta.preprocess.indices_downsample
+        if data.meta.preprocess.indices_downsample is not None
+        else list(range(emb.shape[0]))
+    )
+    emb_background = emb[vertex_indices]
 
     ax.scatter(
-        data.data_visualization[:, components[0]],
-        data.data_visualization[:, components[1]],
+        emb_background[:, components[0]],
+        emb_background[:, components[1]],
         color="lightgray",
         s=s,
         **kwargs,
     )
+
+    def _loops_to_coords(loop_vertices: list[int]) -> np.ndarray:
+        coords = emb[np.asarray(loop_vertices, dtype=int)]
+        if coords.shape[0] > 2:
+            coords = np.vstack([coords, coords[0]])
+        return coords
+
     for i, src_tid in enumerate(track_ids):
-        tracks = data.tracks[src_tid]["loops"]
-        loops_plot = []
-        for tid in tracks:
+        loops_plot: list[np.ndarray] = []
+        tracked_pairs = _get_track_loop_indices(data, src_tid)
+        # include source loop
+        if src_tid < len(data.loop_representatives):
+            loops_plot.extend(
+                [_loops_to_coords(loop) for loop in data.loop_representatives[src_tid]]
+            )
+        # include matched bootstrap loops
+        for tid in tracked_pairs:
             if tid[0] == 0:
-                loops_plot.extend(data.loops_coords_visualization[tid[1]])
-            else:
-                loops_plot.extend(
-                    data.loops_coords_visualization_boot[tid[0] - 1][tid[1]]
-                )
+                continue
+            if data.bootstrap_data is None or (tid[0] - 1) >= len(
+                data.bootstrap_data.loop_representatives
+            ):
+                continue
+            boot_loops_all = data.bootstrap_data.loop_representatives[tid[0] - 1]
+            if tid[1] >= len(boot_loops_all):
+                continue
+            loops_plot.extend(
+                [_loops_to_coords(loop) for loop in boot_loops_all[tid[1]]]
+            )
+
         for j, loop in enumerate(loops_plot):
             ax.plot(
                 loop[:, components[0]],
@@ -323,8 +482,5 @@ def loops(
                 color=cmap[i][j % block_size],
                 **kwargs,
             )
-
-    if created_fig:
-        fig.tight_layout()
 
     return ax
