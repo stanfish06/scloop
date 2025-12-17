@@ -9,6 +9,13 @@ scLoop is a library to identify statistically significant loops in single-cell R
 
 <img src="examples/loop.png" alt="persistent homology" width="300"/>
 
+## Basic Usage
+```python
+import scloop as scl
+scl.pp.prepare_adata(adata, downsample=True, n_downsample=500)
+scl.tl.find_loops(adata)
+```
+
 ## Build Instructions
 ```bash
 make build
