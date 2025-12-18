@@ -30,9 +30,14 @@ def _create_figure_standard(
     kwargs_axes: dict | None = None,
     kwargs_layout: dict | None = None,
 ) -> Axes:
+    kwargs_axes_local = dict(kwargs_axes or {})
+    rect = kwargs_axes_local.pop("rect", None)
     fig = plt.figure(figsize=figsize, dpi=dpi, **(kwargs_figure or {}))
-    ax: Axes = fig.add_axes(**(kwargs_axes or {}))
-    fig.tight_layout(**(kwargs_layout or {}))
+    if rect is not None:
+        ax: Axes = fig.add_axes(rect, **kwargs_axes_local)
+    else:
+        ax = fig.add_subplot(111, **kwargs_axes_local)
+        fig.tight_layout(**(kwargs_layout or {}))
     return ax
 
 
@@ -73,9 +78,8 @@ def hist_lifetimes(
     kwargs_hist: dict | None = None,
 ) -> Axes:
     kwargs_axes = kwargs_axes or {}
-    if "aspect" not in kwargs_axes:
-        kwargs_axes["aspect"] = "equal"
-        kwargs_axes["rect"] = (0, 0, 1, 1)
+    kwargs_axes.setdefault("rect", (0, 0, 1, 1))
+    kwargs_axes.setdefault("aspect", "auto")
 
     data = _get_homology_data(adata=adata, key_homology=key_homology)
 
@@ -108,7 +112,7 @@ def hist_lifetimes(
                 axis=1,
             )
     lifetime_full = lifetime_full[1] - lifetime_full[0]
-    _, bins, _ = ax.hist(lifetime_full[lifetime_full < np.inf], **(kwargs_hist or {}))
+    _, bins, _ = ax.hist(lifetime_full, **(kwargs_hist or {}))
 
     return ax
 
@@ -130,9 +134,8 @@ def bar_lifetimes(
     **kwargs,
 ) -> Axes:
     kwargs_axes = kwargs_axes or {}
-    if "aspect" not in kwargs_axes:
-        kwargs_axes["aspect"] = "equal"
-        kwargs_axes["rect"] = (0, 0, 1, 1)
+    kwargs_axes.setdefault("rect", (0, 0, 1, 1))
+    kwargs_axes.setdefault("aspect", "auto")
 
     data = _get_homology_data(adata, key_homology)
 

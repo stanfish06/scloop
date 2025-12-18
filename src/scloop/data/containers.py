@@ -267,7 +267,8 @@ class HomologyData:
             return [], []
         top_k = min(top_k, loop_births.size)
 
-        indices_top_k = np.argpartition(loop_deaths - loop_births, -top_k)[-top_k:]
+        persistence = loop_deaths - loop_births
+        indices_top_k = np.argsort(persistence)[::-1][:top_k]
 
         dm_upper = triu(pairwise_distance_matrix, k=1).tocoo()
         edges_array, edge_diameters = extract_edges_from_coo(
@@ -378,6 +379,7 @@ class HomologyData:
         assert self.boundary_matrix_d1 is not None
         assert self.loop_representatives is not None
         assert self.bootstrap_data is not None
+        self._ensure_loop_tracks()
         if target_class_idx is None:
             target_class_idx = source_class_idx
         if idx_bootstrap >= len(self.bootstrap_data.loop_representatives):
@@ -393,6 +395,11 @@ class HomologyData:
         if len(source_loops) == 0 or len(target_loops) == 0:
             return (source_class_idx, target_class_idx, False)
 
+        loop_track = self.bootstrap_data.loop_tracks.get(source_class_idx)
+        if loop_track is None:
+            return (source_class_idx, target_class_idx, False)
+        source_loop_death = loop_track.death_root
+
         mask_a = self._loops_to_edge_mask(source_loops)
         mask_b = self._loops_to_edge_mask(target_loops)
 
@@ -401,6 +408,7 @@ class HomologyData:
             loop_mask_a=mask_a,
             loop_mask_b=mask_b,
             n_pairs_check=n_pairs_check,
+            max_column_diameter=source_loop_death,
         )
         return (source_class_idx, target_class_idx, any(r == 0 for r in results))
 
@@ -414,7 +422,8 @@ class HomologyData:
         top_k = len(self.loop_representatives)
         if top_k == 0:
             return
-        indices_top_k = np.argpartition(loop_deaths - loop_births, -top_k)[-top_k:]
+        persistence = loop_deaths - loop_births
+        indices_top_k = np.argsort(persistence)[::-1][:top_k]
         for track_idx, loop_idx in enumerate(indices_top_k):
             birth = float(loop_births[loop_idx])
             death = float(loop_deaths[loop_idx])
