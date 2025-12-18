@@ -49,6 +49,7 @@ def find_loops(
         n_bootstrap=n_bootstrap,
         thresh=threshold_homology,
         top_k=n_candidates * n_check_per_candidate,
+        k_neighbors_check_equivalence=n_check_per_candidate,
         n_max_workers=n_max_workers,
         verbose=verbose,
     )

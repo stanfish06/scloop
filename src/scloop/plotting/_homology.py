@@ -246,6 +246,7 @@ def persistence_diagram(
     kwargs_axes: dict | None = None,
     kwargs_layout: dict | None = None,
     kwargs_scatter: dict | None = None,
+    kwargs_line: dict | None = None,
 ) -> Axes:
     data = _get_homology_data(adata, key_homology)
 
@@ -338,6 +339,7 @@ def persistence_diagram(
         [float(max(min_val, 0)), max_val],
         color="red",
         linestyle="--",
+        **(kwargs_line or {}),
     )
     return ax
 
@@ -347,13 +349,14 @@ def loops(
     adata: AnnData,
     basis: str,
     key_homology: str = "scloop",
-    track_ids: list[int] | None = None,
-    components: list[int] | tuple[int, int] = (0, 1),
+    track_ids: list[Index_t] | None = None,
+    components: tuple[Index_t, Index_t] | list[Index_t] = (0, 1),
     ax: Axes | None = None,
     *,
-    s: float = 1,
-    figsize: tuple[float, float] = (5, 5),
-    dpi: float = 300,
+    show_bootstrap: bool = True,
+    s: PositiveFloat = 1,
+    figsize: tuple[PositiveFloat, PositiveFloat] = (5, 5),
+    dpi: PositiveFloat = 300,
     kwargs_figure: dict | None = None,
     kwargs_axes: dict | None = None,
     kwargs_layout: dict | None = None,
@@ -414,25 +417,22 @@ def loops(
     for i, src_tid in enumerate(track_ids):
         loops_plot: list[np.ndarray] = []
         tracked_pairs = _get_track_loop(data, src_tid)
-        # include source loop
         if src_tid < len(data.loop_representatives):
             loops_plot.extend(
                 [_loops_to_coords(loop) for loop in data.loop_representatives[src_tid]]
             )
-        # include matched bootstrap loops
-        for tid in tracked_pairs:
-            if tid[0] == 0:
-                continue
-            if data.bootstrap_data is None or (tid[0] - 1) >= len(
-                data.bootstrap_data.loop_representatives
-            ):
-                continue
-            boot_loops_all = data.bootstrap_data.loop_representatives[tid[0] - 1]
-            if tid[1] >= len(boot_loops_all):
-                continue
-            loops_plot.extend(
-                [_loops_to_coords(loop) for loop in boot_loops_all[tid[1]]]
-            )
+        if show_bootstrap and data.bootstrap_data is not None:
+            for tid in tracked_pairs:
+                if tid[0] == 0:
+                    continue
+                if (tid[0] - 1) >= len(data.bootstrap_data.loop_representatives):
+                    continue
+                boot_loops_all = data.bootstrap_data.loop_representatives[tid[0] - 1]
+                if tid[1] >= len(boot_loops_all):
+                    continue
+                loops_plot.extend(
+                    [_loops_to_coords(loop) for loop in boot_loops_all[tid[1]]]
+                )
 
         for j, loop in enumerate(loops_plot):
             ax.plot(
