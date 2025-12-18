@@ -295,13 +295,17 @@ def persistence_diagram(
                 s=s,
                 **(kwargs_scatter or {}),
             )
-            max_val = max(
-                max_val,
-                max(np.percentile(births_boot, 90), np.percentile(deaths_boot, 90)),
+            max_val = float(
+                max(
+                    max_val,
+                    max(np.percentile(births_boot, 90), np.percentile(deaths_boot, 90)),
+                )
             )
-            min_val = min(
-                min_val,
-                min(np.percentile(births_boot, 10), np.percentile(deaths_boot, 10)),
+            min_val = float(
+                min(
+                    min_val,
+                    min(np.percentile(births_boot, 10), np.percentile(deaths_boot, 10)),
+                )
             )
 
     track_ids = track_ids or []
@@ -322,19 +326,122 @@ def persistence_diagram(
                 )
 
     num_ticks = 6
-    ax.set_xlim(max(min_val, 0), max_val)
-    ax.set_ylim(max(min_val, 0), max_val)
+    ax.set_xlim(float(max(min_val, 0)), max_val)
+    ax.set_ylim(float(max(min_val, 0)), max_val)
     ticks = np.linspace(max(min_val, 0), max_val, num_ticks)
     tick_labs = [round(i, 3) for i in np.linspace(max(min_val, 0), max_val, num_ticks)]
     ax.set_xticks(ticks, tick_labs)
     ax.set_yticks(ticks, tick_labs)
 
     ax.plot(
-        [max(min_val, 0), max_val],
-        [max(min_val, 0), max_val],
+        [float(max(min_val, 0)), max_val],
+        [float(max(min_val, 0)), max_val],
         color="red",
         linestyle="--",
     )
+    return ax
+
+
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
+def loops(
+    adata: AnnData,
+    basis: str,
+    key_homology: str = "scloop",
+    track_ids: list[int] | None = None,
+    components: list[int] | tuple[int, int] = (0, 1),
+    ax: Axes | None = None,
+    *,
+    s: float = 1,
+    figsize: tuple[float, float] = (5, 5),
+    dpi: float = 300,
+    kwargs_figure: dict | None = None,
+    kwargs_axes: dict | None = None,
+    kwargs_layout: dict | None = None,
+    kwargs_scatter: dict | None = None,
+) -> Axes:
+    data = _get_homology_data(adata, key_homology)
+    track_ids = track_ids or []
+    if len(components) != 2:
+        raise ValueError("components must contain exactly two entries.")
+
+    if basis in adata.obsm:
+        emb = adata.obsm[basis]
+    elif f"X_{basis}" in adata.obsm:
+        emb = adata.obsm[f"X_{basis}"]
+    else:
+        raise KeyError(f"Embedding {basis} not found in adata.obsm.")
+
+    n_tracks = len(track_ids)
+    if n_tracks > 0:
+        block_size = 5
+        cmap = glasbey.create_block_palette(block_sizes=[block_size] * n_tracks)
+        cmap = [cmap[i : i + block_size] for i in range(0, len(cmap), block_size)]
+    else:
+        block_size = 0
+        cmap = []
+    ax = (
+        _create_figure_standard(
+            figsize=figsize,
+            dpi=dpi,
+            kwargs_figure=kwargs_figure,
+            kwargs_axes=kwargs_axes,
+            kwargs_layout=kwargs_layout,
+        )
+        if ax is None
+        else ax
+    )
+
+    if data.meta.preprocess is not None and data.meta.preprocess.indices_downsample:
+        vertex_indices = data.meta.preprocess.indices_downsample
+    else:
+        vertex_indices = list(range(emb.shape[0]))
+    emb_background = emb[vertex_indices]
+
+    ax.scatter(
+        emb_background[:, components[0]],
+        emb_background[:, components[1]],
+        color="lightgray",
+        s=s,
+        **(kwargs_scatter or {}),
+    )
+
+    def _loops_to_coords(loop_vertices: list[int]) -> np.ndarray:
+        coords = np.asarray(emb[np.asarray(loop_vertices, dtype=int)])
+        if coords.shape[0] > 2:
+            coords = np.vstack([coords, coords[0]])
+        return coords
+
+    for i, src_tid in enumerate(track_ids):
+        loops_plot: list[np.ndarray] = []
+        tracked_pairs = _get_track_loop(data, src_tid)
+        # include source loop
+        if src_tid < len(data.loop_representatives):
+            loops_plot.extend(
+                [_loops_to_coords(loop) for loop in data.loop_representatives[src_tid]]
+            )
+        # include matched bootstrap loops
+        for tid in tracked_pairs:
+            if tid[0] == 0:
+                continue
+            if data.bootstrap_data is None or (tid[0] - 1) >= len(
+                data.bootstrap_data.loop_representatives
+            ):
+                continue
+            boot_loops_all = data.bootstrap_data.loop_representatives[tid[0] - 1]
+            if tid[1] >= len(boot_loops_all):
+                continue
+            loops_plot.extend(
+                [_loops_to_coords(loop) for loop in boot_loops_all[tid[1]]]
+            )
+
+        for j, loop in enumerate(loops_plot):
+            ax.plot(
+                loop[:, components[0]],
+                loop[:, components[1]],
+                color=cmap[i][j % block_size],
+                **(kwargs_scatter or {}),
+            )
+
     return ax
 
 
@@ -388,9 +495,10 @@ def presence(
         ax.bar(occurance, count / np.sum(count), **kwargs)
     if n_bootstraps > 0 and len(presence_probs) > 0:
         mean_presence_prob = float(np.mean(presence_probs))
+        x_vals = np.arange(n_bootstraps + 1)
         ax.bar(
-            range(n_bootstraps + 1),
-            binom.pmf(range(n_bootstraps + 1), n_bootstraps, mean_presence_prob),
+            x_vals,
+            binom.pmf(x_vals, n_bootstraps, mean_presence_prob),
             alpha=0.5,
             **kwargs,
         )
@@ -400,107 +508,5 @@ def presence(
             1,
             color="red",
         )
-
-    return ax
-
-
-@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
-def loops(
-    adata: AnnData,
-    key_homology: str = "scloop",
-    track_ids: list[int] | None = None,
-    components: list[int] | tuple[int, int] = (0, 1),
-    ax: Axes | None = None,
-    *,
-    s: float = 1,
-    figsize: tuple[float, float] = (5, 5),
-    dpi: float = 300,
-    kwargs_figure: dict | None = None,
-    kwargs_axes: dict | None = None,
-    kwargs_layout: dict | None = None,
-    **kwargs,
-) -> Axes:
-    pass
-    data = _get_homology_data(adata, key_homology)
-    track_ids = track_ids or []
-    if len(components) != 2:
-        raise ValueError("components must contain exactly two entries.")
-
-    n_tracks = len(track_ids)
-    if n_tracks > 0:
-        block_size = 5
-        cmap = glasbey.create_block_palette(block_sizes=[block_size] * n_tracks)
-        cmap = [cmap[i : i + block_size] for i in range(0, len(cmap), block_size)]
-    ax = (
-        _create_figure_standard(
-            figsize=figsize,
-            dpi=dpi,
-            kwargs_figure=kwargs_figure,
-            kwargs_axes=kwargs_axes,
-            kwargs_layout=kwargs_layout,
-        )
-        if ax is None
-        else ax
-    )
-
-    if data.meta.preprocess is None or data.meta.preprocess.embedding_method is None:
-        raise ValueError("Embedding information is required to plot loops.")
-
-    emb_key = f"X_{data.meta.preprocess.embedding_method}"
-    if emb_key not in adata.obsm:
-        raise KeyError(f"Embedding {emb_key} not found in adata.obsm.")
-
-    emb = adata.obsm[emb_key]
-    vertex_indices = (
-        data.meta.preprocess.indices_downsample
-        if data.meta.preprocess.indices_downsample is not None
-        else list(range(emb.shape[0]))
-    )
-    emb_background = emb[vertex_indices]
-
-    ax.scatter(
-        emb_background[:, components[0]],
-        emb_background[:, components[1]],
-        color="lightgray",
-        s=s,
-        **kwargs,
-    )
-
-    def _loops_to_coords(loop_vertices: list[int]) -> np.ndarray:
-        coords = emb[np.asarray(loop_vertices, dtype=int)]
-        if coords.shape[0] > 2:
-            coords = np.vstack([coords, coords[0]])
-        return coords
-
-    for i, src_tid in enumerate(track_ids):
-        loops_plot: list[np.ndarray] = []
-        tracked_pairs = _get_track_loop(data, src_tid)
-        # include source loop
-        if src_tid < len(data.loop_representatives):
-            loops_plot.extend(
-                [_loops_to_coords(loop) for loop in data.loop_representatives[src_tid]]
-            )
-        # include matched bootstrap loops
-        for tid in tracked_pairs:
-            if tid[0] == 0:
-                continue
-            if data.bootstrap_data is None or (tid[0] - 1) >= len(
-                data.bootstrap_data.loop_representatives
-            ):
-                continue
-            boot_loops_all = data.bootstrap_data.loop_representatives[tid[0] - 1]
-            if tid[1] >= len(boot_loops_all):
-                continue
-            loops_plot.extend(
-                [_loops_to_coords(loop) for loop in boot_loops_all[tid[1]]]
-            )
-
-        for j, loop in enumerate(loops_plot):
-            ax.plot(
-                loop[:, components[0]],
-                loop[:, components[1]],
-                color=cmap[i][j % block_size],
-                **kwargs,
-            )
 
     return ax
