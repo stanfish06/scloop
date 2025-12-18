@@ -190,11 +190,11 @@ def bar_lifetimes(
         return ax
 
     lifetime_full_arr = np.concatenate(lifetimes)
-    idx_matrix = np.vstack(indices)
 
-    sort_idx = np.argsort(np.argsort(lifetime_full_arr))
+    sort_idx = np.argsort(lifetime_full_arr)
+    pos_idx = np.argsort(sort_idx)
     ax.barh(
-        sort_idx,
+        pos_idx,
         lifetime_full_arr,
         color="lightgray",
         linewidth=0,
@@ -209,18 +209,19 @@ def bar_lifetimes(
         cmap = [cmap[i : i + block_size] for i in range(0, len(cmap), block_size)]
         for i, src_tid in enumerate(track_ids):
             tracked_pairs = _get_track_loop(data, src_tid)
+            lifetime_tracks = []
             loc_idx = []
             for tid in tracked_pairs:
-                match = np.logical_and(
-                    idx_matrix[:, 0] == tid[0], idx_matrix[:, 1] == tid[1]
+                lifetime = tid[3] - tid[2]
+                loc_idx.append(
+                    np.searchsorted(a=lifetime_full_arr, v=lifetime, sorter=sort_idx)
                 )
-                if np.any(match):
-                    loc_idx.append(np.where(match)[0][0])
+                lifetime_tracks.append(lifetime)
             if len(loc_idx) == 0:
                 continue
             ax.barh(
-                sort_idx[loc_idx],
-                lifetime_full_arr[loc_idx],
+                loc_idx,
+                lifetime_tracks,
                 color=cmap[i][int(np.floor(block_size / 2))],
                 linewidth=0,
                 **kwargs,
@@ -244,7 +245,7 @@ def persistence_diagram(
     kwargs_figure: dict | None = None,
     kwargs_axes: dict | None = None,
     kwargs_layout: dict | None = None,
-    **kwargs,
+    kwargs_scatter: dict | None = None,
 ) -> Axes:
     data = _get_homology_data(adata, key_homology)
 
@@ -273,7 +274,9 @@ def persistence_diagram(
     base_births = np.asarray(base_diag[0])
     base_deaths = np.asarray(base_diag[1])
 
-    ax.scatter(base_births, base_deaths, color="lightgray", s=s, **kwargs)
+    ax.scatter(
+        base_births, base_deaths, color="lightgray", s=s, **(kwargs_scatter or {})
+    )
 
     if show_bootstrap and data.bootstrap_data is not None:
         for diag_boot in data.bootstrap_data.persistence_diagrams:
@@ -281,7 +284,13 @@ def persistence_diagram(
                 continue
             births_boot = np.asarray(diag_boot[dimension_homology][0])
             deaths_boot = np.asarray(diag_boot[dimension_homology][1])
-            ax.scatter(births_boot, deaths_boot, color="lightgray", s=s, **kwargs)
+            ax.scatter(
+                births_boot,
+                deaths_boot,
+                color="lightgray",
+                s=s,
+                **(kwargs_scatter or {}),
+            )
 
     track_ids = track_ids or []
     n_tracks = len(track_ids)
@@ -297,7 +306,7 @@ def persistence_diagram(
                     tid[3],
                     color=cmap[i][int(np.floor(block_size / 2))],
                     s=s,
-                    **kwargs,
+                    **(kwargs_scatter or {}),
                 )
 
     xlim = ax.get_xlim()
