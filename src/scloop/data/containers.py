@@ -174,7 +174,11 @@ class HomologyData:
         return sparse_pairwise_distance_matrix
 
     def _compute_boundary_matrix(
-        self, adata: AnnData, thresh: Diameter_t | None = None, **nei_kwargs
+        self,
+        adata: AnnData,
+        thresh: Diameter_t | None = None,
+        verbose: bool = False,
+        **nei_kwargs,
     ) -> None:
         assert self.meta.preprocess
         assert self.meta.preprocess.num_vertices
@@ -209,10 +213,11 @@ class HomologyData:
             row_simplex_diams=row_simplex_diams.tolist(),
             col_simplex_diams=result.triangle_diameters,
         )
-        logger.info(
-            f"Boundary matrix (dim 1) built: edges x triangles = "
-            f"{self.boundary_matrix_d1.shape[0]} x {self.boundary_matrix_d1.shape[1]}"
-        )
+        if verbose:
+            logger.info(
+                f"Boundary matrix (dim 1) built: edges x triangles = "
+                f"{self.boundary_matrix_d1.shape[0]} x {self.boundary_matrix_d1.shape[1]}"
+            )
 
     # ISSUE: currently, cocycles and loop representatives are de-coupled (for the ease of checking matches for bootstrap)
     def _compute_loop_representatives(

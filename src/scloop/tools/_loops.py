@@ -25,6 +25,7 @@ def find_loops(
     adata: AnnData,
     threshold_homology: Annotated[float, Field(ge=0)] | None = None,
     threshold_boundary: Annotated[float, Field(ge=0)] | None = None,
+    tightness_loops: Annotated[float, Field(ge=0, le=1)] = 0,
     n_candidates: Annotated[int, Field(ge=1)] = 1,
     n_bootstrap: Annotated[int, Field(ge=0)] = 10,
     n_check_per_candidate: Annotated[int, Field(ge=1)] = 1,
@@ -38,10 +39,11 @@ def find_loops(
     boundary_thresh = threshold_boundary
     if boundary_thresh is None:
         boundary_thresh = threshold_homology
-    hd._compute_boundary_matrix(adata=adata, thresh=boundary_thresh)
+    hd._compute_boundary_matrix(adata=adata, thresh=boundary_thresh, verbose=verbose)
     hd._compute_loop_representatives(
         pairwise_distance_matrix=sparse_dist_mat,
         top_k=n_candidates,
+        life_pct=tightness_loops,
     )
 
     hd._bootstrap(
@@ -51,6 +53,7 @@ def find_loops(
         top_k=n_candidates * n_check_per_candidate,
         k_neighbors_check_equivalence=n_check_per_candidate,
         n_max_workers=n_max_workers,
+        life_pct=tightness_loops,
         verbose=verbose,
     )
     adata.uns["scloop"] = hd
