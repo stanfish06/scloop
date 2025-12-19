@@ -318,6 +318,9 @@ def persistence_diagram(
         for i, src_tid in enumerate(track_ids):
             tracked_pairs = _get_track_loop(data, src_tid)
             for tid in tracked_pairs:
+                if not show_bootstrap:
+                    if tid[0] > 0:
+                        continue
                 ax.scatter(
                     tid[2],
                     tid[3],
