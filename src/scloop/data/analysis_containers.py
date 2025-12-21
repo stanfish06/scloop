@@ -4,12 +4,15 @@ from __future__ import annotations
 from typing import Optional
 
 import numpy as np
+from loguru import logger
 from pydantic import ConfigDict, Field
 from pydantic.dataclasses import dataclass
+from scipy.sparse import csr_matrix
+from scipy.sparse.linalg import eigsh
 from scipy.stats import false_discovery_control, fisher_exact, gamma
 from scipy.stats.contingency import odds_ratio
 
-from .types import Count_t, MultipleTestCorrectionMethod, PositiveFloat
+from .types import Count_t, Index_t, MultipleTestCorrectionMethod, PositiveFloat, Size_t
 
 
 @dataclass(config=ConfigDict(arbitrary_types_allowed=True))
@@ -29,6 +32,7 @@ class LoopTrack:
     birth_root: float
     death_root: float
     matches: list[LoopMatch] = Field(default_factory=list)
+    hodge_analysis: HodgeAnalysis | None = None
 
     @property
     # it is possible to have one-to-many matches
@@ -39,10 +43,35 @@ class LoopTrack:
     def lifetime(self) -> PositiveFloat:
         return self.death_root - self.birth_root
 
+    def _compute_hodge_eigendecomposition(
+        self, hodge_matrix: csr_matrix, n_components: int = 10, normalized: bool = True
+    ) -> tuple[np.ndarray, np.ndarray] | None:
+        if hodge_matrix is None:
+            logger.warning("hodge_matrix too small for eigendecomposition (shape < 2).")
+            return None
+        assert type(hodge_matrix) is csr_matrix
+        assert hodge_matrix.shape is not None
+        if hodge_matrix.shape[0] < 2:
+            logger.warning("hodge_matrix too small for eigendecomposition (shape < 2).")
+            return None
+
+        k = min(n_components, hodge_matrix.shape[0] - 2)
+        if k <= 0:
+            logger.warning(f"Not enough dimensions for eigendecomposition (k={k}).")
+            return None
+
+        try:
+            eigenvalues, eigenvectors = eigsh(hodge_matrix, k=k, which="SM")
+            sort_idx = np.argsort(eigenvalues)
+            return eigenvalues[sort_idx], eigenvectors[:, sort_idx]
+        except Exception as e:
+            logger.error(f"Eigendecomposition failed: {e}")
+            return None
+
 
 @dataclass
 class BootstrapAnalysis:
-    num_bootstraps: int = 0
+    num_bootstraps: Size_t = 0
     persistence_diagrams: list[list] = Field(default_factory=list)
     cocycles: list[list] = Field(default_factory=list)
     loop_representatives: list[list[list[list[int]]]] = Field(default_factory=list)
@@ -185,13 +214,20 @@ class BootstrapAnalysis:
         )
 
 
-@dataclass(config=ConfigDict(arbitrary_types_allowed=True))
+@dataclass
 class HodgeAnalysis:
-    loop_id: str
-    eigenvalues: np.ndarray | None = None
-    eigenvectors: np.ndarray | None = None
-    loops_edges_embedding: list[np.ndarray] = Field(default_factory=list)
-    parameters: dict = Field(default_factory=dict)
+    loop_id: Index_t
+    hodge_eigenvalues: list | None = None
+    hodge_eigenvectors: list | None = None
+    loops_edges_embedding: list | None = None
+    pseudotime_analysis: PseudotimeAnalysis | None = None
+    velociy_analysis: VelocityAnalysis | None = None
+
+    def _smoothening_edge_embedding(self):
+        pass
+
+    def _trajectory_identification(self):
+        pass
 
 
 @dataclass(config=ConfigDict(arbitrary_types_allowed=True))

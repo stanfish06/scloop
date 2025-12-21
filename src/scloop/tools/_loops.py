@@ -8,6 +8,7 @@ from pydantic import Field
 
 from ..data.containers import HomologyData
 from ..data.metadata import ScloopMeta
+from ..data.types import Index_t, PositiveFloat, Size_t
 
 __all__ = ["find_loops"]
 
@@ -23,11 +24,11 @@ def _get_scloop_meta(adata: AnnData) -> ScloopMeta:
 
 def find_loops(
     adata: AnnData,
-    threshold_homology: Annotated[float, Field(ge=0)] | None = None,
-    threshold_boundary: Annotated[float, Field(ge=0)] | None = None,
+    threshold_homology: PositiveFloat | None = None,
+    threshold_boundary: PositiveFloat | None = None,
     tightness_loops: Annotated[float, Field(ge=0, le=1)] = 0,
     n_candidates: Annotated[int, Field(ge=1)] = 1,
-    n_bootstrap: Annotated[int, Field(ge=0)] = 10,
+    n_bootstrap: Size_t = 10,
     n_check_per_candidate: Annotated[int, Field(ge=1)] = 1,
     n_max_workers: Annotated[int, Field(ge=1)] = 8,
     verbose: bool = False,
@@ -73,5 +74,12 @@ def find_loops(
     adata.uns["scloop"] = hd
 
 
-def analyze_loop():
+def analyze_loops(
+    adata: AnnData,
+    track_ids: list[Index_t] | None = None,
+):
+    assert adata.uns["scloop"] is not None
+    hd: HomologyData = adata.uns["scloop"]
+    # loop through selected tracks and do hodge analysis
+    # use same life_pct as find_loops
     pass

@@ -19,7 +19,6 @@ from rich.progress import (
     TimeRemainingColumn,
 )
 from scipy.sparse import csr_matrix, triu
-from scipy.sparse.linalg import eigsh
 from scipy.spatial.distance import directed_hausdorff
 
 from ..computing.homology import (
@@ -29,7 +28,6 @@ from ..computing.homology import (
 )
 from .analysis_containers import (
     BootstrapAnalysis,
-    HodgeAnalysis,
     LoopMatch,
     LoopTrack,
 )
@@ -137,7 +135,6 @@ class HomologyData:
     boundary_matrix_d1: BoundaryMatrixD1 | None = None
     boundary_matrix_d0: BoundaryMatrixD0 | None = None
     bootstrap_data: BootstrapAnalysis | None = None
-    hodge_data: HodgeAnalysis | None = None
 
     def _loops_to_edge_mask(self, loops: list[list[int]]) -> np.ndarray:
         assert self.boundary_matrix_d1 is not None
@@ -341,33 +338,6 @@ class HomologyData:
             L1 = csr_matrix(bd1.transpose() @ bd1 + bd2 @ bd2.transpose())
 
         return L1
-
-    def _compute_hodge_eigendecomposition(
-        self, thresh: PositiveFloat, n_components: int = 10, normalized: bool = True
-    ) -> tuple[np.ndarray, np.ndarray] | None:
-        L1 = self._compute_hodge_matrix(thresh=thresh, normalized=normalized)
-
-        if L1 is None:
-            logger.warning("L1 too small for eigendecomposition (shape < 2).")
-            return None
-        assert type(L1) is csr_matrix
-        assert L1.shape is not None
-        if L1.shape[0] < 2:
-            logger.warning("L1 too small for eigendecomposition (shape < 2).")
-            return None
-
-        k = min(n_components, L1.shape[0] - 2)
-        if k <= 0:
-            logger.warning(f"Not enough dimensions for eigendecomposition (k={k}).")
-            return None
-
-        try:
-            eigenvalues, eigenvectors = eigsh(L1, k=k, which="SM")
-            sort_idx = np.argsort(eigenvalues)
-            return eigenvalues[sort_idx], eigenvectors[:, sort_idx]
-        except Exception as e:
-            logger.error(f"Eigendecomposition failed: {e}")
-            return None
 
     # ISSUE: currently, cocycles and loop representatives are de-coupled (for the ease of checking matches for bootstrap)
     def _compute_loop_representatives(
