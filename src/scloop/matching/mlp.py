@@ -11,6 +11,21 @@ from .data_modules import nnRegressorDataModule
 
 
 class MLPregressor(pl.LightningModule):
+    data: nnRegressorDataModule
+    input_dim: int
+    output_dim: int
+    do_validation: bool
+    n_hidden: int
+    n_layers: int
+    lr: float
+    weight_decay: float
+    activation_fn: nn.Module
+    dropout: nn.Module
+    layer_norm: nn.Module
+    batch_norm: nn.Module
+    trainer: pl.Trainer | None
+    check_val_every_n_epoch: int
+
     def __init__(
         self,
         data: nnRegressorDataModule,

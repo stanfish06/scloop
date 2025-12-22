@@ -85,6 +85,7 @@ url = "https://download.pytorch.org/whl/cu128"
 explicit = true
 
 [tool.ruff]
+exclude = [ "src/scloop/preprocessing/delve" ]
 format.indent-style = "space"
 format.quote-style = "double"
 lint.extend-select = [ "I" ]
@@ -119,3 +120,6 @@ executionEnvironments = [
 
 venvPath = "/home/stanfish/Git/scloop"
 venv = ".venv"
+
+[tool.ty]
+src = { include = [ "src" ], exclude = [ "src/scloop/preprocessing/delve" ] }

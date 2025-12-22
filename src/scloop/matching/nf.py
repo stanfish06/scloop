@@ -12,6 +12,23 @@ from .data_modules import nnRegressorDataModule
 
 
 class NeuralODEregressor(pl.LightningModule):
+    data: nnRegressorDataModule
+    t_span: torch.Tensor
+    input_dim: int
+    output_dim: int
+    do_validation: bool
+    n_hidden: int
+    n_layers: int
+    activation_fn: nn.Module
+    solver: str
+    solver_adjoint: str
+    atol_adjoint: tuple[float]
+    rtol_adjoint: tuple[float]
+    lr: float
+    weight_decay: float
+    trainer: pl.Trainer | None
+    check_val_every_n_epoch: int
+
     def __init__(
         self,
         data: nnRegressorDataModule,

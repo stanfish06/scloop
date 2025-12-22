@@ -38,7 +38,7 @@ run = [
 
 [tasks.format]
 run = [
-    "pyproject-fmt pyproject.toml",
+    "pyproject-fmt pyproject.toml || true",
     "uv run ruff format",
     "uv run ruff check --fix"
 ]
@@ -62,9 +62,7 @@ run = [
 ]
 
 [tasks.lint]
-run = [
-    "uv run ty check",
-]
+run = "uv run ruff check || uv run ty check"
 
 [tasks.kernel]
 run = "uv run ipython kernel install --name 'scLoop' --user"

@@ -22,7 +22,7 @@ def _normalize_and_select_hvg(
     compute_hvg: bool = True,
     target_sum: float = 1e4,
     n_top_genes: int = 2000,
-    batch_key: str = "sample_labels",
+    batch_key: str | None = "sample_labels",
     subset: bool = True,
     verbose: bool = True,
 ):
@@ -43,7 +43,7 @@ def _normalize_and_select_hvg(
         Target sum for library size normalization.
     n_top_genes: int
         Number of top highly variable genes to select.
-    batch_key: str
+    batch_key: str | None
         Key for batch information in adata.obs.
     """
     done_hvg = "hvg" in adata.uns
@@ -54,7 +54,9 @@ def _normalize_and_select_hvg(
             if verbose:
                 logger.info("adata already normalized (log1p), skipping normalization")
         else:
-            if not np.all(np.equal(np.mod(adata.X.data, 1), 0)):
+            X = adata.X
+            values = X.data if hasattr(X, "data") else X
+            if not np.all(np.equal(np.mod(np.asarray(values), 1), 0)):
                 raise ValueError(
                     "adata.X contains non integer values, check if it is library normalized"
                 )
@@ -109,7 +111,7 @@ def prepare_adata(
     library_normalization: bool = True,
     target_sum: float = 1e4,
     feature_selection_method: FeatureSelectionMethod = "hvg",
-    batch_key: str = "sample_labels",
+    batch_key: str | None = "sample_labels",
     n_top_genes: int = 2000,
     embedding_method: EmbeddingMethod = "diffmap",
     embedding_neighbors: EmbeddingNeighbors = "pca",
