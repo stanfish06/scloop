@@ -42,6 +42,7 @@ jobs:
             env_macos: >
               CC="/opt/homebrew/opt/llvm/bin/clang"
               CXX="/opt/homebrew/opt/llvm/bin/clang++"
+              MACOSX_DEPLOYMENT_TARGET=14.0
               CFLAGS="-I{project}/src/scloop/utils/linear_algebra_gf2/include -fopenmp"
               LDFLAGS="-L{project}/src/scloop/utils/linear_algebra_gf2 -Wl,-rpath,{project}/src/scloop/utils/linear_algebra_gf2 -L/opt/homebrew/opt/llvm/lib -Wl,-rpath,/opt/homebrew/opt/llvm/lib -lomp"
               CPLUS_INCLUDE_PATH="{project}/src/scloop/data:{project}/src/scloop/utils/distance_metrics"
@@ -86,7 +87,6 @@ jobs:
             libtool
             make
             mingw-w64-ucrt-x86_64-toolchain
-            mingw-w64-ucrt-x86_64-libomp
 
       - name: Install cibuildwheel
         run: python -m pip install cibuildwheel
