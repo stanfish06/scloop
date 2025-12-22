@@ -1,6 +1,7 @@
 # Copyright 2025 Zhiyuan Yu (Heemskerk's lab, University of Michigan)
 from collections import OrderedDict
 
+import numpy as np
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
@@ -20,6 +21,7 @@ class MLPregressor(pl.LightningModule):
         batch_norm=False,
         lr=1e-3,
         weight_decay=1e-4,
+        check_val_every_n_epoch=5,
     ):
         super().__init__()
         self.data = data
@@ -35,6 +37,7 @@ class MLPregressor(pl.LightningModule):
         self.layer_norm = nn.LayerNorm(self.n_hidden) if layer_norm else nn.Identity()
         self.batch_norm = nn.BatchNorm1d(self.n_hidden) if batch_norm else nn.Identity()
         self.trainer = None
+        self.check_val_every_n_epoch = check_val_every_n_epoch
 
         self.save_hyperparameters("n_hidden", "n_layers")
 
@@ -100,7 +103,7 @@ class MLPregressor(pl.LightningModule):
         self.log("test_loss", loss, on_step=False, on_epoch=True)
         return loss
 
-    def configure_optimizers(self):
+    def configure_optimizers(self):  # type: ignore[attr-defined]
         optimizer = torch.optim.AdamW(
             self.parameters(),
             lr=self.lr,
@@ -113,7 +116,11 @@ class MLPregressor(pl.LightningModule):
 
         return {
             "optimizer": optimizer,
-            "lr_scheduler": scheduler,
+            "lr_scheduler": {
+                "scheduler": scheduler,
+                "monitor": "val_loss" if self.do_validation else "train_loss",
+                "frequency": self.check_val_every_n_epoch,
+            },
             "monitor": "val_loss" if self.do_validation else "train_loss",
         }
 
@@ -121,23 +128,33 @@ class MLPregressor(pl.LightningModule):
         x = batch if not isinstance(batch, (tuple, list)) else batch[0]
         return self.forward(x)
 
-    # TODO: configure logging
     def fit(self, max_epochs: int = 100):
         self.trainer = pl.Trainer(
             max_epochs=max_epochs,
             accelerator="auto",
             logger=False,
             enable_checkpointing=True,
+            check_val_every_n_epoch=self.check_val_every_n_epoch,
         )
         self.trainer.fit(self, self.data)
 
     def predict(self):
         if self.trainer is None:
-            raise RuntimeError(
-                "Model must be trained first. Call fit() before predict()."
-            )
+            raise RuntimeError("Model has not been trained")
 
         batch_predictions = self.trainer.predict(self, self.data)
-        all_predictions = torch.cat(batch_predictions, dim=0)
+        all_predictions = torch.cat(batch_predictions, dim=0)  # type: ignore[attr-defined]
 
         return all_predictions.detach().cpu().numpy()
+
+    def predict_new(self, x: np.ndarray):
+        import numpy as np
+
+        if self.trainer is None:
+            raise RuntimeError("Model has not been trained")
+
+        x_tensor = torch.from_numpy(x.astype(np.float32))
+        self.eval()
+        with torch.no_grad():
+            y_pred = self.forward(x_tensor)
+        return y_pred.detach().cpu().numpy()

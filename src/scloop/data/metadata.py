@@ -2,10 +2,12 @@
 from pydantic import BaseModel
 
 from .types import (
+    CrossMatchModelTypes,
     EmbeddingMethod,
     EmbeddingNeighbors,
     FeatureSelectionMethod,
     IndexListDownSample,
+    Percent_t,
     Size_t,
 )
 
@@ -32,9 +34,16 @@ class PreprocessMeta(BaseModel):
 # TODO: store significant loop data
 class BootstrapMeta(BaseModel):
     indices_resample: list[IndexListDownSample] | None = None
-    life_pct: Percnet_t | None = None
+    life_pct: Percent_t | None = None
 
 
 class ScloopMeta(BaseModel):
     preprocess: PreprocessMeta | None = None
     bootstrap: BootstrapMeta | None = None
+
+
+class CrossDatasetMatchingMeta(BaseModel):
+    shared_embedding_key: str
+    reference_embedding_keys: list[str]
+    reference_idx: int
+    model_type: CrossMatchModelTypes

@@ -8,6 +8,7 @@ EmbeddingMethod = Literal["pca", "diffmap", "scvi"]
 EmbeddingNeighbors = Literal["pca", "scvi"]
 LoopDistMethod = Literal["hausdorff", "frechet"]
 MultipleTestCorrectionMethod = Literal["bonferroni", "benjamini-hochberg"]
+CrossMatchModelTypes = Literal["mlp", "nf"]
 
 Index_t = Annotated[int, Field(ge=0)]
 Size_t = Annotated[int, Field(ge=0)]

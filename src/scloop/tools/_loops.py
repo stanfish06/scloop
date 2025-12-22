@@ -8,7 +8,7 @@ from pydantic import Field
 
 from ..data.containers import HomologyData
 from ..data.metadata import ScloopMeta
-from ..data.types import Index_t, PositiveFloat, Size_t
+from ..data.types import Index_t, Percent_t, PositiveFloat, Size_t
 
 __all__ = ["find_loops"]
 
@@ -26,7 +26,7 @@ def find_loops(
     adata: AnnData,
     threshold_homology: PositiveFloat | None = None,
     threshold_boundary: PositiveFloat | None = None,
-    tightness_loops: Annotated[float, Field(ge=0, le=1)] = 0,
+    tightness_loops: Percent_t = 0,
     n_candidates: Annotated[int, Field(ge=1)] = 1,
     n_bootstrap: Size_t = 10,
     n_check_per_candidate: Annotated[int, Field(ge=1)] = 1,

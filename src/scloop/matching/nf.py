@@ -24,6 +24,7 @@ class NeuralODEregressor(pl.LightningModule):
         rtol_adjoint=1e-4,
         lr=1e-3,
         weight_decay=1e-4,
+        check_val_every_n_epoch=5,
     ):
         super().__init__()
         if torch.cuda.is_available():
@@ -45,6 +46,7 @@ class NeuralODEregressor(pl.LightningModule):
         self.lr = lr
         self.weight_decay = weight_decay
         self.trainer = None
+        self.check_val_every_n_epoch = check_val_every_n_epoch
 
         self.save_hyperparameters("n_hidden", "n_layers")
 
@@ -109,7 +111,7 @@ class NeuralODEregressor(pl.LightningModule):
         self.log("test_loss", loss, on_step=False, on_epoch=True)
         return loss
 
-    def configure_optimizers(self):
+    def configure_optimizers(self):  # type: ignore[attr-defined]
         optimizer = torch.optim.AdamW(
             self.parameters(),
             lr=self.lr,
@@ -122,7 +124,11 @@ class NeuralODEregressor(pl.LightningModule):
 
         return {
             "optimizer": optimizer,
-            "lr_scheduler": scheduler,
+            "lr_scheduler": {
+                "scheduler": scheduler,
+                "monitor": "val_loss" if self.do_validation else "train_loss",
+                "frequency": self.check_val_every_n_epoch,
+            },
             "monitor": "val_loss" if self.do_validation else "train_loss",
         }
 
@@ -130,7 +136,6 @@ class NeuralODEregressor(pl.LightningModule):
         x = batch if not isinstance(batch, (tuple, list)) else batch[0]
         return self.forward(x, self.t_span)
 
-    # TODO: configure logging
     def fit(self, max_epochs: int = 100):
         self.trainer = pl.Trainer(
             max_epochs=max_epochs,
@@ -142,14 +147,11 @@ class NeuralODEregressor(pl.LightningModule):
 
     def predict(self):
         if self.trainer is None:
-            raise RuntimeError(
-                "Model must be trained first. Call fit() before predict()."
-            )
+            raise RuntimeError("Model has not been trained")
 
         batch_predictions = self.trainer.predict(self, self.data)
-
-        t_eval = batch_predictions[0][0]
-        all_trajectories = torch.cat([pred[1] for pred in batch_predictions], dim=1)
+        t_eval = batch_predictions[0][0]  # type: ignore[attr-defined]
+        all_trajectories = torch.cat([pred[1] for pred in batch_predictions], dim=1)  # type: ignore[attr-defined]
         final_snapshots = all_trajectories[-1, :, :]
 
         t_eval_np = t_eval.detach().cpu().numpy()
@@ -158,23 +160,15 @@ class NeuralODEregressor(pl.LightningModule):
 
         return (t_eval_np, trajectories_np, final_np)
 
+    def predict_new(self, x: np.ndarray):
+        import numpy as np
 
-def main():
-    np.random.seed(42)
-    x = np.random.randn(1000, 2).astype(np.float32)
-    y = np.column_stack([np.sin(x[:, 0]), np.cos(x[:, 1])]).astype(np.float32)
+        if self.trainer is None:
+            raise RuntimeError("Model has not been trained")
 
-    data_module = nnRegressorDataModule(x=x, y=y, batch_size=32)
-    data_module.setup("fit")
-
-    t_span = torch.linspace(0, 1, 5)
-    model = NeuralODEregressor(data=data_module, t_span=t_span, n_hidden=32, n_layers=1)
-    test_x = torch.randn(4, 2)
-    t_eval, y_pred = model.forward(test_x, t_span)
-
-    # Train the model
-    model.fit()
-
-
-if __name__ == "__main__":
-    main()
+        x_tensor = torch.from_numpy(x.astype(np.float32))
+        self.eval()
+        with torch.no_grad():
+            _, trajectory = self.forward(x_tensor, self.t_span)
+            y_pred = trajectory[-1]
+        return y_pred.detach().cpu().numpy()
