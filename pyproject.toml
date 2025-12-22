@@ -55,6 +55,9 @@ dependencies = [
   "umap-learn>=0.5.7",
 ]
 
+urls.Issues = "https://github.com/stanfish06/scloop/issues"
+urls.Repository = "https://github.com/stanfish06/scloop.git"
+
 [dependency-groups]
 dev = [
   "pyright==1.1.406",
