@@ -166,7 +166,7 @@ def nearest_neighbor_per_row(
     return neighbor_indices, neighbor_distances
 
 
-@jit
+# this cannot be jitted
 def loops_to_coords(
     embedding: np.ndarray, loops_vertices: list[list[int]]
 ) -> list[np.ndarray]:

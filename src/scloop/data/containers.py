@@ -31,6 +31,7 @@ from .analysis_containers import (
     LoopMatch,
     LoopTrack,
 )
+from .base_components import LoopClass
 from .loop_reconstruction import reconstruct_n_loop_representatives
 from .metadata import BootstrapMeta, ScloopMeta
 from .types import (
@@ -132,8 +133,8 @@ class HomologyData:
 
     meta: ScloopMeta
     persistence_diagram: list | None = None
-    loop_representatives: list[list[list[int]]] = Field(default_factory=list)
     cocycles: list | None = None
+    selected_loop_classes: list[LoopClass | None] = Field(default_factory=list)
     boundary_matrix_d1: BoundaryMatrixD1 | None = None
     boundary_matrix_d0: BoundaryMatrixD0 | None = None
     bootstrap_data: BootstrapAnalysis | None = None
@@ -364,8 +365,11 @@ class HomologyData:
             else:
                 raise ValueError("life_pct not provided and not found in metadata")
         assert life_pct is not None
-        birth_t = track.birth_root
-        death_t = track.death_root
+        assert track_id < len(self.selected_loop_classes)
+        loop_class = self.selected_loop_classes[track_id]
+        assert loop_class is not None
+        birth_t = loop_class.birth
+        death_t = loop_class.death
         thresh_t = birth_t + (death_t - birth_t) * life_pct
 
         hodge_matrix_d1 = self._compute_hodge_matrix(
@@ -460,25 +464,20 @@ class HomologyData:
             return [], []
 
         if not bootstrap:
-            if self.loop_representatives is None:
-                self.loop_representatives = []
-            while len(self.loop_representatives) < len(indices_top_k):
-                self.loop_representatives.append([])
+            while len(self.selected_loop_classes) < len(indices_top_k):
+                self.selected_loop_classes.append(None)
         else:
             assert self.bootstrap_data is not None
-            bootstrap_data = self.bootstrap_data
-            while len(bootstrap_data.loop_representatives) <= idx_bootstrap:
-                bootstrap_data.loop_representatives.append([])
-            if len(bootstrap_data.loop_representatives[idx_bootstrap]) < len(
+            while len(self.bootstrap_data.selected_loop_classes) <= idx_bootstrap:
+                self.bootstrap_data.selected_loop_classes.append([])
+            while len(self.bootstrap_data.selected_loop_classes[idx_bootstrap]) < len(
                 indices_top_k
             ):
-                bootstrap_data.loop_representatives[idx_bootstrap] = [
-                    [] for _ in range(len(indices_top_k))
-                ]
+                self.bootstrap_data.selected_loop_classes[idx_bootstrap].append(None)
 
         for loop_idx, i in enumerate(indices_top_k):
-            loop_birth: float = loop_births[i].item()
-            loop_death: float = loop_deaths[i].item()
+            loop_birth = loop_births[i].item()
+            loop_death = loop_deaths[i].item()
             loops_local, _ = reconstruct_n_loop_representatives(
                 cocycles_dim1=cocycles[i],
                 edges=edges_array,
@@ -497,11 +496,13 @@ class HomologyData:
             loops = [[vertex_ids[v] for v in loop] for loop in loops_local]
 
             if not bootstrap:
-                self.loop_representatives[loop_idx] = loops
+                self.selected_loop_classes[loop_idx] = LoopClass(
+                    loop_idx, loop_birth, loop_death, cocycles[i], loops
+                )
             else:
                 assert self.bootstrap_data is not None
-                self.bootstrap_data.loop_representatives[idx_bootstrap][loop_idx] = (
-                    loops
+                self.bootstrap_data.selected_loop_classes[idx_bootstrap][loop_idx] = (
+                    LoopClass(loop_idx, loop_birth, loop_death, cocycles[i], loops)
                 )
 
     def _get_loop_embedding(
@@ -513,13 +514,15 @@ class HomologyData:
         loops = []
         match selector:
             case int():
-                assert selector < len(self.loop_representatives)
-                loops.extend(
-                    loops_to_coords(
-                        embedding=embedding,
-                        loops_vertices=self.loop_representatives[selector],
+                assert selector < len(self.selected_loop_classes)
+                loop_class = self.selected_loop_classes[selector]
+                if loop_class is not None and loop_class.representatives is not None:
+                    loops.extend(
+                        loops_to_coords(
+                            embedding=embedding,
+                            loops_vertices=loop_class.representatives,
+                        )
                     )
-                )
                 if include_bootstrap:
                     assert self.bootstrap_data is not None
                     loops.extend(
@@ -529,9 +532,9 @@ class HomologyData:
                     )
             case tuple():
                 assert self.bootstrap_data is not None
-                assert selector[0] < len(self.bootstrap_data.loop_representatives)
+                assert selector[0] < len(self.bootstrap_data.selected_loop_classes)
                 assert selector[1] < len(
-                    self.bootstrap_data.loop_representatives[selector[0]]
+                    self.bootstrap_data.selected_loop_classes[selector[0]]
                 )
                 loops.extend(
                     self.bootstrap_data._get_loop_embedding(
@@ -550,20 +553,18 @@ class HomologyData:
         idx_bootstrap: int = 0,
         method: LoopDistMethod = "hausdorff",
     ) -> tuple[int, int, float]:
-        assert self.loop_representatives is not None
         assert self.bootstrap_data is not None
         assert self.meta.preprocess is not None
         assert self.meta.preprocess.embedding_method is not None
 
-        if idx_bootstrap >= len(self.bootstrap_data.loop_representatives):
+        if idx_bootstrap >= len(self.bootstrap_data.selected_loop_classes):
             return (source_class_idx, target_class_idx, np.nan)
-        if self.loop_representatives is None or source_class_idx >= len(
-            self.loop_representatives
-        ):
+        if source_class_idx >= len(self.selected_loop_classes):
             return (source_class_idx, target_class_idx, np.nan)
 
-        boot_loops_all = self.bootstrap_data.loop_representatives[idx_bootstrap]
-        if target_class_idx >= len(boot_loops_all):
+        if target_class_idx >= len(
+            self.bootstrap_data.selected_loop_classes[idx_bootstrap]
+        ):
             return (source_class_idx, target_class_idx, np.nan)
 
         emb = adata.obsm[f"X_{self.meta.preprocess.embedding_method}"]
@@ -602,28 +603,37 @@ class HomologyData:
         idx_bootstrap: int = 0,
         n_pairs_check: int = 10,
     ) -> tuple[int, int, bool]:
-        assert self.loop_representatives is not None
         assert self.bootstrap_data is not None
         self._ensure_loop_tracks()
         if target_class_idx is None:
             target_class_idx = source_class_idx
-        if idx_bootstrap >= len(self.bootstrap_data.loop_representatives):
+        if idx_bootstrap >= len(self.bootstrap_data.selected_loop_classes):
             return (source_class_idx, target_class_idx, False)
-        if source_class_idx >= len(self.loop_representatives):
+        if source_class_idx >= len(self.selected_loop_classes):
             return (source_class_idx, target_class_idx, False)
-        boot_loops_all = self.bootstrap_data.loop_representatives[idx_bootstrap]
-        if target_class_idx >= len(boot_loops_all):
+        if target_class_idx >= len(
+            self.bootstrap_data.selected_loop_classes[idx_bootstrap]
+        ):
             return (source_class_idx, target_class_idx, False)
 
-        source_loops = self.loop_representatives[source_class_idx]
-        target_loops = boot_loops_all[target_class_idx]
+        source_loop_class = self.selected_loop_classes[source_class_idx]
+        target_loop_class = self.bootstrap_data.selected_loop_classes[idx_bootstrap][
+            target_class_idx
+        ]
+        if (
+            source_loop_class is None
+            or source_loop_class.representatives is None
+            or target_loop_class is None
+            or target_loop_class.representatives is None
+        ):
+            return (source_class_idx, target_class_idx, False)
+
+        source_loops = source_loop_class.representatives
+        target_loops = target_loop_class.representatives
         if len(source_loops) == 0 or len(target_loops) == 0:
             return (source_class_idx, target_class_idx, False)
 
-        loop_track = self.bootstrap_data.loop_tracks.get(source_class_idx)
-        if loop_track is None:
-            return (source_class_idx, target_class_idx, False)
-        source_loop_death = loop_track.death_root
+        source_loop_death = source_loop_class.death
 
         mask_a = self._loops_to_edge_mask(source_loops)
         mask_b = self._loops_to_edge_mask(target_loops)
@@ -642,21 +652,15 @@ class HomologyData:
     def _ensure_loop_tracks(self) -> None:
         if self.bootstrap_data is None:
             return
-        if self.persistence_diagram is None or self.loop_representatives is None:
+        if self.persistence_diagram is None:
             return
-        loop_births = np.array(self.persistence_diagram[1][0], dtype=np.float32)
-        loop_deaths = np.array(self.persistence_diagram[1][1], dtype=np.float32)
-        top_k = len(self.loop_representatives)
+        top_k = len(self.selected_loop_classes)
         if top_k == 0:
             return
-        persistence = loop_deaths - loop_births
-        indices_top_k = np.argsort(persistence)[::-1][:top_k]
-        for track_idx, loop_idx in enumerate(indices_top_k):
-            birth = float(loop_births[loop_idx])
-            death = float(loop_deaths[loop_idx])
+        for track_idx in range(top_k):
             if track_idx not in self.bootstrap_data.loop_tracks:
                 self.bootstrap_data.loop_tracks[track_idx] = LoopTrack(
-                    source_class_idx=track_idx, birth_root=birth, death_root=death
+                    source_class_idx=track_idx
                 )
 
     def _bootstrap(
@@ -745,9 +749,9 @@ class HomologyData:
                 - reduce computation load
                 ==============================================
                 """
-                n_original_loop_classes = len(self.loop_representatives)
+                n_original_loop_classes = len(self.selected_loop_classes)
                 n_bootstrap_loop_classes = len(
-                    self.bootstrap_data.loop_representatives[idx_bootstrap]
+                    self.bootstrap_data.selected_loop_classes[idx_bootstrap]
                 )
 
                 if n_original_loop_classes == 0 or n_bootstrap_loop_classes == 0:
@@ -809,18 +813,6 @@ class HomologyData:
                                 )
                                 tasks[task] = (si, tj, neighbor_distances[si, k], k)
 
-                    # ISSUE: very bad way of finding the brith and death of bootstrap loops
-                    boot_births = np.array(
-                        self.bootstrap_data.persistence_diagrams[idx_bootstrap][1][0],
-                        dtype=np.float32,
-                    )
-                    boot_deaths = np.array(
-                        self.bootstrap_data.persistence_diagrams[idx_bootstrap][1][1],
-                        dtype=np.float32,
-                    )
-                    boot_persistence = boot_deaths - boot_births
-                    boot_indices_sorted = np.argsort(boot_persistence)[::-1]
-
                     for task in as_completed(tasks):
                         si, tj, geo_dist, neighbor_rank = tasks[task]
                         _, _, is_homologically_equivalent = task.result()
@@ -836,18 +828,9 @@ class HomologyData:
                             )
                             self._ensure_loop_tracks()
                             track: LoopTrack = self.bootstrap_data.loop_tracks[si]
-                            original_idx = (
-                                boot_indices_sorted[tj]
-                                if tj < len(boot_indices_sorted)
-                                else tj
-                            )
-                            birth_boot = float(boot_births[original_idx])
-                            death_boot = float(boot_deaths[original_idx])
                             track.matches.append(
                                 LoopMatch(
                                     idx_bootstrap=idx_bootstrap,
-                                    birth_bootstrap=birth_boot,
-                                    death_bootstrap=death_boot,
                                     target_class_idx=tj,
                                     geometric_distance=float(geo_dist),
                                     neighbor_rank=neighbor_rank,
@@ -880,7 +863,7 @@ class HomologyData:
             pvalues_corrected_persistence,
             gamma_params,
         ) = self.bootstrap_data.gamma_test_persistence(
-            method_pval_correction=method_pval_correction
+            self.selected_loop_classes, method_pval_correction
         )
         self.bootstrap_data.gamma_persistence_results = (
             pvalues_raw_persistence,

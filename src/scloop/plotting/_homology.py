@@ -47,6 +47,7 @@ def _get_homology_data(adata: AnnData, key_homology: str) -> HomologyData:
     return adata.uns[key_homology]
 
 
+# ugly function, fix that
 def _get_track_loop(
     data: HomologyData, track_id: int
 ) -> list[tuple[int, int, float, float]]:
@@ -55,11 +56,30 @@ def _get_track_loop(
     track = data.bootstrap_data.loop_tracks.get(track_id)
     if track is None:
         return []
-    tracked_pairs = [(0, track.source_class_idx, track.birth_root, track.death_root)]
-    tracked_pairs.extend(
-        (m.idx_bootstrap + 1, m.target_class_idx, m.birth_bootstrap, m.death_bootstrap)
-        for m in track.matches
-    )
+    tracked_pairs = []
+    if track_id < len(data.selected_loop_classes):
+        loop_class = data.selected_loop_classes[track_id]
+        if loop_class is not None:
+            tracked_pairs.append(
+                (0, track.source_class_idx, loop_class.birth, loop_class.death)
+            )
+    for m in track.matches:
+        if m.idx_bootstrap < len(data.bootstrap_data.selected_loop_classes):
+            if m.target_class_idx < len(
+                data.bootstrap_data.selected_loop_classes[m.idx_bootstrap]
+            ):
+                boot_loop_class = data.bootstrap_data.selected_loop_classes[
+                    m.idx_bootstrap
+                ][m.target_class_idx]
+                if boot_loop_class is not None:
+                    tracked_pairs.append(
+                        (
+                            m.idx_bootstrap + 1,
+                            m.target_class_idx,
+                            boot_loop_class.birth,
+                            boot_loop_class.death,
+                        )
+                    )
     return tracked_pairs
 
 
@@ -422,13 +442,10 @@ def loops(
     def _loops_for_selector(
         selector: Index_t | tuple[Index_t, Index_t],
     ) -> list[np.ndarray]:
-        # only allow explicit bootstrap selectors when bootstrap data is available
         if isinstance(selector, tuple) and not include_bootstrap:
             return []
         if isinstance(selector, int):
-            if data.loop_representatives is None:
-                return []
-            if selector >= len(data.loop_representatives):
+            if selector >= len(data.selected_loop_classes):
                 return []
         try:
             return data._get_loop_embedding(
