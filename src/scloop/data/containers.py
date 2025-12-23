@@ -19,6 +19,7 @@ from rich.progress import (
     TimeRemainingColumn,
 )
 from scipy.sparse import csr_matrix, triu
+from scipy.sparse.linalg import eigsh
 from scipy.spatial.distance import directed_hausdorff
 
 from ..computing.homology import (
@@ -41,7 +42,6 @@ from .types import (
     LoopDistMethod,
     MultipleTestCorrectionMethod,
     Percent_t,
-    PositiveFloat,
     Size_t,
 )
 from .utils import (
@@ -296,7 +296,7 @@ class HomologyData:
             )
 
     def _compute_hodge_matrix(
-        self, thresh: PositiveFloat, normalized: bool = True
+        self, thresh: Diameter_t, normalized: bool = True
     ) -> csr_matrix | None:
         if self.boundary_matrix_d0 is None or self.boundary_matrix_d1 is None:
             raise ValueError("Boundary matrices must be computed first.")
@@ -344,17 +344,41 @@ class HomologyData:
 
         return hodge_matrix_d1
 
+    def _compute_hodge_eigendecomposition(
+        self, hodge_matrix: csr_matrix, n_components: int = 10
+    ) -> tuple[np.ndarray, np.ndarray] | None:
+        assert type(hodge_matrix) is csr_matrix
+        assert hodge_matrix.shape is not None
+        if hodge_matrix.shape[0] < 2:
+            logger.warning("hodge_matrix too small for eigendecomposition (shape < 2).")
+            return None
+
+        k = min(n_components, hodge_matrix.shape[0] - 2)
+        if k <= 0:
+            logger.warning(f"Not enough dimensions for eigendecomposition (k={k}).")
+            return None
+
+        try:
+            eigenvalues, eigenvectors = eigsh(hodge_matrix, k=k, which="SM")
+            sort_idx = np.argsort(eigenvalues)
+            return eigenvalues[sort_idx], eigenvectors[:, sort_idx]
+        except Exception as e:
+            logger.error(f"Eigendecomposition failed: {e}")
+            return None
+
     def _compute_hodge_analysis_for_track(
         self,
-        track_id: int,
+        idx_track: Index_t,
+        embedding: np.ndarray,
+        values_vertices: np.ndarray,
         life_pct: Percent_t | None = None,
         n_hodge_components: int = 10,
         normalized: bool = True,
     ) -> None:
         assert self.bootstrap_data is not None
-        assert track_id in self.bootstrap_data.loop_tracks
+        assert idx_track in self.bootstrap_data.loop_tracks
 
-        track = self.bootstrap_data.loop_tracks[track_id]
+        track = self.bootstrap_data.loop_tracks[idx_track]
 
         if life_pct is None:
             if (
@@ -365,8 +389,8 @@ class HomologyData:
             else:
                 raise ValueError("life_pct not provided and not found in metadata")
         assert life_pct is not None
-        assert track_id < len(self.selected_loop_classes)
-        loop_class = self.selected_loop_classes[track_id]
+        assert idx_track < len(self.selected_loop_classes)
+        loop_class = self.selected_loop_classes[idx_track]
         assert loop_class is not None
         birth_t = loop_class.birth
         death_t = loop_class.death
@@ -376,17 +400,16 @@ class HomologyData:
             thresh=thresh_t, normalized=normalized
         )
         if hodge_matrix_d1 is None:
-            logger.warning(f"Could not compute Hodge matrix for track {track_id}")
+            logger.warning(f"Could not compute Hodge matrix for track {idx_track}")
             return
 
-        result = track._compute_hodge_eigendecomposition(
+        result = self._compute_hodge_eigendecomposition(
             hodge_matrix=hodge_matrix_d1,
             n_components=n_hodge_components,
-            normalized=normalized,
         )
 
         if result is None:
-            logger.warning(f"Eigendecomposition failed for track {track_id}")
+            logger.warning(f"Eigendecomposition failed for track {idx_track}")
             return
 
         eigenvalues, eigenvectors = result
@@ -394,12 +417,17 @@ class HomologyData:
         from .analysis_containers import HodgeAnalysis
 
         track.hodge_analysis = HodgeAnalysis(
-            loop_id=track_id,
             hodge_eigenvalues=eigenvalues.tolist(),
-            hodge_eigenvectors=eigenvectors,
-            loops_edges_embedding=None,
-            pseudotime_analysis=None,
-            velociy_analysis=None,
+            hodge_eigenvectors=eigenvectors.T.tolist(),  # needs transpose (columns are eig-vecs)
+        )
+
+        source_loop_class = self.selected_loop_classes[idx_track]
+        assert source_loop_class is not None
+        self.bootstrap_data._analyze_track_loop_classes(
+            idx_track=idx_track,
+            source_loop_class=source_loop_class,
+            embedding=embedding,
+            values_vertices=values_vertices,
         )
 
     # ISSUE: currently, cocycles and loop representatives are de-coupled (for the ease of checking matches for bootstrap)
@@ -657,10 +685,10 @@ class HomologyData:
         top_k = len(self.selected_loop_classes)
         if top_k == 0:
             return
-        for track_idx in range(top_k):
-            if track_idx not in self.bootstrap_data.loop_tracks:
-                self.bootstrap_data.loop_tracks[track_idx] = LoopTrack(
-                    source_class_idx=track_idx
+        for idx_track in range(top_k):
+            if idx_track not in self.bootstrap_data.loop_tracks:
+                self.bootstrap_data.loop_tracks[idx_track] = LoopTrack(
+                    source_class_idx=idx_track
                 )
 
     def _bootstrap(

@@ -4,11 +4,8 @@ from __future__ import annotations
 from typing import Optional
 
 import numpy as np
-from loguru import logger
 from pydantic import ConfigDict, Field
 from pydantic.dataclasses import dataclass
-from scipy.sparse import csr_matrix
-from scipy.sparse.linalg import eigsh
 from scipy.stats import false_discovery_control, fisher_exact, gamma
 from scipy.stats.contingency import odds_ratio
 
@@ -42,31 +39,6 @@ class LoopTrack:
         if self.matches is None:
             return []
         return [(m.idx_bootstrap, m.target_class_idx) for m in self.matches]
-
-    def _compute_hodge_eigendecomposition(
-        self, hodge_matrix: csr_matrix, n_components: int = 10, normalized: bool = True
-    ) -> tuple[np.ndarray, np.ndarray] | None:
-        if hodge_matrix is None:
-            logger.warning("hodge_matrix too small for eigendecomposition (shape < 2).")
-            return None
-        assert type(hodge_matrix) is csr_matrix
-        assert hodge_matrix.shape is not None
-        if hodge_matrix.shape[0] < 2:
-            logger.warning("hodge_matrix too small for eigendecomposition (shape < 2).")
-            return None
-
-        k = min(n_components, hodge_matrix.shape[0] - 2)
-        if k <= 0:
-            logger.warning(f"Not enough dimensions for eigendecomposition (k={k}).")
-            return None
-
-        try:
-            eigenvalues, eigenvectors = eigsh(hodge_matrix, k=k, which="SM")
-            sort_idx = np.argsort(eigenvalues)
-            return eigenvalues[sort_idx], eigenvectors[:, sort_idx]
-        except Exception as e:
-            logger.error(f"Eigendecomposition failed: {e}")
-            return None
 
 
 @dataclass
@@ -122,6 +94,35 @@ class BootstrapAnalysis:
                     loops_vertices=loop_class.representatives,
                 )
         return []
+
+    def _analyze_track_loop_classes(
+        self,
+        idx_track: Index_t,
+        source_loop_class: LoopClass,
+        embedding: np.ndarray,
+        values_vertices: np.ndarray,
+    ):
+        hodge_analysis = self.loop_tracks[idx_track].hodge_analysis
+        assert hodge_analysis is not None
+        assert idx_track in self.loop_tracks
+        loop_class: LoopClassAnalysis = LoopClassAnalysis.from_super(
+            super_obj=source_loop_class,
+            embedding=embedding,
+            values_vertices=values_vertices,
+        )
+        hodge_analysis.selected_loop_classes.append(loop_class)
+        for boot_id, loop_id in self.loop_tracks[idx_track].track_ipairs:
+            if boot_id < len(self.selected_loop_classes) and loop_id < len(
+                self.selected_loop_classes[boot_id]
+            ):
+                loop_class_base = self.selected_loop_classes[boot_id][loop_id]
+                assert loop_class_base is not None
+                loop_class: LoopClassAnalysis = LoopClassAnalysis.from_super(
+                    super_obj=loop_class_base,
+                    embedding=embedding,
+                    values_vertices=values_vertices,
+                )
+                hodge_analysis.selected_loop_classes.append(loop_class)
 
     @property
     def _n_total_matches(self) -> Count_t:
@@ -294,7 +295,7 @@ class LoopClassAnalysis(LoopClass):
 class HodgeAnalysis:
     hodge_eigenvalues: list | None = None
     hodge_eigenvectors: list | None = None
-    selected_loop_classes: list[LoopClassAnalysis] | None = None
+    selected_loop_classes: list[LoopClassAnalysis] = Field(default_factory=list)
 
     def _smoothening_edge_embedding(self):
         # update edge_embedding_smooth: gaussian smooth of edge embedding using the coordinates_edges
