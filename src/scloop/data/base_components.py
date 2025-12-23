@@ -13,6 +13,7 @@ class LoopClass:
     death: Diameter_t = 0.0
     cocycles: list | None = None
     representatives: list[list[Index_t]] | None = None
+    coordinates_vertices_representatives: list[list[list[float]]] | None = None
 
     @model_validator(mode="after")
     def check_birth_death(self) -> Self:

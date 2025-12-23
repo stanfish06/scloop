@@ -63,7 +63,7 @@ class BootstrapAnalysis:
     gamma_null_params: tuple[PositiveFloat, PositiveFloat, PositiveFloat] | None = None
 
     def _get_track_embedding(
-        self, idx_track: Index_t, embedding: np.ndarray
+        self, idx_track: Index_t, embedding_alt: np.ndarray | None = None
     ) -> list[np.ndarray]:
         assert idx_track < len(self.loop_tracks)
         loops = []
@@ -72,27 +72,42 @@ class BootstrapAnalysis:
                 self.selected_loop_classes[boot_id]
             ):
                 loop_class = self.selected_loop_classes[boot_id][loop_id]
-                if loop_class is not None and loop_class.representatives is not None:
-                    loops.extend(
-                        loops_to_coords(
-                            embedding=embedding,
-                            loops_vertices=loop_class.representatives,
-                        )
-                    )
+                if loop_class is not None:
+                    if embedding_alt is None:
+                        if loop_class.coordinates_vertices_representatives is not None:
+                            loops.extend(
+                                loop_class.coordinates_vertices_representatives
+                            )
+                    else:
+                        if loop_class.representatives is not None:
+                            loops.extend(
+                                loops_to_coords(
+                                    embedding=embedding_alt,
+                                    loops_vertices=loop_class.representatives,
+                                )
+                            )
         return loops
 
     def _get_loop_embedding(
-        self, idx_bootstrap: Index_t, idx_loop: Index_t, embedding: np.ndarray
+        self,
+        idx_bootstrap: Index_t,
+        idx_loop: Index_t,
+        embedding_alt: np.ndarray | None = None,
     ) -> list[np.ndarray]:
         if idx_bootstrap < len(self.selected_loop_classes) and idx_loop < len(
             self.selected_loop_classes[idx_bootstrap]
         ):
             loop_class = self.selected_loop_classes[idx_bootstrap][idx_loop]
-            if loop_class is not None and loop_class.representatives is not None:
-                return loops_to_coords(
-                    embedding=embedding,
-                    loops_vertices=loop_class.representatives,
-                )
+            if loop_class is not None:
+                if embedding_alt is None:
+                    if loop_class.coordinates_vertices_representatives is not None:
+                        return loop_class.coordinates_vertices_representatives
+                else:
+                    if loop_class.representatives is not None:
+                        return loops_to_coords(
+                            embedding=embedding_alt,
+                            loops_vertices=loop_class.representatives,
+                        )
         return []
 
     def _analyze_track_loop_classes(
@@ -259,7 +274,6 @@ class BootstrapAnalysis:
 
 @dataclass(config=ConfigDict(arbitrary_types_allowed=True))
 class LoopClassAnalysis(LoopClass):
-    coordinates_vertices: list[np.ndarray] | None = None
     coordinates_edges: list[np.ndarray] | None = None
     edge_gradient_raw: list[np.ndarray] | None = None
     edge_embedding_raw: list[np.ndarray] | None = None
@@ -270,22 +284,27 @@ class LoopClassAnalysis(LoopClass):
         cls, super_obj: LoopClass, embedding: np.ndarray, values_vertices: np.ndarray
     ):
         assert super_obj.representatives is not None
+        assert super_obj.coordinates_vertices_representatives is not None
         super_kwargs = super_obj.model_dump()  # type: ignore[reportAttributeAccessIssue]
-        coordinates_vertices = loops_to_coords(
-            embedding=embedding, loops_vertices=super_obj.representatives
-        )
+
+        coordinates_vertices = [
+            np.array(coords)
+            for coords in super_obj.coordinates_vertices_representatives
+        ]
         coordinates_edges = [
             (emb[0:-1, :] + emb[1:, :]) / 2 for emb in coordinates_vertices
         ]
+
         edge_gradient_raw = loops_to_coords(
             embedding=values_vertices, loops_vertices=super_obj.representatives
         )
         edge_gradient_raw = [
-            (vals[0:-1, :] + vals[1:, :]) / 2 for vals in edge_gradient_raw
+            (np.array(vals[0:-1, :]) + np.array(vals[1:, :])) / 2
+            for vals in edge_gradient_raw
         ]
+
         return cls(
             **super_kwargs,
-            coordinates_vertices=coordinates_vertices,
             coordinates_edges=coordinates_edges,
             edge_gradient_raw=edge_gradient_raw,
         )

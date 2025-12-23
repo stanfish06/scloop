@@ -462,6 +462,7 @@ class HomologyData:
 
     def _compute_loop_representatives(
         self,
+        embedding: np.ndarray,
         pairwise_distance_matrix: csr_matrix,
         top_k: int | None = None,  # top k homology classes to compute representatives
         bootstrap: bool = False,
@@ -551,40 +552,64 @@ class HomologyData:
             )
 
             loops = [[vertex_ids[v] for v in loop] for loop in loops_local]
+            loops_coords = loops_to_coords(embedding=embedding, loops_vertices=loops)
 
             if not bootstrap:
                 self.selected_loop_classes[loop_idx] = LoopClass(
-                    loop_idx, loop_birth, loop_death, cocycles[i], loops
+                    loop_idx,
+                    loop_birth,
+                    loop_death,
+                    cocycles[i],
+                    loops,
+                    loops_coords,
                 )
             else:
                 assert self.bootstrap_data is not None
                 self.bootstrap_data.selected_loop_classes[idx_bootstrap][loop_idx] = (
-                    LoopClass(loop_idx, loop_birth, loop_death, cocycles[i], loops)
+                    LoopClass(
+                        loop_idx,
+                        loop_birth,
+                        loop_death,
+                        cocycles[i],
+                        loops,
+                        loops_coords,
+                    )
                 )
 
     def _get_loop_embedding(
         self,
-        embedding: np.ndarray,
         selector: Index_t | tuple[Index_t, Index_t],
+        embedding_alt: np.ndarray | None = None,
         include_bootstrap: bool = True,
     ):
+        """
+        Use embedding stored in LoopClass by default
+        If emebdding_alt provided, use that instead
+        """
         loops = []
         match selector:
             case int():
                 assert selector < len(self.selected_loop_classes)
                 loop_class = self.selected_loop_classes[selector]
-                if loop_class is not None and loop_class.representatives is not None:
-                    loops.extend(
-                        loops_to_coords(
-                            embedding=embedding,
-                            loops_vertices=loop_class.representatives,
-                        )
-                    )
+                if loop_class is not None:
+                    if embedding_alt is None:
+                        if loop_class.coordinates_vertices_representatives is not None:
+                            loops.extend(
+                                loop_class.coordinates_vertices_representatives
+                            )
+                    else:
+                        if loop_class.representatives is not None:
+                            loops.extend(
+                                loops_to_coords(
+                                    embedding=embedding_alt,
+                                    loops_vertices=loop_class.representatives,
+                                )
+                            )
                 if include_bootstrap:
                     assert self.bootstrap_data is not None
                     loops.extend(
                         self.bootstrap_data._get_track_embedding(
-                            embedding=embedding, idx_track=selector
+                            idx_track=selector, embedding_alt=embedding_alt
                         )
                     )
             case tuple():
@@ -595,9 +620,9 @@ class HomologyData:
                 )
                 loops.extend(
                     self.bootstrap_data._get_loop_embedding(
-                        embedding=embedding,
                         idx_bootstrap=selector[0],
                         idx_loop=selector[1],
+                        embedding_alt=embedding_alt,
                     )
                 )
         return loops
@@ -624,15 +649,11 @@ class HomologyData:
         ):
             return (source_class_idx, target_class_idx, np.nan)
 
-        emb = adata.obsm[f"X_{self.meta.preprocess.embedding_method}"]
-        assert type(emb) is np.ndarray
         source_coords_list = self._get_loop_embedding(
-            embedding=emb, selector=source_class_idx, include_bootstrap=False
+            selector=source_class_idx, include_bootstrap=False
         )
         target_coords_list = self._get_loop_embedding(
-            embedding=emb,
-            selector=(idx_bootstrap, target_class_idx),
-            include_bootstrap=False,
+            selector=(idx_bootstrap, target_class_idx), include_bootstrap=False
         )
 
         if len(source_coords_list) == 0 or len(target_coords_list) == 0:
@@ -785,7 +806,13 @@ class HomologyData:
                 )
                 if verbose:
                     logger.info("Finding loops in the bootstrapped data")
+                assert self.meta.preprocess is not None
+                assert self.meta.preprocess.embedding_method is not None
+                embedding = np.array(
+                    adata.obsm[f"X_{self.meta.preprocess.embedding_method}"]
+                )
                 self._compute_loop_representatives(
+                    embedding=embedding,
                     pairwise_distance_matrix=pairwise_distance_matrix,
                     idx_bootstrap=idx_bootstrap,
                     top_k=top_k,

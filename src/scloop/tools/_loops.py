@@ -45,7 +45,13 @@ def find_loops(
     if boundary_thresh is None:
         boundary_thresh = threshold_homology
     hd._compute_boundary_matrix_d1(adata=adata, thresh=boundary_thresh, verbose=verbose)
+    assert meta.preprocess is not None
+    assert meta.preprocess.embedding_method is not None
+    import numpy as np
+
+    embedding = np.array(adata.obsm[f"X_{meta.preprocess.embedding_method}"])
     hd._compute_loop_representatives(
+        embedding=embedding,
         pairwise_distance_matrix=sparse_dist_mat,
         top_k=n_candidates,
         life_pct=tightness_loops,

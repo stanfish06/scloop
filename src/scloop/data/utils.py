@@ -183,12 +183,12 @@ def nearest_neighbor_per_row(
 # this cannot be jitted
 def loops_to_coords(
     embedding: np.ndarray, loops_vertices: list[list[int]]
-) -> list[np.ndarray]:
+) -> list[list[list[float]]]:
     loops_coords = []
     for vertices in loops_vertices:
         coords = np.asarray(embedding[np.asarray(vertices, dtype=int)])
         # properly form a loop if possible
         if coords.shape[0] > 2:
             coords = np.vstack([coords, coords[0]])
-        loops_coords.append(coords)
+        loops_coords.append(coords.tolist())
     return loops_coords

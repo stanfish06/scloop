@@ -449,8 +449,8 @@ def loops(
                 return []
         try:
             return data._get_loop_embedding(
-                embedding=emb,
                 selector=selector,
+                embedding_alt=emb,
                 include_bootstrap=include_bootstrap,
             )
         except AssertionError:
