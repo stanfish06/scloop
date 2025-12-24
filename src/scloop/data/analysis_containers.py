@@ -6,6 +6,7 @@ from typing import Optional
 import numpy as np
 from pydantic import ConfigDict, Field
 from pydantic.dataclasses import dataclass
+from pynndescent import NNDescent
 from scipy.stats import false_discovery_control, fisher_exact, gamma
 from scipy.stats.contingency import odds_ratio
 
@@ -30,7 +31,7 @@ class LoopTrack:
     hodge_analysis: HodgeAnalysis | None = None
 
     @property
-    # it is possible to have one-to-many matches (need a way to select best match)
+    # it is possible to have one-to-many matches (TODO: need a way to select best match)
     def n_matches(self) -> Count_t:
         return len({m.idx_bootstrap for m in self.matches})
 
@@ -93,7 +94,7 @@ class BootstrapAnalysis:
         idx_bootstrap: Index_t,
         idx_loop: Index_t,
         embedding_alt: np.ndarray | None = None,
-    ) -> list[np.ndarray]:
+    ) -> list[list[list[float]]]:
         if idx_bootstrap < len(self.selected_loop_classes) and idx_loop < len(
             self.selected_loop_classes[idx_bootstrap]
         ):
@@ -114,7 +115,6 @@ class BootstrapAnalysis:
         self,
         idx_track: Index_t,
         source_loop_class: LoopClass,
-        embedding: np.ndarray,
         values_vertices: np.ndarray,
     ):
         hodge_analysis = self.loop_tracks[idx_track].hodge_analysis
@@ -122,7 +122,6 @@ class BootstrapAnalysis:
         assert idx_track in self.loop_tracks
         loop_class: LoopClassAnalysis = LoopClassAnalysis.from_super(
             super_obj=source_loop_class,
-            embedding=embedding,
             values_vertices=values_vertices,
         )
         hodge_analysis.selected_loop_classes.append(loop_class)
@@ -134,7 +133,6 @@ class BootstrapAnalysis:
                 assert loop_class_base is not None
                 loop_class: LoopClassAnalysis = LoopClassAnalysis.from_super(
                     super_obj=loop_class_base,
-                    embedding=embedding,
                     values_vertices=values_vertices,
                 )
                 hodge_analysis.selected_loop_classes.append(loop_class)
@@ -279,10 +277,18 @@ class LoopClassAnalysis(LoopClass):
     edge_embedding_raw: list[np.ndarray] | None = None
     edge_embedding_smooth: list[np.ndarray] | None = None
 
+    @property
+    def coordinates_edges_all(self):
+        assert self.coordinates_edges is not None
+        return np.concatenate(self.coordinates_edges)
+
+    @property
+    def edge_embedding_raw_all(self):
+        assert self.edge_embedding_raw is not None
+        return np.concatenate(self.edge_embedding_raw)
+
     @classmethod
-    def from_super(
-        cls, super_obj: LoopClass, embedding: np.ndarray, values_vertices: np.ndarray
-    ):
+    def from_super(cls, super_obj: LoopClass, values_vertices: np.ndarray):
         assert super_obj.representatives is not None
         assert super_obj.coordinates_vertices_representatives is not None
         super_kwargs = super_obj.model_dump()  # type: ignore[reportAttributeAccessIssue]
@@ -299,7 +305,7 @@ class LoopClassAnalysis(LoopClass):
             embedding=values_vertices, loops_vertices=super_obj.representatives
         )
         edge_gradient_raw = [
-            (np.array(vals[0:-1, :]) + np.array(vals[1:, :])) / 2
+            (np.array(vals)[0:-1, :] + np.array(vals)[1:, :]) / 2
             for vals in edge_gradient_raw
         ]
 
@@ -338,10 +344,53 @@ class HodgeAnalysis:
                 )
                 loop.edge_embedding_raw.append(edge_embedding)
 
-    def _smoothening_edge_embedding(self):
-        # update edge_embedding_smooth: gaussian smooth of edge embedding using the coordinates_edges
-        pass
+    def _smoothening_edge_embedding(self, n_neighbors: Count_t = 10):
+        """weighted-knn-smoothing of edge embedding
+
+        Parameters
+        ----------
+        n_neighbors : positive int
+        """
+        coordinates_edges_all = np.concatenate(
+            [loops.coordinates_edges_all for loops in self.selected_loop_classes]
+        )
+        edge_embedding_raw_all = np.concatenate(
+            [loops.edge_embedding_raw_all for loops in self.selected_loop_classes]
+        )
+        search_index = NNDescent(coordinates_edges_all)
+        for loops in self.selected_loop_classes:
+            loops.edge_embedding_smooth = []
+            assert loops.edge_embedding_raw is not None
+            assert loops.coordinates_edges is not None
+            for coords in loops.coordinates_edges:
+                nn_indices, nn_distances = search_index.query(
+                    query_data=coords, k=n_neighbors
+                )
+                assert nn_indices.shape == (coords.shape[0], n_neighbors)
+                assert nn_distances.shape == nn_indices.shape
+                length_scale = np.median(nn_distances, axis=1)[:, np.newaxis] + 1e-8
+                nn_similarities = np.exp(-nn_distances / length_scale)
+                loops.edge_embedding_smooth.append(
+                    np.sum(
+                        edge_embedding_raw_all[nn_indices]
+                        * nn_similarities[:, :, np.newaxis],
+                        axis=1,
+                    )
+                    / np.sum(nn_similarities, axis=1)[:, np.newaxis]
+                )
 
     def _trajectory_identification(self):
-        # identify trajectories using raw/smooth edge emebedding
+        """Identify trajectories using raw/smooth edge emebedding
+
+        Parameters
+        ----------
+        param_name : type
+        Description of parameter.
+
+        Returns
+        -------
+        return_type
+        Description of return value.
+        """
+
         pass

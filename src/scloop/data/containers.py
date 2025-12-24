@@ -427,7 +427,6 @@ class HomologyData:
         self.bootstrap_data._analyze_track_loop_classes(
             idx_track=idx_track,
             source_loop_class=source_loop_class,
-            embedding=embedding,
             values_vertices=values_vertices,
         )
 

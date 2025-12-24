@@ -42,6 +42,7 @@ dependencies = [
   "pandas",
   "pip>=25.2",
   "pydantic>=2.11.4",
+  "pynndescent>=0.5.13",
   "pytest>=8.4",
   "rich==14.2",
   "scanpy[leiden]>=1.11.2",
