@@ -27,6 +27,7 @@ from ..computing.homology import (
     compute_loop_homological_equivalence,
     compute_persistence_diagram_and_cocycles,
 )
+from ..utils.distance_metrics.frechet_py import compute_pairwise_loop_frechet
 from .analysis_containers import (
     BootstrapAnalysis,
     LoopMatch,
@@ -129,8 +130,12 @@ class BoundaryMatrixD0(BoundaryMatrix):
 
 @dataclass
 class HomologyData:
-    """
-    store core homology data and associated analysis data (quite heavy as of now, probably need to split things up a bit)
+    """Store core homology data and associated analysis data
+
+    Attributes
+    ----------
+    attribute_name : type
+    Description of attribute.
     """
 
     meta: ScloopMeta
@@ -382,7 +387,7 @@ class HomologyData:
             return None
 
         try:
-            eigenvalues, eigenvectors = eigsh(hodge_matrix, k=k, which="SA", tol=1e-6)
+            eigenvalues, eigenvectors = eigsh(hodge_matrix, k=k, which="SA", tol=1e-6)  # type: ignore[arg-type]
             sort_idx = np.argsort(eigenvalues)
             return eigenvalues[sort_idx], eigenvectors[:, sort_idx]
         except Exception as e:
@@ -723,19 +728,30 @@ class HomologyData:
         if len(source_coords_list) == 0 or len(target_coords_list) == 0:
             return (source_class_idx, target_class_idx, np.nan)
 
-        distances = []
-        for source_coords in source_coords_list:
-            for target_coords in target_coords_list:
-                try:
-                    dist = max(
-                        directed_hausdorff(source_coords, target_coords)[0],
-                        directed_hausdorff(target_coords, source_coords)[0],
-                    )
-                    distances.append(dist)
-                except (ValueError, IndexError):
-                    distances.append(np.nan)
+        if method == "frechet":
+            try:
+                distances_arr = compute_pairwise_loop_frechet(
+                    source_coords_list, target_coords_list
+                )
+                mean_distance = float(np.nanmean(distances_arr))
+            except Exception:
+                mean_distance = np.nan
+        elif method == "hausdorff":
+            distances = []
+            for source_coords in source_coords_list:
+                for target_coords in target_coords_list:
+                    try:
+                        dist = max(
+                            directed_hausdorff(source_coords, target_coords)[0],
+                            directed_hausdorff(target_coords, source_coords)[0],
+                        )
+                        distances.append(dist)
+                    except (ValueError, IndexError):
+                        distances.append(np.nan)
+            mean_distance = np.nanmean(distances) if distances else np.nan
+        else:
+            mean_distance = np.nan
 
-        mean_distance = np.nanmean(distances) if distances else np.nan
         return (source_class_idx, target_class_idx, float(mean_distance))
 
     def _assess_bootstrap_homology_equivalence(

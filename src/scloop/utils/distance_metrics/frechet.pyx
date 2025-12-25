@@ -1,7 +1,9 @@
 # Copyright 2025 Zhiyuan Yu (Heemskerk's lab, University of Michigan)
 cimport cython
+from cython.parallel import prange
 from libcpp.vector cimport vector
 from libcpp.functional cimport function
+import numpy as np
 
 ctypedef vector[double] double_vec_1d
 ctypedef vector[vector[double]] double_vec_2d
@@ -46,6 +48,21 @@ cdef double compute_loop_frechet_nogil(
     cdef double_vec_2d curve_b_vec = memview_to_vec_2d(curve_b)
     return computeLoopFrechet(curve_a_vec, curve_b_vec)
 
+def compute_loop_set_frechet(
+    curve_pairs
+):
+    cdef int n = len(curve_pairs)
+    cdef double[:] results = np.empty(n, dtype=np.float64)
+    cdef int i
+
+    for i in prange(n, nogil=True):
+        with gil:
+            # need gil to get data from list
+            a, b = curve_pairs[i]
+        results[i] = compute_loop_frechet_nogil(a, b)
+
+    return np.asarray(results) 
+
 # Backward-compatible wrapper for Python lists
 def compute_loop_frechet(
     curve_a,
@@ -71,4 +88,3 @@ def compute_loop_frechet(
         curve_a_vec = list_to_vec_2d(curve_a)
         curve_b_vec = list_to_vec_2d(curve_b)
         return computeLoopFrechet(curve_a_vec, curve_b_vec)
-# TODO: Frechet distance between two sets of loops

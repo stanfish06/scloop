@@ -359,6 +359,7 @@ class HodgeAnalysis(BaseModel):
 
         hodge_evecs = np.array(self.hodge_eigenvectors)
 
+        # TODO: looks jittable
         for loop_idx, loop in enumerate(self.selected_loop_classes):
             if loop.edge_gradient_raw is None or loop.coordinates_edges is None:
                 continue
@@ -402,6 +403,7 @@ class HodgeAnalysis(BaseModel):
                 edge_embedding = weighted_edge_hodge * weight_hodge + grad_1d * (
                     1 - weight_hodge
                 )
+                # raw edge embedding: too noisy to use
                 # edge_embedding = (
                 #     edge_gradients[:, :, None] * edge_evec_values[:, None, :]
                 # )
