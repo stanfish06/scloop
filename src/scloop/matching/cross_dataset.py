@@ -9,12 +9,20 @@ import pandas as pd
 from anndata import AnnData
 from pydantic import AfterValidator, ConfigDict, Field
 from pydantic.dataclasses import dataclass
+from scipy.stats import ttest_ind
 
 from ..computing.homology import compute_loop_geometric_distance
 from ..data.constants import CROSS_MATCH_KEY, DEFAULT_N_MAX_WORKERS
 from ..data.containers import HomologyData
 from ..data.metadata import CrossDatasetMatchingMeta
-from ..data.types import Count_t, Index_t, LoopDistMethod
+from ..data.types import (
+    Count_t,
+    Index_t,
+    LoopDistMethod,
+    MultipleTestCorrectionMethod,
+    Percent_t,
+)
+from ..utils.pvalues import correct_pvalues
 from .data_modules import nnRegressorDataModule
 from .mlp import MLPregressor
 from .nf import NeuralODEregressor
@@ -167,9 +175,72 @@ class CrossDatasetMatcher:
                 idx_permute, i, j = tasks[task]
                 distance = task.result()
                 pairwise_result_matrix[idx_permute, i, j] = distance
+        return pairwise_result_matrix
 
-    def _loops_cross_match(self, n_permute: Count_t = 1000):
-        self._compute_pairwise_distances_permutation()
+    def _loops_cross_match(
+        self,
+        n_permute: Count_t = 1000,
+        source_dataset_idx: Index_t = 0,
+        target_dataset_idx: Index_t = 1,
+        method: LoopDistMethod = "hausdorff",
+        include_bootstrap: bool = True,
+        cutoff_pval: Percent_t = 0.05,
+        method_pval_correction: MultipleTestCorrectionMethod
+        | None = "benjamini-hochberg",
+    ):
+        source_hd = self.homology_data_list[source_dataset_idx]
+        target_hd = self.homology_data_list[target_dataset_idx]
+
+        source_loop_classes = list(range(len(source_hd.selected_loop_classes)))
+        target_loop_classes = list(range(len(target_hd.selected_loop_classes)))
+
+        pairwise_result_matrix = self._compute_pairwise_distances_permutation(
+            n_permute=n_permute,
+            source_dataset_idx=source_dataset_idx,
+            target_dataset_idx=target_dataset_idx,
+            source_loop_classes=source_loop_classes,
+            target_loop_classes=target_loop_classes,
+            include_bootstrap=include_bootstrap,
+            method=method,
+        )
+
+        pairwise_result_pvalues = (
+            np.sum(
+                pairwise_result_matrix[1:, ...] >= pairwise_result_matrix[0, ...],
+                axis=0,
+            )
+            + 1
+        ) / n_permute
+
+        pairwise_result_pvalues_corrected = correct_pvalues(
+            pairwise_result_pvalues, method=method_pval_correction
+        )
+
+        matched_mask = pairwise_result_pvalues_corrected > cutoff_pval
+        unmatched_mask = ~matched_mask
+
+        null_distributions = pairwise_result_matrix[1:, :, :]
+        unmatched_nulls = null_distributions[:, unmatched_mask]
+        pooled_unmatched_nulls = unmatched_nulls.ravel()
+        pooled_unmatched_nulls = pooled_unmatched_nulls[
+            ~np.isnan(pooled_unmatched_nulls)
+        ]
+
+        matched_indices = np.argwhere(matched_mask)
+        matched_pvalues = []
+        for i, j in matched_indices:
+            matched_null_dist = null_distributions[:, i, j]
+            matched_null_dist = matched_null_dist[~np.isnan(matched_null_dist)]
+            _, p_val = ttest_ind(
+                matched_null_dist,
+                pooled_unmatched_nulls,
+                equal_var=False,
+                alternative="less",
+            )
+            matched_pvalues.append(p_val)
+        matched_pvalues_corrected = correct_pvalues(
+            matched_pvalues, method=method_pval_correction
+        )
 
     def _to_dataframe(self) -> pd.DataFrame:
         return pd.DataFrame()

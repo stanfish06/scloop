@@ -7,10 +7,11 @@ import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.dataclasses import dataclass
 from pynndescent import NNDescent
-from scipy.stats import false_discovery_control, fisher_exact, gamma
+from scipy.stats import fisher_exact, gamma
 from scipy.stats.contingency import odds_ratio
 
 from ..computing import compute_weighted_hodge_embedding
+from ..utils.pvalues import correct_pvalues
 from .base_components import LoopClass, PersistenceTestResult, PresenceTestResult
 from .constants import NUMERIC_EPSILON
 from .types import (
@@ -62,7 +63,7 @@ class BootstrapAnalysis:
     persistence_diagrams: list[list] = Field(default_factory=list)
     cocycles: list[list] = Field(default_factory=list)
     selected_loop_classes: list[list[LoopClass | None]] = Field(default_factory=list)
-    loop_tracks: dict[int, LoopTrack] = Field(default_factory=dict)
+    loop_tracks: dict[Index_t, LoopTrack] = Field(default_factory=dict)
     fisher_presence_results: PresenceTestResult | None = None
     gamma_persistence_results: PersistenceTestResult | None = None
 
@@ -180,16 +181,9 @@ class BootstrapAnalysis:
             odds_ratio_presence.append(odds_ratio(np.array(tbl)).statistic)
             res = fisher_exact(table=tbl, alternative="greater")
             pvalues_raw_presence.append(res.pvalue)  # type: ignore[attr-defined]
-        match method_pval_correction:
-            case "bonferroni":
-                n_tests = len(pvalues_raw_presence)
-                pvalues_corrected_presence = [p * n_tests for p in pvalues_raw_presence]
-            case "benjamini-hochberg":
-                pvalues_corrected_presence = false_discovery_control(
-                    pvalues_raw_presence, method="bh"
-                ).tolist()
-            case _:
-                raise ValueError(f"{method_pval_correction} unsupported")
+        pvalues_corrected_presence = correct_pvalues(
+            pvalues_raw_presence, method=method_pval_correction
+        )
 
         return PresenceTestResult(
             probabilities=probs_presence,
@@ -247,18 +241,9 @@ class BootstrapAnalysis:
                     )
                     pvalues_raw_persistence.append(p_val)
 
-        match method_pval_correction:
-            case "bonferroni":
-                n_tests = len(pvalues_raw_persistence)
-                pvalues_corrected_persistence = [
-                    p * n_tests for p in pvalues_raw_persistence
-                ]
-            case "benjamini-hochberg":
-                pvalues_corrected_persistence = false_discovery_control(
-                    pvalues_raw_persistence, method="bh"
-                ).tolist()
-            case _:
-                raise ValueError(f"{method_pval_correction} unsupported")
+        pvalues_corrected_persistence = correct_pvalues(
+            pvalues_raw_persistence, method=method_pval_correction
+        )
 
         self.gamma_null_params = (
             float(params[0]),
