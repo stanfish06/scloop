@@ -36,7 +36,6 @@ class LoopMatch:
     target_class_idx: int
     geometric_distance: Optional[float] = None
     neighbor_rank: Optional[int] = None
-    extra: dict = Field(default_factory=dict)
 
 
 @dataclass

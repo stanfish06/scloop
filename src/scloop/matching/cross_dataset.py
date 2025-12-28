@@ -7,8 +7,19 @@ from typing import Annotated
 import numpy as np
 import pandas as pd
 from anndata import AnnData
+from loguru import logger
 from pydantic import AfterValidator, ConfigDict, Field
 from pydantic.dataclasses import dataclass
+from rich.console import Console
+from rich.progress import (
+    BarColumn,
+    Progress,
+    SpinnerColumn,
+    TaskProgressColumn,
+    TextColumn,
+    TimeElapsedColumn,
+    TimeRemainingColumn,
+)
 from scipy.stats import ttest_ind
 
 from ..computing.homology import compute_loop_geometric_distance
@@ -21,6 +32,7 @@ from ..data.types import (
     LoopDistMethod,
     MultipleTestCorrectionMethod,
     Percent_t,
+    PositiveFloat,
 )
 from ..utils.pvalues import correct_pvalues
 from .data_modules import nnRegressorDataModule
@@ -34,12 +46,54 @@ def _all_has_homology_data(adata_list: list[AnnData]):
             raise ValueError(f"adata {i} has no loop data")
 
 
+@dataclass
+class CrossLoopMatch:
+    source_dataset_idx: Index_t
+    target_dataset_idx: Index_t
+    source_class_idx: Index_t
+    target_class_idx: Index_t
+    source_class_match_embedding: list[list[list[float]]]
+    target_class_match_embedding: list[list[list[float]]]
+    geometric_distance: PositiveFloat
+    null_distribution_geometric_distance: list[PositiveFloat]
+    pvalue_permutation: Percent_t
+    pvalue_corrected_permutation: Percent_t
+    t_stats_match: float | None = None
+    pvalue_match: Percent_t | None = None
+    pvalue_corrected_match: Percent_t | None = None
+
+
+@dataclass
+class CrossLoopMatchResult:
+    n_permute: Count_t
+    matches: dict[frozenset[Index_t], CrossLoopMatch] = Field(default_factory=dict)
+
+    def _compute_tracks(self):
+        """Compute track from loop matches
+
+        Parameters
+        ----------
+        param_name : type
+        Description of parameter.
+
+        Returns
+        -------
+        return_type
+        Description of return value.
+        """
+        pass
+
+    def _to_dataframe(self) -> pd.DataFrame:
+        return pd.DataFrame()
+
+
 @dataclass(config=ConfigDict(arbitrary_types_allowed=True))
 class CrossDatasetMatcher:
     adata_list: Annotated[list[AnnData], AfterValidator(_all_has_homology_data)]
     meta: CrossDatasetMatchingMeta
     homology_data_list: list[HomologyData] = Field(default_factory=list)
     mapping_model: MLPregressor | NeuralODEregressor | None = None
+    loop_matching_result: CrossLoopMatchResult | None = None
 
     def __post_init__(self):
         for adata in self.adata_list:
@@ -95,6 +149,22 @@ class CrossDatasetMatcher:
         mean_distance = float(np.nanmean(distances_arr))
         return mean_distance
 
+    def _get_loop_class_embedding(
+        self,
+        dataset_idx: Index_t,
+        class_idx: Index_t,
+        include_bootstrap: bool = True,
+    ) -> list[list[list[float]]]:
+        embedding = self.adata_list[dataset_idx].obsm[CROSS_MATCH_KEY]
+        assert embedding is not None
+        assert type(embedding) is np.ndarray
+        hd = self.homology_data_list[dataset_idx]
+        return hd._get_loop_embedding(
+            selector=class_idx,
+            include_bootstrap=include_bootstrap,
+            embedding_alt=embedding,
+        )
+
     def _compute_pairwise_distances_permutation(
         self,
         n_permute: Count_t,
@@ -105,7 +175,7 @@ class CrossDatasetMatcher:
         include_bootstrap: bool = True,
         method: LoopDistMethod = "hausdorff",
         n_max_workers: int = DEFAULT_N_MAX_WORKERS,
-        verbose: bool = True,
+        progress: Progress | None = None,
     ):
         n_source_loop_classes = len(source_loop_classes)
         n_target_loop_classes = len(target_loop_classes)
@@ -140,6 +210,12 @@ class CrossDatasetMatcher:
         pairwise_result_matrix = np.full(
             (n_permute + 1, n_source_loop_classes, n_target_loop_classes), np.nan
         )
+
+        n_total_tasks = (n_permute + 1) * n_source_loop_classes * n_target_loop_classes
+        task_id = None
+        if progress is not None:
+            task_id = progress.add_task("[cyan]Permutation tests", total=n_total_tasks)
+
         with ThreadPoolExecutor(max_workers=n_max_workers) as executor:
             tasks = {}
             for idx_permute in range(n_permute + 1):
@@ -175,6 +251,9 @@ class CrossDatasetMatcher:
                 idx_permute, i, j = tasks[task]
                 distance = task.result()
                 pairwise_result_matrix[idx_permute, i, j] = distance
+                if progress is not None and task_id is not None:
+                    progress.update(task_id, advance=1)
+
         return pairwise_result_matrix
 
     def _loops_cross_match(
@@ -187,6 +266,7 @@ class CrossDatasetMatcher:
         cutoff_pval: Percent_t = 0.05,
         method_pval_correction: MultipleTestCorrectionMethod
         | None = "benjamini-hochberg",
+        verbose: bool = True,
     ):
         source_hd = self.homology_data_list[source_dataset_idx]
         target_hd = self.homology_data_list[target_dataset_idx]
@@ -194,15 +274,41 @@ class CrossDatasetMatcher:
         source_loop_classes = list(range(len(source_hd.selected_loop_classes)))
         target_loop_classes = list(range(len(target_hd.selected_loop_classes)))
 
-        pairwise_result_matrix = self._compute_pairwise_distances_permutation(
-            n_permute=n_permute,
-            source_dataset_idx=source_dataset_idx,
-            target_dataset_idx=target_dataset_idx,
-            source_loop_classes=source_loop_classes,
-            target_loop_classes=target_loop_classes,
-            include_bootstrap=include_bootstrap,
-            method=method,
+        console = Console()
+        progress_main = Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TaskProgressColumn(),
+            TimeRemainingColumn(),
+            TimeElapsedColumn(),
+            console=console,
         )
+        logger.remove()
+        logger.add(
+            lambda s: console.print(s, end=""),
+            colorize=False,
+            level="TRACE",
+            format="<green>{time:YYYY/MM/DD HH:mm:ss}</green> | {level.icon} - <level>{message}</level>",
+        )
+
+        if verbose:
+            logger.info(
+                f"Computing pairwise distances: {len(source_loop_classes)} source classes "
+                f"x {len(target_loop_classes)} target classes, {n_permute} permutations"
+            )
+
+        with progress_main:
+            pairwise_result_matrix = self._compute_pairwise_distances_permutation(
+                n_permute=n_permute,
+                source_dataset_idx=source_dataset_idx,
+                target_dataset_idx=target_dataset_idx,
+                source_loop_classes=source_loop_classes,
+                target_loop_classes=target_loop_classes,
+                include_bootstrap=include_bootstrap,
+                method=method,
+                progress=progress_main,
+            )
 
         pairwise_result_pvalues = (
             np.sum(
@@ -228,19 +334,65 @@ class CrossDatasetMatcher:
 
         matched_indices = np.argwhere(matched_mask)
         matched_pvalues = []
+        matched_t_stats = []
         for i, j in matched_indices:
             matched_null_dist = null_distributions[:, i, j]
             matched_null_dist = matched_null_dist[~np.isnan(matched_null_dist)]
-            _, p_val = ttest_ind(
+            t_stats, p_val = ttest_ind(
                 matched_null_dist,
                 pooled_unmatched_nulls,
                 equal_var=False,
                 alternative="less",
             )
             matched_pvalues.append(p_val)
+            matched_t_stats.append(t_stats)
         matched_pvalues_corrected = correct_pvalues(
             matched_pvalues, method=method_pval_correction
         )
 
-    def _to_dataframe(self) -> pd.DataFrame:
-        return pd.DataFrame()
+        if self.loop_matching_result is None:
+            self.loop_matching_result = CrossLoopMatchResult(n_permute=n_permute)
+
+        dataset_key = frozenset([source_dataset_idx, target_dataset_idx])
+        for idx, (i, j) in enumerate(matched_indices):
+            loop_match = CrossLoopMatch(
+                source_dataset_idx=source_dataset_idx,
+                target_dataset_idx=target_dataset_idx,
+                source_class_idx=int(i),
+                target_class_idx=int(j),
+                source_class_match_embedding=self._get_loop_class_embedding(
+                    dataset_idx=source_dataset_idx,
+                    class_idx=int(i),
+                    include_bootstrap=include_bootstrap,
+                ),
+                target_class_match_embedding=self._get_loop_class_embedding(
+                    dataset_idx=target_dataset_idx,
+                    class_idx=int(j),
+                    include_bootstrap=include_bootstrap,
+                ),
+                geometric_distance=float(pairwise_result_matrix[0, i, j]),
+                null_distribution_geometric_distance=null_distributions[
+                    :, i, j
+                ].tolist(),
+                pvalue_permutation=float(pairwise_result_pvalues[i, j]),
+                pvalue_corrected_permutation=float(
+                    pairwise_result_pvalues_corrected[i, j]
+                ),
+                t_stats_match=float(matched_t_stats[idx]),
+                pvalue_match=float(matched_pvalues[idx]),
+                pvalue_corrected_match=float(matched_pvalues_corrected[idx]),
+            )
+            self.loop_matching_result.matches[dataset_key] = loop_match
+            if verbose:
+                logger.info(
+                    f"Match found: dataset {source_dataset_idx} class {i} ↔ "
+                    f"dataset {target_dataset_idx} class {j} "
+                    f"(distance={loop_match.geometric_distance:.4f}, "
+                    f"p_perm={loop_match.pvalue_corrected_permutation:.4f}, "
+                    f"p_match={loop_match.pvalue_corrected_match:.4f})"
+                )
+
+        if verbose:
+            logger.success(
+                f"Cross-dataset matching complete: {len(matched_indices)} matches found"
+            )

@@ -52,15 +52,19 @@ pip install scloop
 ```
 src/scloop/
 ├── analyzing
+│   ├── feature_selection.py
+│   ├── gene_trend.py
 │   └── __init__.py
 ├── benchmarking
 │   └── __init__.py
 ├── computing
+│   ├── hodge.py
 │   ├── homology.py
 │   └── __init__.py
 ├── data
 │   ├── analysis_containers.py
 │   ├── base_components.py
+│   ├── constants.py
 │   ├── containers.py
 │   ├── __init__.py
 │   ├── loop_reconstruction.py
@@ -82,6 +86,7 @@ src/scloop/
 │   ├── _hodge.py
 │   ├── _homology.py
 │   ├── __init__.py
+│   ├── _match.py
 │   └── _utils.py
 ├── preprocessing
 │   ├── delve
@@ -100,12 +105,14 @@ src/scloop/
     ├── distance_metrics
     │   ├── discrete-frechet-distance
     │   ├── frechet.cpp
+    │   ├── frechet_py.py
     │   ├── frechet.pyx
     │   └── __init__.py
     ├── __init__.py
-    └── linear_algebra_gf2
-        ├── gf2_toolkit_lib.pyx
-        ├── __init__.py
-        ├── m4ri_lib.c
-        └── m4ri_lib.pyx
+    ├── linear_algebra_gf2
+    │   ├── gf2_toolkit_lib.pyx
+    │   ├── __init__.py
+    │   ├── m4ri_lib.c
+    │   └── m4ri_lib.pyx
+    └── pvalues.py
 ```
