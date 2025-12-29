@@ -249,15 +249,12 @@ class BootstrapAnalysis:
             float(params[1]),
             float(params[2]),
         )
-        self.gamma_persistence_results = (
-            pvalues_raw_persistence,
-            pvalues_corrected_persistence,
-        )
-        return PersistenceTestResult(
+        self.gamma_persistence_results = PersistenceTestResult(
             pvalues_raw=pvalues_raw_persistence,
             pvalues_corrected=pvalues_corrected_persistence,
             gamma_null_params=self.gamma_null_params,
         )
+        return self.gamma_persistence_results
 
 
 class LoopClassAnalysis(LoopClass):

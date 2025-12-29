@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Annotated, NamedTuple
+from typing import Annotated, Any, NamedTuple, cast
 
 import numpy as np
 import pandas as pd
@@ -153,8 +153,72 @@ class CrossLoopMatchResult:
                 tracks._union(idx_source=idx_source, idx_target=idx_target)
         self.tracks = tracks._get_tracks()
 
-    def _to_dataframe(self) -> pd.DataFrame:
-        return pd.DataFrame()
+    def _to_dataframe(self) -> tuple[pd.DataFrame, pd.DataFrame]:
+        if self.tracks is None:
+            self._compute_tracks()
+        assert self.tracks is not None
+
+        track_rows = []
+        loop_to_track_id = {}
+
+        all_dataset_indices = set()
+        for track in self.tracks:
+            for loop_idx in track:
+                all_dataset_indices.add(loop_idx.idx_dataset)
+        sorted_dataset_indices = sorted(list(all_dataset_indices))
+
+        for track_id, track in enumerate(self.tracks):
+            row: dict[str, Any] = {"track_id": track_id}
+            for ds_idx in sorted_dataset_indices:
+                row[f"dataset_{ds_idx}"] = None
+
+            dataset_loops = {}
+            for loop in track:
+                loop_to_track_id[(loop.idx_dataset, loop.idx_loop_class)] = track_id
+                if loop.idx_dataset not in dataset_loops:
+                    dataset_loops[loop.idx_dataset] = []
+                dataset_loops[loop.idx_dataset].append(loop.idx_loop_class)
+
+            for ds_idx, loops in dataset_loops.items():
+                row[f"dataset_{ds_idx}"] = tuple(sorted(loops))
+
+            track_rows.append(row)
+
+        tracks_df = pd.DataFrame(track_rows)
+        cols = ["track_id"] + [f"dataset_{i}" for i in sorted_dataset_indices]
+        tracks_df = tracks_df[cols]
+
+        match_rows = []
+        for match_list in self.matches.values():
+            for m in match_list:
+                t_id = loop_to_track_id.get((m.source_dataset_idx, m.source_class_idx))
+                t_stat = m.t_stats_match if m.t_stats_match is not None else np.nan
+                p_val = m.pvalue_match if m.pvalue_match is not None else np.nan
+                p_val_corr = (
+                    m.pvalue_corrected_match
+                    if m.pvalue_corrected_match is not None
+                    else np.nan
+                )
+
+                match_rows.append(
+                    {
+                        "track_id": t_id,
+                        "dataset_a_idx": m.source_dataset_idx,
+                        "dataset_b_idx": m.target_dataset_idx,
+                        "loop_a_idx": m.source_class_idx,
+                        "loop_b_idx": m.target_class_idx,
+                        "geometric_distance": m.geometric_distance,
+                        "t_statistic": t_stat,
+                        "p_value_match": p_val,
+                        "p_value_corrected": p_val_corr,
+                    }
+                )
+
+        matches_df = pd.DataFrame(match_rows)
+        if not matches_df.empty:
+            matches_df = matches_df.sort_values("track_id").reset_index(drop=True)
+
+        return cast(pd.DataFrame, tracks_df), matches_df
 
 
 @dataclass(config=ConfigDict(arbitrary_types_allowed=True))
@@ -453,8 +517,7 @@ class CrossDatasetMatcher:
             )
             if dataset_key not in self.loop_matching_result.matches:
                 self.loop_matching_result.matches[dataset_key] = []
-            else:
-                self.loop_matching_result.matches[dataset_key].append(loop_match)
+            self.loop_matching_result.matches[dataset_key].append(loop_match)
             if verbose:
                 logger.info(
                     f"Match found: dataset {source_dataset_idx} class {i} ↔ "

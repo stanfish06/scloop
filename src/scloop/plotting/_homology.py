@@ -414,7 +414,7 @@ def loops(
 
     def _loops_for_selector(
         selector: Index_t | tuple[Index_t, Index_t],
-    ) -> list[np.ndarray]:
+    ) -> list[list[list[float]]]:
         if isinstance(selector, tuple) and not include_bootstrap:
             return []
         if isinstance(selector, int):

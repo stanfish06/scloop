@@ -57,7 +57,9 @@ def loop_edge_embedding(
         else ax
     )
 
+    assert data.bootstrap_data is not None
     track = data.bootstrap_data.loop_tracks[track_id]
+    assert track.hodge_analysis is not None
     hodge = track.hodge_analysis
 
     all_embeddings = []
@@ -69,6 +71,7 @@ def loop_edge_embedding(
             if use_smooth
             else loop_class.edge_embedding_raw
         )
+        assert edge_embeddings is not None
 
         for rep_idx, edge_emb in enumerate(edge_embeddings):
             valid_indices = loop_class.valid_edge_indices_per_rep[rep_idx]
@@ -77,6 +80,7 @@ def loop_edge_embedding(
             if color_by == "position":
                 colors = np.linspace(0, 1, n_edges)
             elif color_by == "gradient":
+                assert loop_class.edge_gradient_raw is not None
                 gradients = loop_class.edge_gradient_raw[rep_idx][valid_indices]
                 colors = gradients.flatten()
 
@@ -166,7 +170,9 @@ def loop_edge_overlay(
         **(kwargs_scatter or {}),
     )
 
+    assert data.bootstrap_data is not None
     track = data.bootstrap_data.loop_tracks[track_id]
+    assert track.hodge_analysis is not None
     hodge = track.hodge_analysis
 
     all_color_values = []
@@ -177,6 +183,8 @@ def loop_edge_overlay(
             if use_smooth
             else loop_class.edge_embedding_raw
         )
+        assert edge_embeddings is not None
+        assert loop_class.coordinates_edges is not None
 
         for rep_idx, edge_coords in enumerate(loop_class.coordinates_edges):
             valid_indices = loop_class.valid_edge_indices_per_rep[rep_idx]
@@ -185,6 +193,7 @@ def loop_edge_overlay(
             if color_by == "embedding":
                 colors = edge_emb
             elif color_by == "gradient":
+                assert loop_class.edge_gradient_raw is not None
                 gradients = loop_class.edge_gradient_raw[rep_idx][valid_indices]
                 colors = gradients.flatten()
             elif color_by == "position":
@@ -199,7 +208,9 @@ def loop_edge_overlay(
             vmax_local = vmax if vmax is not None else np.max(colors)
             norm = Normalize(vmin=vmin_local, vmax=vmax_local)
 
-            lc = LineCollection(segments, cmap=cmap, norm=norm, **(kwargs_plot or {}))
+            lc = LineCollection(
+                list(segments), cmap=cmap, norm=norm, **(kwargs_plot or {})
+            )
             lc.set_array(colors[:-1])
             lc.set_linewidth(2)
             ax.add_collection(lc)

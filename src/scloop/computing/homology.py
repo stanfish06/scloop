@@ -17,7 +17,7 @@ from ..data.ripser_lib import (  # type: ignore[import-not-found]
 from ..data.types import Diameter_t, IndexListDistMatrix, LoopDistMethod
 from ..data.utils import encode_triangles_and_edges
 from ..utils.distance_metrics.frechet_py import compute_pairwise_loop_frechet
-from ..utils.linear_algebra_gf2.m4ri_lib import (
+from ..utils.linear_algebra_gf2.m4ri_lib import (  # type: ignore
     solve_multiple_gf2,  # type: ignore[import-not-found]
 )
 

@@ -777,6 +777,9 @@ class HomologyData:
         mask_a = self._loops_to_edge_mask(source_loops)
         mask_b = self._loops_to_edge_mask(target_loops)
 
+        assert isinstance(mask_a, np.ndarray)
+        assert isinstance(mask_b, np.ndarray)
+
         boundary_matrix_d1 = self.boundary_matrix_d1
         assert boundary_matrix_d1 is not None
         results, _ = compute_loop_homological_equivalence(

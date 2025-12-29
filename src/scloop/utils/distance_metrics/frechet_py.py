@@ -1,6 +1,6 @@
 import numpy as np
 
-from .frechet import compute_loop_set_frechet
+from .frechet import compute_loop_set_frechet  # type: ignore
 
 
 def compute_pairwise_loop_frechet(
