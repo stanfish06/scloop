@@ -1,20 +1,82 @@
+# Copyright 2025 Zhiyuan Yu (Heemskerk's lab, University of Michigan)
+import anndata as ad
 import pandas as pd
 from anndata import AnnData
+from loguru import logger
 
-from ..data.types import Index_t
+from ..data.constants import CROSS_MATCH_RESULT_KEY
+from ..data.metadata import CrossDatasetMatchingMeta
+from ..data.types import Count_t, CrossMatchModelTypes, Index_t, LoopDistMethod
 from ..matching import CrossDatasetMatcher
 
 __all__ = ["match_loops"]
 
 
 def match_loops(
-    adatas: list[AnnData],
+    adata_list: list[AnnData],
+    reference_adata_index: Index_t,
+    reference_embedding_key: str,
     shared_embedding_key: str,
-    reference_idx: Index_t = 0,
-    model_type: str = "mlp",
-    distance_method: str = "hausdorff",
-    n_permutations: int = 1000,
-    return_matcher: bool = False,
-    **model_kwargs,
-) -> pd.DataFrame | tuple[pd.DataFrame, CrossDatasetMatcher]:
-    return pd.DataFrame()
+    model_type: CrossMatchModelTypes = "nf",
+    distance_method: LoopDistMethod = "hausdorff",
+    n_permutations: Count_t = 1000,
+    kwargs_model: dict | None = None,
+    kwargs_match: dict | None = None,
+) -> tuple[AnnData, pd.DataFrame, pd.DataFrame]:
+    if kwargs_model is None:
+        kwargs_model = {}
+    if kwargs_match is None:
+        kwargs_match = {}
+
+    reference_embedding_keys = [reference_embedding_key] * len(adata_list)
+
+    meta = CrossDatasetMatchingMeta(
+        shared_embedding_key=shared_embedding_key,
+        reference_embedding_keys=reference_embedding_keys,
+        reference_idx=reference_adata_index,
+        model_type=model_type,
+    )
+
+    matcher = CrossDatasetMatcher(adata_list=adata_list, meta=meta)
+
+    matcher._train_reference_mapping(**kwargs_model)
+
+    matcher._transform_all_to_reference()
+
+    for i in range(len(adata_list)):
+        for j in range(i + 1, len(adata_list)):
+            matcher._loops_cross_match(
+                n_permute=n_permutations,
+                source_dataset_idx=i,
+                target_dataset_idx=j,
+                method=distance_method,
+                **kwargs_match,
+            )
+
+    assert matcher.loop_matching_result is not None
+    matcher.loop_matching_result._compute_tracks()
+
+    tracks_df, matches_df = matcher.loop_matching_result._to_dataframe()
+
+    gene_sets = [set(adata.var_names) for adata in adata_list]
+    common_genes = set.intersection(*gene_sets)
+    all_genes = set.union(*gene_sets)
+
+    if len(common_genes) < len(all_genes):
+        logger.warning(
+            f"Gene name mismatch: {len(common_genes)} common genes out of {len(all_genes)} total. "
+            "Concatenating with join='inner'"
+        )
+
+    concat_adata = ad.concat(
+        adata_list,
+        axis=0,
+        join="inner",
+        label="dataset",
+        keys=[str(i) for i in range(len(adata_list))],
+        index_unique="_",
+    )
+
+    concat_adata.uns[CROSS_MATCH_RESULT_KEY] = matcher
+
+    return concat_adata, tracks_df, matches_df

@@ -33,3 +33,9 @@ def _get_homology_data(adata: AnnData, key_homology: str) -> HomologyData:
     assert adata.uns[key_homology] is not None
     assert type(adata.uns[key_homology]) is HomologyData
     return adata.uns[key_homology]
+
+
+def _get_embedding_key(embedding_method: str) -> str:
+    if embedding_method in ("pca", "diffmap", "scvi"):
+        return f"X_{embedding_method}"
+    return embedding_method

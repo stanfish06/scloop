@@ -90,17 +90,31 @@ def loop_edge_embedding(
     if all_embeddings:
         all_emb = np.concatenate(all_embeddings)
         all_col = np.concatenate(all_colors)
-        positions = np.arange(len(all_emb))
+
+        all_positions = []
+        for loop_class in hodge.selected_loop_classes:
+            edge_embeddings = (
+                loop_class.edge_embedding_smooth
+                if use_smooth
+                else loop_class.edge_embedding_raw
+            )
+            if edge_embeddings:
+                for edge_emb in edge_embeddings:
+                    all_positions.append(np.linspace(0, 1, len(edge_emb)))
+
+        x_values = (
+            np.concatenate(all_positions) if all_positions else np.arange(len(all_emb))
+        )
 
         ax.scatter(
-            positions,
+            x_values,
             all_emb,
             c=all_col,
             s=pointsize,
             cmap=cmap,
             **(kwargs_scatter or {}),
         )
-        ax.set_xlabel("Edge index")
+        ax.set_xlabel("Loop Position (normalized)")
         ax.set_ylabel("Edge embedding")
 
     if len(ax.collections) > 0:
@@ -117,7 +131,7 @@ def loop_edge_overlay(
     key_homology: str = "scloop",
     ax: Axes | None = None,
     *,
-    components: tuple[Index_t, Index_t] = (0, 1),
+    components: tuple[Index_t, Index_t] | list[Index_t] = (0, 1),
     use_smooth: bool = False,
     color_by: Literal["embedding", "gradient", "position"] = "embedding",
     pointsize: PositiveFloat = 10,
@@ -138,6 +152,8 @@ def loop_edge_overlay(
         emb = adata.obsm[basis]
     elif f"X_{basis}" in adata.obsm:
         emb = adata.obsm[f"X_{basis}"]
+    else:
+        raise ValueError(f"Embedding {basis} does not exist in adata")
 
     kwargs_axes = kwargs_axes or {}
     if "aspect" not in kwargs_axes:
@@ -166,7 +182,7 @@ def loop_edge_overlay(
         emb_background[:, components[0]],
         emb_background[:, components[1]],
         color="lightgray",
-        s=1,
+        s=pointsize,
         **(kwargs_scatter or {}),
     )
 
@@ -204,8 +220,8 @@ def loop_edge_overlay(
             points = edge_coords[:, [components[0], components[1]]]
             segments = np.array([points[:-1], points[1:]]).transpose(1, 0, 2)
 
-            vmin_local = vmin if vmin is not None else np.min(colors)
-            vmax_local = vmax if vmax is not None else np.max(colors)
+            vmin_local = float(vmin if vmin is not None else np.min(colors))
+            vmax_local = float(vmax if vmax is not None else np.max(colors))
             norm = Normalize(vmin=vmin_local, vmax=vmax_local)
 
             lc = LineCollection(

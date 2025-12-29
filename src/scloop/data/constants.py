@@ -1,5 +1,6 @@
 # Copyright 2025 Zhiyuan Yu (Heemskerk's lab, University of Michigan)
 CROSS_MATCH_KEY = "X_scloop_alilgned"
+CROSS_MATCH_RESULT_KEY = "scloop_cross_match"
 
 DEFAULT_N_MAX_WORKERS: int = 8
 DEFAULT_N_HODGE_COMPONENTS: int = 10
