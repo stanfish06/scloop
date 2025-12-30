@@ -40,6 +40,8 @@ def find_loops(
     n_check_per_candidate: Annotated[int, Field(ge=1)] = 1,
     n_max_workers: Annotated[int, Field(ge=1)] = DEFAULT_N_MAX_WORKERS,
     verbose: bool = False,
+    kwargs_bootstrap: dict | None = None,
+    kwargs_loop_test: dict | None = None,
 ) -> None:
     meta = _get_scloop_meta(adata)
     if meta.bootstrap is None:
@@ -55,7 +57,6 @@ def find_loops(
     hd._compute_boundary_matrix_d1(adata=adata, thresh=boundary_thresh, verbose=verbose)
     assert meta.preprocess is not None
     assert meta.preprocess.embedding_method is not None
-    import numpy as np
 
     embedding = np.array(adata.obsm[f"X_{meta.preprocess.embedding_method}"])
     hd._compute_loop_representatives(
@@ -80,6 +81,7 @@ def find_loops(
         n_max_workers=n_max_workers,
         life_pct=tightness_loops,
         verbose=verbose,
+        **(kwargs_bootstrap or {}),
     )
 
     """
@@ -89,7 +91,7 @@ def find_loops(
     ====================================
     """
     assert hd.bootstrap_data is not None
-    hd._test_loops(method_pval_correction="benjamini-hochberg")
+    hd._test_loops(**(kwargs_loop_test or {}))
     adata.uns[SCLOOP_UNS_KEY] = hd
 
 
@@ -103,7 +105,7 @@ def analyze_loops(
     ] = DEFAULT_N_NEIGHBORS_EDGE_EMBEDDING,
     normalized: bool = True,
     verbose: bool = False,
-    **kwargs_edge_embedding: Any,
+    **kwargs_loop_analysis: Any,
 ) -> None:
     """Analyze loops using Hodge decomposition and edge embedding.
 
@@ -158,5 +160,5 @@ def analyze_loops(
             normalized=normalized,
             n_neighbors_edge_embedding=n_neighbors_edge_embedding,
             verbose=verbose,
-            **kwargs_edge_embedding,
+            **kwargs_loop_analysis,
         )

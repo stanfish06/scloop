@@ -526,9 +526,12 @@ class HomologyData:
             weight_hodge=weight_hodge,
             half_window=half_window,
         )
-        track.hodge_analysis._smoothening_edge_embedding(
-            n_neighbors=n_neighbors_edge_embedding
-        )
+        try:
+            track.hodge_analysis._smoothening_edge_embedding(
+                n_neighbors=n_neighbors_edge_embedding
+            )
+        except:
+            logger.warning("Edge smoothing failed")
         if verbose:
             logger.success(
                 f"Hodge analysis finished in {time.perf_counter() - start_time:.2f}s"

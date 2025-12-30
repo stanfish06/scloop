@@ -28,6 +28,9 @@ def compute_weighted_hodge_embedding(
     numpy array of shape (n_edges, 1)
         Description of return value.
     """
+    n_edges = edge_evecs.shape[0]
+    if n_edges < 2:
+        return np.zeros(n_edges)
     _combined = np.concatenate((edge_gradients, edge_evecs), axis=1)
     _cors = np.corrcoef(_combined, rowvar=False)[0, 1:]
     _weights_evals = 1.0 / (np.power(eigenvalues, power_evals) + epsilon)

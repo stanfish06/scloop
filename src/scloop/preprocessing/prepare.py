@@ -8,7 +8,12 @@ from rich.console import Console
 
 from ..data.constants import SCLOOP_META_UNS_KEY, SCLOOP_NEIGHBORS_KEY
 from ..data.metadata import PreprocessMeta, ScloopMeta
-from ..data.types import EmbeddingMethod, EmbeddingNeighbors, FeatureSelectionMethod
+from ..data.types import (
+    EmbeddingMethod,
+    EmbeddingNeighbors,
+    FeatureSelectionMethod,
+    Percent_t,
+)
 from .downsample import sample
 
 __all__ = ["prepare_adata"]
@@ -123,6 +128,7 @@ def prepare_adata(
     scvi_key: str = "X_scvi",
     downsample: bool = True,
     n_downsample: int = 1000,
+    percent_removal_density: Percent_t = 0.025,
     embedding_downsample: EmbeddingMethod | None = None,
     groupby_downsample: str | None = None,
     random_state_downsample: int = 0,
@@ -252,6 +258,7 @@ def prepare_adata(
             groupby=groupby_downsample,
             n=n_downsample,
             random_state=random_state_downsample,
+            percent_removal_density=percent_removal_density,
         )
         if verbose:
             logger.info(f"Selected {len(indices_downsample)} cells for analysis")

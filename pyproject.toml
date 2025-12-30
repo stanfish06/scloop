@@ -90,8 +90,6 @@ format.indent-style = "space"
 format.quote-style = "double"
 lint.extend-select = [ "I" ]
 lint.fixable = [ "ALL" ]
-docstring-code-format = true
-docstring-code-line-length = 20
 
 [tool.pyproject-fmt]
 column_width = 120
