@@ -3,7 +3,7 @@
 [![Test Import](https://github.com/stanfish06/scLoop/actions/workflows/test-import.yml/badge.svg)](https://github.com/stanfish06/scLoop/actions/workflows/test-import.yml)
 [![Test Build](https://github.com/stanfish06/scLoop/actions/workflows/test-build.yml/badge.svg)](https://github.com/stanfish06/scLoop/actions/workflows/test-build.yml)
 
-**Note: this package is still under development.**
+**Note: this package is in early stages of development.**
 
 scLoop is a library to identify statistically significant loops in single-cell RNA-seq data.
 
@@ -43,7 +43,7 @@ make full-sync
 to prevent partial compilation of some modules
 
 ## Installation
-**Note: this package is still under development. The current build will likely not work.**
+**Note: this package is in early stages of development. The current build will have issues.**
 ```bash
 pip install scloop
 ```
