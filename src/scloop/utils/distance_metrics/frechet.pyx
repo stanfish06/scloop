@@ -48,6 +48,7 @@ cdef double compute_loop_frechet_nogil(
     cdef double_vec_2d curve_b_vec = memview_to_vec_2d(curve_b)
     return computeLoopFrechet(curve_a_vec, curve_b_vec)
 
+# ISSUE: crash a lot, probably due to constantly acquiring gil lock?
 def compute_loop_set_frechet(
     curve_pairs
 ):

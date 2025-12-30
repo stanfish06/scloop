@@ -113,6 +113,8 @@ class BoundaryMatrix(BaseModel, ABC):
 
 
 class BoundaryMatrixD1(BoundaryMatrix):
+    _cached_edge_set: set[tuple[Index_t, Index_t]] | None = None
+
     @property
     def row_simplex_decode(self) -> list[tuple[Index_t, Index_t]]:
         return decode_edges(np.array(self.row_simplex_ids), self.num_vertices)
@@ -120,6 +122,12 @@ class BoundaryMatrixD1(BoundaryMatrix):
     @property
     def col_simplex_decode(self) -> list[tuple[Index_t, Index_t, Index_t]]:
         return decode_triangles(np.array(self.col_simplex_ids), self.num_vertices)
+
+    @property
+    def edge_set(self) -> set[tuple[Index_t, Index_t]]:
+        if self._cached_edge_set is None:
+            self._cached_edge_set = set(self.row_simplex_decode)
+        return self._cached_edge_set
 
 
 class BoundaryMatrixD0(BoundaryMatrix):
@@ -598,6 +606,9 @@ class HomologyData:
         if len(edges_array) == 0:
             return [], []
 
+        assert self.boundary_matrix_d1 is not None
+        boundary_edge_set = self.boundary_matrix_d1.edge_set
+
         if not bootstrap:
             while len(self.selected_loop_classes) < len(indices_top_k):
                 self.selected_loop_classes.append(None)
@@ -613,10 +624,58 @@ class HomologyData:
         for loop_idx, i in enumerate(indices_top_k):
             loop_birth = loop_births[i].item()
             loop_death = loop_deaths[i].item()
+
+            valid_cocycles = []
+            n_cocycles_original = len(cocycles[i])
+            for simplex in cocycles[i]:
+                try:
+                    verts, coeff = simplex
+                except ValueError:
+                    continue
+                if coeff == 0 or len(verts) != 2:
+                    continue
+                u_global = vertex_ids[int(verts[0])]
+                v_global = vertex_ids[int(verts[1])]
+                edge_global = (min(u_global, v_global), max(u_global, v_global))
+                if bootstrap:
+                    if edge_global in boundary_edge_set or u_global == v_global:
+                        valid_cocycles.append(simplex)
+                else:
+                    if edge_global in boundary_edge_set:
+                        valid_cocycles.append(simplex)
+
+            if len(valid_cocycles) == 0:
+                logger.warning(
+                    f"Loop class {loop_idx}: All {n_cocycles_original} cocycle edges "
+                    f"filtered (not in boundary matrix). Skipping reconstruction."
+                )
+                continue
+
+            if len(valid_cocycles) < n_cocycles_original:
+                logger.info(
+                    f"Loop class {loop_idx}: Filtered {n_cocycles_original - len(valid_cocycles)}/"
+                    f"{n_cocycles_original} cocycle edges not in boundary matrix"
+                )
+
+            valid_edge_mask = []
+            for edge_local in edges_array:
+                u_global = vertex_ids[int(edge_local[0])]
+                v_global = vertex_ids[int(edge_local[1])]
+                edge_global = (min(u_global, v_global), max(u_global, v_global))
+                if bootstrap:
+                    valid = (edge_global in boundary_edge_set) or (u_global == v_global)
+                else:
+                    valid = edge_global in boundary_edge_set
+                valid_edge_mask.append(valid)
+
+            valid_edge_mask = np.array(valid_edge_mask, dtype=bool)
+            edges_array_filtered = edges_array[valid_edge_mask]
+            edge_diameters_filtered = edge_diameters[valid_edge_mask]
+
             loops_local, _ = reconstruct_n_loop_representatives(
-                cocycles_dim1=cocycles[i],
-                edges=edges_array,
-                edge_diameters=edge_diameters,
+                cocycles_dim1=valid_cocycles,
+                edges=edges_array_filtered,
+                edge_diameters=edge_diameters_filtered,
                 loop_birth=loop_birth,
                 loop_death=loop_death,
                 n=n_reps_per_loop,
@@ -710,6 +769,7 @@ class HomologyData:
         target_class_idx: Index_t,
         idx_bootstrap: int = 0,
         method: LoopDistMethod = "hausdorff",
+        n_workers: Count_t = DEFAULT_N_MAX_WORKERS,
     ) -> tuple[int, int, float]:
         assert self.bootstrap_data is not None
         assert self.meta.preprocess is not None
@@ -733,7 +793,10 @@ class HomologyData:
         )
 
         distances_arr = compute_loop_geometric_distance(
-            source_coords_list, target_coords_list, method
+            source_coords_list=source_coords_list,
+            target_coords_list=target_coords_list,
+            method=method,
+            n_workers=n_workers,
         )
         mean_distance = float(np.nanmean(distances_arr))
         return (source_class_idx, target_class_idx, mean_distance)

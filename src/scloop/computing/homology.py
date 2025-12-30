@@ -9,12 +9,13 @@ from scipy.sparse import csr_matrix
 from scipy.spatial.distance import directed_hausdorff
 from sklearn.neighbors import radius_neighbors_graph
 
+from ..data.constants import DEFAULT_N_MAX_WORKERS
 from ..data.metadata import ScloopMeta
 from ..data.ripser_lib import (  # type: ignore[import-not-found]
     get_boundary_matrix,
     ripser,
 )
-from ..data.types import Diameter_t, IndexListDistMatrix, LoopDistMethod
+from ..data.types import Count_t, Diameter_t, IndexListDistMatrix, LoopDistMethod
 from ..data.utils import encode_triangles_and_edges
 from ..utils.distance_metrics.frechet_py import compute_pairwise_loop_frechet
 from ..utils.linear_algebra_gf2.m4ri_lib import (  # type: ignore
@@ -239,6 +240,7 @@ def compute_loop_geometric_distance(
     source_coords_list: list[list[list[float]]] | list[np.ndarray],
     target_coords_list: list[list[list[float]]] | list[np.ndarray],
     method: LoopDistMethod = "hausdorff",
+    n_workers: Count_t = DEFAULT_N_MAX_WORKERS,
 ) -> np.ndarray:
     if len(source_coords_list) == 0 or len(target_coords_list) == 0:
         return np.array([np.nan])
@@ -247,7 +249,7 @@ def compute_loop_geometric_distance(
         case "frechet":
             try:
                 distances_arr = compute_pairwise_loop_frechet(
-                    source_coords_list, target_coords_list
+                    source_coords_list, target_coords_list, n_workers=n_workers
                 )
                 return distances_arr
             except Exception:

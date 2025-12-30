@@ -276,9 +276,13 @@ class CrossDatasetMatcher:
         source_loops_embedding: list[list[list[float]]] | list[np.ndarray],
         target_loops_embedding: list[list[list[float]]] | list[np.ndarray],
         method: LoopDistMethod = "hausdorff",
+        n_workers: Count_t = DEFAULT_N_MAX_WORKERS,
     ) -> float:
         distances_arr = compute_loop_geometric_distance(
-            source_loops_embedding, target_loops_embedding, method
+            source_coords_list=source_loops_embedding,
+            target_coords_list=target_loops_embedding,
+            method=method,
+            n_workers=n_workers,
         )
         mean_distance = float(np.nanmean(distances_arr))
         return mean_distance
