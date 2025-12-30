@@ -177,7 +177,8 @@ class BootstrapAnalysis:
             probs_presence.append(
                 float(tbl[0][0]) / (float(tbl[0][0]) + float(tbl[1][0]))
             )
-            odds_ratio_presence.append(odds_ratio(np.array(tbl)).statistic)
+            or_val = odds_ratio(np.array(tbl)).statistic
+            odds_ratio_presence.append(or_val if np.isfinite(or_val) else 0.0)
             res = fisher_exact(table=tbl, alternative="greater")
             pvalues_raw_presence.append(res.pvalue)  # type: ignore[attr-defined]
         pvalues_corrected_presence = correct_pvalues(

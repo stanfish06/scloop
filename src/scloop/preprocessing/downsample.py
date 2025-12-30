@@ -4,6 +4,7 @@ import pandas as pd
 from anndata import AnnData
 from numba import jit
 from pydantic import validate_call
+from pynndescent import NNDescent
 
 from ..data.types import EmbeddingMethod, IndexListDownSample, SizeDownSample
 
@@ -52,6 +53,8 @@ def sample(
     embedding_method: EmbeddingMethod,
     n: SizeDownSample,
     random_state: int = 0,
+    percent_removal_density: float = 0.025,
+    n_neighbors_density: int = 50,
 ) -> IndexListDownSample:
     """
     Topology-preserving downsampling using greedy farthest-point sampling.
@@ -71,21 +74,52 @@ def sample(
     downsample_embedding = adata.obsm[f"X_{embedding_method}"]
     assert type(downsample_embedding) is np.ndarray
 
+    if percent_removal_density > 0:
+        index = NNDescent(downsample_embedding, n_neighbors=n_neighbors_density)
+        _, distances = index.query(downsample_embedding, k=n_neighbors_density)
+        distances = distances / np.median(distances)
+        d_sq = distances**2
+        bandwidth_inv = d_sq.mean(axis=1, keepdims=True)
+        similarities = np.exp(-d_sq * bandwidth_inv / 2)
+        density = similarities.sum(axis=1)
+
+        n_total = len(density)
+        min_removal = percent_removal_density
+        current_percentile = percent_removal_density / 2
+        threshold = np.percentile(density, current_percentile * 100)
+        while current_percentile < 1.0:
+            threshold = np.percentile(density, current_percentile * 100)
+            n_kept = np.sum(density >= threshold)
+            if n_kept <= n_total * (1 - min_removal):
+                break
+            current_percentile *= 2
+
+        valid_mask = density >= threshold
+        local_indices = np.where(valid_mask)[0]
+        downsample_embedding_local = downsample_embedding[local_indices]
+    else:
+        local_indices = np.arange(adata.shape[0])
+        downsample_embedding_local = downsample_embedding
+
     if groupby is None:
-        class_labels = np.zeros(adata.shape[0], dtype=np.int64)
+        class_labels = np.zeros(len(local_indices), dtype=np.int64)
         classes = np.array([0])
-        seed_indices = np.array([np.random.randint(adata.shape[0])])
+        np.random.seed(random_state)
+        seed_indices = np.array([np.random.randint(len(local_indices))])
     else:
         assert type(adata.obs) is pd.DataFrame
         assert groupby in adata.obs.columns
-        class_labels, classes = pd.factorize(adata.obs.loc[:, groupby])
-        classes = np.arange(len(classes), dtype=np.int64)
+        class_labels_global, classes = pd.factorize(adata.obs.loc[:, groupby])
+        class_labels = class_labels_global[local_indices].astype(np.int64)
+        classes_present = np.unique(class_labels)
         seed_indices = []
         np.random.seed(random_state)
-        for c in classes:
+        for c in classes_present:
             seed_indices.append(np.random.choice(np.where(class_labels == c)[0]))
         seed_indices = np.array(seed_indices)
+        classes = classes_present
 
-    return _sample_impl(
-        downsample_embedding, class_labels, classes, seed_indices, n
-    ).tolist()
+    local_result = _sample_impl(
+        downsample_embedding_local, class_labels, classes, seed_indices, n
+    )
+    return local_indices[local_result].tolist()
