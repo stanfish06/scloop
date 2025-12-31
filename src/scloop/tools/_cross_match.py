@@ -4,7 +4,7 @@ import pandas as pd
 from anndata import AnnData
 from loguru import logger
 
-from ..data.constants import CROSS_MATCH_RESULT_KEY
+from ..data.constants import CROSS_MATCH_RESULT_KEY, DEFAULT_LOOP_DIST_METHOD
 from ..data.metadata import CrossDatasetMatchingMeta
 from ..data.types import Count_t, CrossMatchModelTypes, Index_t, LoopDistMethod
 from ..matching import CrossDatasetMatcher
@@ -18,7 +18,7 @@ def match_loops(
     reference_embedding_key: str,
     shared_embedding_key: str,
     model_type: CrossMatchModelTypes = "nf",
-    distance_method: LoopDistMethod = "hausdorff",
+    distance_method: LoopDistMethod = DEFAULT_LOOP_DIST_METHOD,
     n_permutations: Count_t = 1000,
     kwargs_model: dict | None = None,
     kwargs_match: dict | None = None,

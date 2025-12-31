@@ -9,6 +9,7 @@ from rich.console import Console
 from ..data.constants import SCLOOP_META_UNS_KEY, SCLOOP_NEIGHBORS_KEY
 from ..data.metadata import PreprocessMeta, ScloopMeta
 from ..data.types import (
+    Count_t,
     EmbeddingMethod,
     EmbeddingNeighbors,
     FeatureSelectionMethod,
@@ -129,6 +130,7 @@ def prepare_adata(
     downsample: bool = True,
     n_downsample: int = 1000,
     percent_removal_density: Percent_t = 0.025,
+    n_neighbors_removal_density: Count_t = 50,
     embedding_downsample: EmbeddingMethod | None = None,
     groupby_downsample: str | None = None,
     random_state_downsample: int = 0,
@@ -221,6 +223,7 @@ def prepare_adata(
             adata, n_comps=n_diffusion_comps, neighbors_key=SCLOOP_NEIGHBORS_KEY
         )
         # first component of diffusion map represent local density
+        adata.obsm["X_diffmap_original"] = adata.obsm["X_diffmap"].copy()
         adata.obsm["X_diffmap"] = adata.obsm["X_diffmap"][:, 1:]
     elif "X_diffmap" in adata.obsm:
         if verbose:
@@ -259,6 +262,7 @@ def prepare_adata(
             n=n_downsample,
             random_state=random_state_downsample,
             percent_removal_density=percent_removal_density,
+            n_neighbors_density=n_neighbors_removal_density,
         )
         if verbose:
             logger.info(f"Selected {len(indices_downsample)} cells for analysis")

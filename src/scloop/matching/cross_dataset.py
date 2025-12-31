@@ -23,7 +23,11 @@ from rich.progress import (
 from scipy.stats import ttest_ind
 
 from ..computing.homology import compute_loop_geometric_distance
-from ..data.constants import CROSS_MATCH_KEY, DEFAULT_N_MAX_WORKERS
+from ..data.constants import (
+    CROSS_MATCH_KEY,
+    DEFAULT_LOOP_DIST_METHOD,
+    DEFAULT_N_MAX_WORKERS,
+)
 from ..data.containers import HomologyData
 from ..data.metadata import CrossDatasetMatchingMeta
 from ..data.types import (
@@ -275,7 +279,7 @@ class CrossDatasetMatcher:
         self,
         source_loops_embedding: list[list[list[float]]] | list[np.ndarray],
         target_loops_embedding: list[list[list[float]]] | list[np.ndarray],
-        method: LoopDistMethod = "hausdorff",
+        method: LoopDistMethod = DEFAULT_LOOP_DIST_METHOD,
         n_workers: Count_t = DEFAULT_N_MAX_WORKERS,
     ) -> float:
         distances_arr = compute_loop_geometric_distance(
@@ -311,7 +315,7 @@ class CrossDatasetMatcher:
         source_loop_classes: list[Index_t],
         target_loop_classes: list[Index_t],
         include_bootstrap: bool = True,
-        method: LoopDistMethod = "hausdorff",
+        method: LoopDistMethod = DEFAULT_LOOP_DIST_METHOD,
         n_max_workers: int = DEFAULT_N_MAX_WORKERS,
         progress: Progress | None = None,
     ):
@@ -399,7 +403,7 @@ class CrossDatasetMatcher:
         n_permute: Count_t = 1000,
         source_dataset_idx: Index_t = 0,
         target_dataset_idx: Index_t = 1,
-        method: LoopDistMethod = "hausdorff",
+        method: LoopDistMethod = DEFAULT_LOOP_DIST_METHOD,
         include_bootstrap: bool = True,
         cutoff_pval: Percent_t = 0.05,
         method_pval_correction: MultipleTestCorrectionMethod

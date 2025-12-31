@@ -17136,7 +17136,7 @@ static double __pyx_f_6scloop_5utils_16distance_metrics_7frechet_compute_loop_fr
  *     cdef double_vec_2d curve_b_vec = memview_to_vec_2d(curve_b)
  *     return computeLoopFrechet(curve_a_vec, curve_b_vec)             # <<<<<<<<<<<<<<
  * 
- * def compute_loop_set_frechet(
+ * # ISSUE: crash a lot, probably due to constantly acquiring gil lock?
 */
   __pyx_r = computeLoopFrechet(__pyx_v_curve_a_vec, __pyx_v_curve_b_vec);
   goto __pyx_L0;
@@ -17154,9 +17154,9 @@ static double __pyx_f_6scloop_5utils_16distance_metrics_7frechet_compute_loop_fr
   return __pyx_r;
 }
 
-/* "scloop/utils/distance_metrics/frechet.pyx":51
- *     return computeLoopFrechet(curve_a_vec, curve_b_vec)
+/* "scloop/utils/distance_metrics/frechet.pyx":52
  * 
+ * # ISSUE: crash a lot, probably due to constantly acquiring gil lock?
  * def compute_loop_set_frechet(             # <<<<<<<<<<<<<<
  *     curve_pairs
  * ):
@@ -17201,32 +17201,32 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   {
     PyObject ** const __pyx_pyargnames[] = {&__pyx_mstate_global->__pyx_n_u_curve_pairs,0};
     const Py_ssize_t __pyx_kwds_len = (__pyx_kwds) ? __Pyx_NumKwargs_FASTCALL(__pyx_kwds) : 0;
-    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 51, __pyx_L3_error)
+    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 52, __pyx_L3_error)
     if (__pyx_kwds_len > 0) {
       switch (__pyx_nargs) {
         case  1:
         values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 51, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 52, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  0: break;
         default: goto __pyx_L5_argtuple_error;
       }
       const Py_ssize_t kwd_pos_args = __pyx_nargs;
-      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "compute_loop_set_frechet", 0) < (0)) __PYX_ERR(0, 51, __pyx_L3_error)
+      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "compute_loop_set_frechet", 0) < (0)) __PYX_ERR(0, 52, __pyx_L3_error)
       for (Py_ssize_t i = __pyx_nargs; i < 1; i++) {
-        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("compute_loop_set_frechet", 1, 1, 1, i); __PYX_ERR(0, 51, __pyx_L3_error) }
+        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("compute_loop_set_frechet", 1, 1, 1, i); __PYX_ERR(0, 52, __pyx_L3_error) }
       }
     } else if (unlikely(__pyx_nargs != 1)) {
       goto __pyx_L5_argtuple_error;
     } else {
       values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
-      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 51, __pyx_L3_error)
+      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 52, __pyx_L3_error)
     }
     __pyx_v_curve_pairs = values[0];
   }
   goto __pyx_L6_skip;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("compute_loop_set_frechet", 1, 1, 1, __pyx_nargs); __PYX_ERR(0, 51, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("compute_loop_set_frechet", 1, 1, 1, __pyx_nargs); __PYX_ERR(0, 52, __pyx_L3_error)
   __pyx_L6_skip:;
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L3_error:;
@@ -17277,17 +17277,17 @@ static PyObject *__pyx_pf_6scloop_5utils_16distance_metrics_7frechet_compute_loo
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("compute_loop_set_frechet", 0);
 
-  /* "scloop/utils/distance_metrics/frechet.pyx":54
+  /* "scloop/utils/distance_metrics/frechet.pyx":55
  *     curve_pairs
  * ):
  *     cdef int n = len(curve_pairs)             # <<<<<<<<<<<<<<
  *     cdef double[:] results = np.empty(n, dtype=np.float64)
  *     cdef int i
 */
-  __pyx_t_1 = PyObject_Length(__pyx_v_curve_pairs); if (unlikely(__pyx_t_1 == ((Py_ssize_t)-1))) __PYX_ERR(0, 54, __pyx_L1_error)
+  __pyx_t_1 = PyObject_Length(__pyx_v_curve_pairs); if (unlikely(__pyx_t_1 == ((Py_ssize_t)-1))) __PYX_ERR(0, 55, __pyx_L1_error)
   __pyx_v_n = __pyx_t_1;
 
-  /* "scloop/utils/distance_metrics/frechet.pyx":55
+  /* "scloop/utils/distance_metrics/frechet.pyx":56
  * ):
  *     cdef int n = len(curve_pairs)
  *     cdef double[:] results = np.empty(n, dtype=np.float64)             # <<<<<<<<<<<<<<
@@ -17295,16 +17295,16 @@ static PyObject *__pyx_pf_6scloop_5utils_16distance_metrics_7frechet_compute_loo
  * 
 */
   __pyx_t_3 = NULL;
-  __Pyx_GetModuleGlobalName(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_np); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 55, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_np); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 56, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
-  __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_empty); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 55, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_empty); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 56, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-  __pyx_t_4 = __Pyx_PyLong_From_int(__pyx_v_n); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 55, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyLong_From_int(__pyx_v_n); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 56, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
-  __Pyx_GetModuleGlobalName(__pyx_t_6, __pyx_mstate_global->__pyx_n_u_np); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 55, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_6, __pyx_mstate_global->__pyx_n_u_np); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 56, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_6);
-  __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_t_6, __pyx_mstate_global->__pyx_n_u_float64); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 55, __pyx_L1_error)
+  __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_t_6, __pyx_mstate_global->__pyx_n_u_float64); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 56, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_7);
   __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
   __pyx_t_8 = 1;
@@ -17321,25 +17321,25 @@ static PyObject *__pyx_pf_6scloop_5utils_16distance_metrics_7frechet_compute_loo
   #endif
   {
     PyObject *__pyx_callargs[2 + ((CYTHON_VECTORCALL) ? 1 : 0)] = {__pyx_t_3, __pyx_t_4};
-    __pyx_t_6 = __Pyx_MakeVectorcallBuilderKwds(1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 55, __pyx_L1_error)
+    __pyx_t_6 = __Pyx_MakeVectorcallBuilderKwds(1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 56, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
-    if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_dtype, __pyx_t_7, __pyx_t_6, __pyx_callargs+2, 0) < (0)) __PYX_ERR(0, 55, __pyx_L1_error)
+    if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_dtype, __pyx_t_7, __pyx_t_6, __pyx_callargs+2, 0) < (0)) __PYX_ERR(0, 56, __pyx_L1_error)
     __pyx_t_2 = __Pyx_Object_Vectorcall_CallFromBuilder((PyObject*)__pyx_t_5, __pyx_callargs+__pyx_t_8, (2-__pyx_t_8) | (__pyx_t_8*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET), __pyx_t_6);
     __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-    if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 55, __pyx_L1_error)
+    if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 56, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
   }
-  __pyx_t_9 = __Pyx_PyObject_to_MemoryviewSlice_ds_double(__pyx_t_2, PyBUF_WRITABLE); if (unlikely(!__pyx_t_9.memview)) __PYX_ERR(0, 55, __pyx_L1_error)
+  __pyx_t_9 = __Pyx_PyObject_to_MemoryviewSlice_ds_double(__pyx_t_2, PyBUF_WRITABLE); if (unlikely(!__pyx_t_9.memview)) __PYX_ERR(0, 56, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_v_results = __pyx_t_9;
   __pyx_t_9.memview = NULL;
   __pyx_t_9.data = NULL;
 
-  /* "scloop/utils/distance_metrics/frechet.pyx":58
+  /* "scloop/utils/distance_metrics/frechet.pyx":59
  *     cdef int i
  * 
  *     for i in prange(n, nogil=True):             # <<<<<<<<<<<<<<
@@ -17385,7 +17385,7 @@ static PyObject *__pyx_pf_6scloop_5utils_16distance_metrics_7frechet_compute_loo
                         {
                             __pyx_v_i = (int)(0 + 1 * __pyx_t_11);
 
-                            /* "scloop/utils/distance_metrics/frechet.pyx":59
+                            /* "scloop/utils/distance_metrics/frechet.pyx":60
  * 
  *     for i in prange(n, nogil=True):
  *         with gil:             # <<<<<<<<<<<<<<
@@ -17396,14 +17396,14 @@ static PyObject *__pyx_pf_6scloop_5utils_16distance_metrics_7frechet_compute_loo
                                 PyGILState_STATE __pyx_gilstate_save = __Pyx_PyGILState_Ensure();
                                 /*try:*/ {
 
-                                  /* "scloop/utils/distance_metrics/frechet.pyx":61
+                                  /* "scloop/utils/distance_metrics/frechet.pyx":62
  *         with gil:
  *             # need gil to get data from list
  *             a, b = curve_pairs[i]             # <<<<<<<<<<<<<<
  *         results[i] = compute_loop_frechet_nogil(a, b)
  * 
 */
-                                  __pyx_t_2 = __Pyx_GetItemInt(__pyx_v_curve_pairs, __pyx_v_i, int, 1, __Pyx_PyLong_From_int, 0, 1, 1, 1, __Pyx_ReferenceSharing_SharedReference); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 61, __pyx_L13_error)
+                                  __pyx_t_2 = __Pyx_GetItemInt(__pyx_v_curve_pairs, __pyx_v_i, int, 1, __Pyx_PyLong_From_int, 0, 1, 1, 1, __Pyx_ReferenceSharing_SharedReference); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 62, __pyx_L13_error)
                                   __Pyx_GOTREF(__pyx_t_2);
                                   if ((likely(PyTuple_CheckExact(__pyx_t_2))) || (PyList_CheckExact(__pyx_t_2))) {
                                     PyObject* sequence = __pyx_t_2;
@@ -17411,7 +17411,7 @@ static PyObject *__pyx_pf_6scloop_5utils_16distance_metrics_7frechet_compute_loo
                                     if (unlikely(size != 2)) {
                                       if (size > 2) __Pyx_RaiseTooManyValuesError(2);
                                       else if (size >= 0) __Pyx_RaiseNeedMoreValuesError(size);
-                                      __PYX_ERR(0, 61, __pyx_L13_error)
+                                      __PYX_ERR(0, 62, __pyx_L13_error)
                                     }
                                     #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
                                     if (likely(PyTuple_CheckExact(sequence))) {
@@ -17421,22 +17421,22 @@ static PyObject *__pyx_pf_6scloop_5utils_16distance_metrics_7frechet_compute_loo
                                       __Pyx_INCREF(__pyx_t_6);
                                     } else {
                                       __pyx_t_5 = __Pyx_PyList_GetItemRefFast(sequence, 0, __Pyx_ReferenceSharing_SharedReference);
-                                      if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 61, __pyx_L13_error)
+                                      if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 62, __pyx_L13_error)
                                       __Pyx_XGOTREF(__pyx_t_5);
                                       __pyx_t_6 = __Pyx_PyList_GetItemRefFast(sequence, 1, __Pyx_ReferenceSharing_SharedReference);
-                                      if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 61, __pyx_L13_error)
+                                      if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 62, __pyx_L13_error)
                                       __Pyx_XGOTREF(__pyx_t_6);
                                     }
                                     #else
-                                    __pyx_t_5 = __Pyx_PySequence_ITEM(sequence, 0); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 61, __pyx_L13_error)
+                                    __pyx_t_5 = __Pyx_PySequence_ITEM(sequence, 0); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 62, __pyx_L13_error)
                                     __Pyx_GOTREF(__pyx_t_5);
-                                    __pyx_t_6 = __Pyx_PySequence_ITEM(sequence, 1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 61, __pyx_L13_error)
+                                    __pyx_t_6 = __Pyx_PySequence_ITEM(sequence, 1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 62, __pyx_L13_error)
                                     __Pyx_GOTREF(__pyx_t_6);
                                     #endif
                                     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
                                   } else {
                                     Py_ssize_t index = -1;
-                                    __pyx_t_7 = PyObject_GetIter(__pyx_t_2); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 61, __pyx_L13_error)
+                                    __pyx_t_7 = PyObject_GetIter(__pyx_t_2); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 62, __pyx_L13_error)
                                     __Pyx_GOTREF(__pyx_t_7);
                                     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
                                     __pyx_t_13 = (CYTHON_COMPILING_IN_LIMITED_API) ? PyIter_Next : __Pyx_PyObject_GetIterNextFunc(__pyx_t_7);
@@ -17444,7 +17444,7 @@ static PyObject *__pyx_pf_6scloop_5utils_16distance_metrics_7frechet_compute_loo
                                     __Pyx_GOTREF(__pyx_t_5);
                                     index = 1; __pyx_t_6 = __pyx_t_13(__pyx_t_7); if (unlikely(!__pyx_t_6)) goto __pyx_L15_unpacking_failed;
                                     __Pyx_GOTREF(__pyx_t_6);
-                                    if (__Pyx_IternextUnpackEndCheck(__pyx_t_13(__pyx_t_7), 2) < (0)) __PYX_ERR(0, 61, __pyx_L13_error)
+                                    if (__Pyx_IternextUnpackEndCheck(__pyx_t_13(__pyx_t_7), 2) < (0)) __PYX_ERR(0, 62, __pyx_L13_error)
                                     __pyx_t_13 = NULL;
                                     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
                                     goto __pyx_L16_unpacking_done;
@@ -17452,7 +17452,7 @@ static PyObject *__pyx_pf_6scloop_5utils_16distance_metrics_7frechet_compute_loo
                                     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
                                     __pyx_t_13 = NULL;
                                     if (__Pyx_IterFinish() == 0) __Pyx_RaiseNeedMoreValuesError(index);
-                                    __PYX_ERR(0, 61, __pyx_L13_error)
+                                    __PYX_ERR(0, 62, __pyx_L13_error)
                                     __pyx_L16_unpacking_done:;
                                   }
                                   __Pyx_XDECREF_SET(__pyx_v_a, __pyx_t_5);
@@ -17461,7 +17461,7 @@ static PyObject *__pyx_pf_6scloop_5utils_16distance_metrics_7frechet_compute_loo
                                   __pyx_t_6 = 0;
                                 }
 
-                                /* "scloop/utils/distance_metrics/frechet.pyx":59
+                                /* "scloop/utils/distance_metrics/frechet.pyx":60
  * 
  *     for i in prange(n, nogil=True):
  *         with gil:             # <<<<<<<<<<<<<<
@@ -17481,15 +17481,15 @@ static PyObject *__pyx_pf_6scloop_5utils_16distance_metrics_7frechet_compute_loo
                                 }
                             }
 
-                            /* "scloop/utils/distance_metrics/frechet.pyx":62
+                            /* "scloop/utils/distance_metrics/frechet.pyx":63
  *             # need gil to get data from list
  *             a, b = curve_pairs[i]
  *         results[i] = compute_loop_frechet_nogil(a, b)             # <<<<<<<<<<<<<<
  * 
  *     return np.asarray(results)
 */
-                            __pyx_t_14 = __Pyx_PyObject_to_MemoryviewSlice_d_dc_double(__pyx_v_a, PyBUF_WRITABLE); if (unlikely(!__pyx_t_14.memview)) __PYX_ERR(0, 62, __pyx_L8_error)
-                            __pyx_t_15 = __Pyx_PyObject_to_MemoryviewSlice_d_dc_double(__pyx_v_b, PyBUF_WRITABLE); if (unlikely(!__pyx_t_15.memview)) __PYX_ERR(0, 62, __pyx_L8_error)
+                            __pyx_t_14 = __Pyx_PyObject_to_MemoryviewSlice_d_dc_double(__pyx_v_a, PyBUF_WRITABLE); if (unlikely(!__pyx_t_14.memview)) __PYX_ERR(0, 63, __pyx_L8_error)
+                            __pyx_t_15 = __Pyx_PyObject_to_MemoryviewSlice_d_dc_double(__pyx_v_b, PyBUF_WRITABLE); if (unlikely(!__pyx_t_15.memview)) __PYX_ERR(0, 63, __pyx_L8_error)
                             __pyx_t_16 = __pyx_v_i;
                             __pyx_t_17 = -1;
                             if (__pyx_t_16 < 0) {
@@ -17498,7 +17498,7 @@ static PyObject *__pyx_pf_6scloop_5utils_16distance_metrics_7frechet_compute_loo
                             } else if (unlikely(__pyx_t_16 >= __pyx_v_results.shape[0])) __pyx_t_17 = 0;
                             if (unlikely(__pyx_t_17 != -1)) {
                               __Pyx_RaiseBufferIndexErrorNogil(__pyx_t_17);
-                              __PYX_ERR(0, 62, __pyx_L8_error)
+                              __PYX_ERR(0, 63, __pyx_L8_error)
                             }
                             *((double *) ( /* dim=0 */ (__pyx_v_results.data + __pyx_t_16 * __pyx_v_results.strides[0]) )) = __pyx_f_6scloop_5utils_16distance_metrics_7frechet_compute_loop_frechet_nogil(__pyx_t_14, __pyx_t_15);
                             __PYX_XCLEAR_MEMVIEW(&__pyx_t_14, 0);
@@ -17586,7 +17586,7 @@ PyGILState_STATE __pyx_gilstate_save = __Pyx_PyGILState_Ensure();
         #endif
       }
 
-      /* "scloop/utils/distance_metrics/frechet.pyx":58
+      /* "scloop/utils/distance_metrics/frechet.pyx":59
  *     cdef int i
  * 
  *     for i in prange(n, nogil=True):             # <<<<<<<<<<<<<<
@@ -17608,7 +17608,7 @@ PyGILState_STATE __pyx_gilstate_save = __Pyx_PyGILState_Ensure();
       }
   }
 
-  /* "scloop/utils/distance_metrics/frechet.pyx":64
+  /* "scloop/utils/distance_metrics/frechet.pyx":65
  *         results[i] = compute_loop_frechet_nogil(a, b)
  * 
  *     return np.asarray(results)             # <<<<<<<<<<<<<<
@@ -17617,12 +17617,12 @@ PyGILState_STATE __pyx_gilstate_save = __Pyx_PyGILState_Ensure();
 */
   __Pyx_XDECREF(__pyx_r);
   __pyx_t_6 = NULL;
-  __Pyx_GetModuleGlobalName(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_np); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 64, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_np); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 65, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_asarray); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 64, __pyx_L1_error)
+  __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_asarray); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 65, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_7);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-  __pyx_t_5 = __pyx_memoryview_fromslice(__pyx_v_results, 1, (PyObject *(*)(char *)) __pyx_memview_get_double, (int (*)(char *, PyObject *)) __pyx_memview_set_double, 0);; if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 64, __pyx_L1_error)
+  __pyx_t_5 = __pyx_memoryview_fromslice(__pyx_v_results, 1, (PyObject *(*)(char *)) __pyx_memview_get_double, (int (*)(char *, PyObject *)) __pyx_memview_set_double, 0);; if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 65, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
   __pyx_t_8 = 1;
   #if CYTHON_UNPACK_METHODS
@@ -17642,16 +17642,16 @@ PyGILState_STATE __pyx_gilstate_save = __Pyx_PyGILState_Ensure();
     __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
     __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
-    if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 64, __pyx_L1_error)
+    if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 65, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
   }
   __pyx_r = __pyx_t_2;
   __pyx_t_2 = 0;
   goto __pyx_L0;
 
-  /* "scloop/utils/distance_metrics/frechet.pyx":51
- *     return computeLoopFrechet(curve_a_vec, curve_b_vec)
+  /* "scloop/utils/distance_metrics/frechet.pyx":52
  * 
+ * # ISSUE: crash a lot, probably due to constantly acquiring gil lock?
  * def compute_loop_set_frechet(             # <<<<<<<<<<<<<<
  *     curve_pairs
  * ):
@@ -17679,7 +17679,7 @@ PyGILState_STATE __pyx_gilstate_save = __Pyx_PyGILState_Ensure();
   return __pyx_r;
 }
 
-/* "scloop/utils/distance_metrics/frechet.pyx":67
+/* "scloop/utils/distance_metrics/frechet.pyx":68
  * 
  * # Backward-compatible wrapper for Python lists
  * def compute_loop_frechet(             # <<<<<<<<<<<<<<
@@ -17728,41 +17728,41 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   {
     PyObject ** const __pyx_pyargnames[] = {&__pyx_mstate_global->__pyx_n_u_curve_a,&__pyx_mstate_global->__pyx_n_u_curve_b,&__pyx_mstate_global->__pyx_n_u_distance_type,0};
     const Py_ssize_t __pyx_kwds_len = (__pyx_kwds) ? __Pyx_NumKwargs_FASTCALL(__pyx_kwds) : 0;
-    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 67, __pyx_L3_error)
+    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 68, __pyx_L3_error)
     if (__pyx_kwds_len > 0) {
       switch (__pyx_nargs) {
         case  3:
         values[2] = __Pyx_ArgRef_FASTCALL(__pyx_args, 2);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 67, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 68, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  2:
         values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 67, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 68, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  1:
         values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 67, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 68, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  0: break;
         default: goto __pyx_L5_argtuple_error;
       }
       const Py_ssize_t kwd_pos_args = __pyx_nargs;
-      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "compute_loop_frechet", 0) < (0)) __PYX_ERR(0, 67, __pyx_L3_error)
+      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "compute_loop_frechet", 0) < (0)) __PYX_ERR(0, 68, __pyx_L3_error)
       if (!values[2]) values[2] = __Pyx_NewRef(((PyObject*)((PyObject*)__pyx_mstate_global->__pyx_n_u_euclidean)));
       for (Py_ssize_t i = __pyx_nargs; i < 2; i++) {
-        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("compute_loop_frechet", 0, 2, 3, i); __PYX_ERR(0, 67, __pyx_L3_error) }
+        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("compute_loop_frechet", 0, 2, 3, i); __PYX_ERR(0, 68, __pyx_L3_error) }
       }
     } else {
       switch (__pyx_nargs) {
         case  3:
         values[2] = __Pyx_ArgRef_FASTCALL(__pyx_args, 2);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 67, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 68, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  2:
         values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 67, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 68, __pyx_L3_error)
         values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 67, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 68, __pyx_L3_error)
         break;
         default: goto __pyx_L5_argtuple_error;
       }
@@ -17774,7 +17774,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   }
   goto __pyx_L6_skip;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("compute_loop_frechet", 0, 2, 3, __pyx_nargs); __PYX_ERR(0, 67, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("compute_loop_frechet", 0, 2, 3, __pyx_nargs); __PYX_ERR(0, 68, __pyx_L3_error)
   __pyx_L6_skip:;
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L3_error:;
@@ -17785,7 +17785,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_distance_type), (&PyUnicode_Type), 0, "distance_type", 2))) __PYX_ERR(0, 70, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_distance_type), (&PyUnicode_Type), 0, "distance_type", 2))) __PYX_ERR(0, 71, __pyx_L1_error)
   __pyx_r = __pyx_pf_6scloop_5utils_16distance_metrics_7frechet_2compute_loop_frechet(__pyx_self, __pyx_v_curve_a, __pyx_v_curve_b, __pyx_v_distance_type);
 
   /* function exit code */
@@ -17830,17 +17830,17 @@ static PyObject *__pyx_pf_6scloop_5utils_16distance_metrics_7frechet_2compute_lo
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("compute_loop_frechet", 0);
 
-  /* "scloop/utils/distance_metrics/frechet.pyx":72
+  /* "scloop/utils/distance_metrics/frechet.pyx":73
  *     distance_type: str = "euclidean"
  * ) -> float:
  *     if distance_type != "euclidean":             # <<<<<<<<<<<<<<
  *         raise ValueError(f"Unsupported distance type: {distance_type}")
  * 
 */
-  __pyx_t_1 = (__Pyx_PyUnicode_Equals(__pyx_v_distance_type, __pyx_mstate_global->__pyx_n_u_euclidean, Py_NE)); if (unlikely((__pyx_t_1 < 0))) __PYX_ERR(0, 72, __pyx_L1_error)
+  __pyx_t_1 = (__Pyx_PyUnicode_Equals(__pyx_v_distance_type, __pyx_mstate_global->__pyx_n_u_euclidean, Py_NE)); if (unlikely((__pyx_t_1 < 0))) __PYX_ERR(0, 73, __pyx_L1_error)
   if (unlikely(__pyx_t_1)) {
 
-    /* "scloop/utils/distance_metrics/frechet.pyx":73
+    /* "scloop/utils/distance_metrics/frechet.pyx":74
  * ) -> float:
  *     if distance_type != "euclidean":
  *         raise ValueError(f"Unsupported distance type: {distance_type}")             # <<<<<<<<<<<<<<
@@ -17848,7 +17848,7 @@ static PyObject *__pyx_pf_6scloop_5utils_16distance_metrics_7frechet_2compute_lo
  *     cdef double[:, ::1] curve_a_view
 */
     __pyx_t_3 = NULL;
-    __pyx_t_4 = __Pyx_PyUnicode_Concat(__pyx_mstate_global->__pyx_kp_u_Unsupported_distance_type, __pyx_v_distance_type); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 73, __pyx_L1_error)
+    __pyx_t_4 = __Pyx_PyUnicode_Concat(__pyx_mstate_global->__pyx_kp_u_Unsupported_distance_type, __pyx_v_distance_type); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 74, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __pyx_t_5 = 1;
     {
@@ -17856,14 +17856,14 @@ static PyObject *__pyx_pf_6scloop_5utils_16distance_metrics_7frechet_2compute_lo
       __pyx_t_2 = __Pyx_PyObject_FastCall((PyObject*)(((PyTypeObject*)PyExc_ValueError)), __pyx_callargs+__pyx_t_5, (2-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
       __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
       __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-      if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 73, __pyx_L1_error)
+      if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 74, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_2);
     }
     __Pyx_Raise(__pyx_t_2, 0, 0, 0);
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-    __PYX_ERR(0, 73, __pyx_L1_error)
+    __PYX_ERR(0, 74, __pyx_L1_error)
 
-    /* "scloop/utils/distance_metrics/frechet.pyx":72
+    /* "scloop/utils/distance_metrics/frechet.pyx":73
  *     distance_type: str = "euclidean"
  * ) -> float:
  *     if distance_type != "euclidean":             # <<<<<<<<<<<<<<
@@ -17872,7 +17872,7 @@ static PyObject *__pyx_pf_6scloop_5utils_16distance_metrics_7frechet_2compute_lo
 */
   }
 
-  /* "scloop/utils/distance_metrics/frechet.pyx":81
+  /* "scloop/utils/distance_metrics/frechet.pyx":82
  *     cdef double result
  * 
  *     try:             # <<<<<<<<<<<<<<
@@ -17888,31 +17888,31 @@ static PyObject *__pyx_pf_6scloop_5utils_16distance_metrics_7frechet_2compute_lo
     __Pyx_XGOTREF(__pyx_t_8);
     /*try:*/ {
 
-      /* "scloop/utils/distance_metrics/frechet.pyx":82
+      /* "scloop/utils/distance_metrics/frechet.pyx":83
  * 
  *     try:
  *         curve_a_view = curve_a             # <<<<<<<<<<<<<<
  *         curve_b_view = curve_b
  *         with nogil:
 */
-      __pyx_t_9 = __Pyx_PyObject_to_MemoryviewSlice_d_dc_double(__pyx_v_curve_a, PyBUF_WRITABLE); if (unlikely(!__pyx_t_9.memview)) __PYX_ERR(0, 82, __pyx_L4_error)
+      __pyx_t_9 = __Pyx_PyObject_to_MemoryviewSlice_d_dc_double(__pyx_v_curve_a, PyBUF_WRITABLE); if (unlikely(!__pyx_t_9.memview)) __PYX_ERR(0, 83, __pyx_L4_error)
       __pyx_v_curve_a_view = __pyx_t_9;
       __pyx_t_9.memview = NULL;
       __pyx_t_9.data = NULL;
 
-      /* "scloop/utils/distance_metrics/frechet.pyx":83
+      /* "scloop/utils/distance_metrics/frechet.pyx":84
  *     try:
  *         curve_a_view = curve_a
  *         curve_b_view = curve_b             # <<<<<<<<<<<<<<
  *         with nogil:
  *             result = compute_loop_frechet_nogil(curve_a_view, curve_b_view)
 */
-      __pyx_t_9 = __Pyx_PyObject_to_MemoryviewSlice_d_dc_double(__pyx_v_curve_b, PyBUF_WRITABLE); if (unlikely(!__pyx_t_9.memview)) __PYX_ERR(0, 83, __pyx_L4_error)
+      __pyx_t_9 = __Pyx_PyObject_to_MemoryviewSlice_d_dc_double(__pyx_v_curve_b, PyBUF_WRITABLE); if (unlikely(!__pyx_t_9.memview)) __PYX_ERR(0, 84, __pyx_L4_error)
       __pyx_v_curve_b_view = __pyx_t_9;
       __pyx_t_9.memview = NULL;
       __pyx_t_9.data = NULL;
 
-      /* "scloop/utils/distance_metrics/frechet.pyx":84
+      /* "scloop/utils/distance_metrics/frechet.pyx":85
  *         curve_a_view = curve_a
  *         curve_b_view = curve_b
  *         with nogil:             # <<<<<<<<<<<<<<
@@ -17925,7 +17925,7 @@ static PyObject *__pyx_pf_6scloop_5utils_16distance_metrics_7frechet_2compute_lo
           __Pyx_FastGIL_Remember();
           /*try:*/ {
 
-            /* "scloop/utils/distance_metrics/frechet.pyx":85
+            /* "scloop/utils/distance_metrics/frechet.pyx":86
  *         curve_b_view = curve_b
  *         with nogil:
  *             result = compute_loop_frechet_nogil(curve_a_view, curve_b_view)             # <<<<<<<<<<<<<<
@@ -17935,7 +17935,7 @@ static PyObject *__pyx_pf_6scloop_5utils_16distance_metrics_7frechet_2compute_lo
             __pyx_v_result = __pyx_f_6scloop_5utils_16distance_metrics_7frechet_compute_loop_frechet_nogil(__pyx_v_curve_a_view, __pyx_v_curve_b_view);
           }
 
-          /* "scloop/utils/distance_metrics/frechet.pyx":84
+          /* "scloop/utils/distance_metrics/frechet.pyx":85
  *         curve_a_view = curve_a
  *         curve_b_view = curve_b
  *         with nogil:             # <<<<<<<<<<<<<<
@@ -17952,7 +17952,7 @@ static PyObject *__pyx_pf_6scloop_5utils_16distance_metrics_7frechet_2compute_lo
           }
       }
 
-      /* "scloop/utils/distance_metrics/frechet.pyx":86
+      /* "scloop/utils/distance_metrics/frechet.pyx":87
  *         with nogil:
  *             result = compute_loop_frechet_nogil(curve_a_view, curve_b_view)
  *         return result             # <<<<<<<<<<<<<<
@@ -17960,13 +17960,13 @@ static PyObject *__pyx_pf_6scloop_5utils_16distance_metrics_7frechet_2compute_lo
  *         curve_a_vec = list_to_vec_2d(curve_a)
 */
       __Pyx_XDECREF(__pyx_r);
-      __pyx_t_2 = PyFloat_FromDouble(__pyx_v_result); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 86, __pyx_L4_error)
+      __pyx_t_2 = PyFloat_FromDouble(__pyx_v_result); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 87, __pyx_L4_error)
       __Pyx_GOTREF(__pyx_t_2);
       __pyx_r = __pyx_t_2;
       __pyx_t_2 = 0;
       goto __pyx_L8_try_return;
 
-      /* "scloop/utils/distance_metrics/frechet.pyx":81
+      /* "scloop/utils/distance_metrics/frechet.pyx":82
  *     cdef double result
  * 
  *     try:             # <<<<<<<<<<<<<<
@@ -17981,7 +17981,7 @@ static PyObject *__pyx_pf_6scloop_5utils_16distance_metrics_7frechet_2compute_lo
     __PYX_XCLEAR_MEMVIEW(&__pyx_t_9, 1);
     __pyx_t_9.memview = NULL; __pyx_t_9.data = NULL;
 
-    /* "scloop/utils/distance_metrics/frechet.pyx":87
+    /* "scloop/utils/distance_metrics/frechet.pyx":88
  *             result = compute_loop_frechet_nogil(curve_a_view, curve_b_view)
  *         return result
  *     except (TypeError, ValueError):             # <<<<<<<<<<<<<<
@@ -17991,12 +17991,12 @@ static PyObject *__pyx_pf_6scloop_5utils_16distance_metrics_7frechet_2compute_lo
     __pyx_t_10 = __Pyx_PyErr_ExceptionMatches2(((PyObject *)(((PyTypeObject*)PyExc_TypeError))), ((PyObject *)(((PyTypeObject*)PyExc_ValueError))));
     if (__pyx_t_10) {
       __Pyx_AddTraceback("scloop.utils.distance_metrics.frechet.compute_loop_frechet", __pyx_clineno, __pyx_lineno, __pyx_filename);
-      if (__Pyx_GetException(&__pyx_t_2, &__pyx_t_4, &__pyx_t_3) < 0) __PYX_ERR(0, 87, __pyx_L6_except_error)
+      if (__Pyx_GetException(&__pyx_t_2, &__pyx_t_4, &__pyx_t_3) < 0) __PYX_ERR(0, 88, __pyx_L6_except_error)
       __Pyx_XGOTREF(__pyx_t_2);
       __Pyx_XGOTREF(__pyx_t_4);
       __Pyx_XGOTREF(__pyx_t_3);
 
-      /* "scloop/utils/distance_metrics/frechet.pyx":88
+      /* "scloop/utils/distance_metrics/frechet.pyx":89
  *         return result
  *     except (TypeError, ValueError):
  *         curve_a_vec = list_to_vec_2d(curve_a)             # <<<<<<<<<<<<<<
@@ -18005,12 +18005,12 @@ static PyObject *__pyx_pf_6scloop_5utils_16distance_metrics_7frechet_2compute_lo
 */
       __pyx_t_11 = __pyx_v_curve_a;
       __Pyx_INCREF(__pyx_t_11);
-      if (!(likely(PyList_CheckExact(__pyx_t_11))||((__pyx_t_11) == Py_None) || __Pyx_RaiseUnexpectedTypeError("list", __pyx_t_11))) __PYX_ERR(0, 88, __pyx_L6_except_error)
-      __pyx_t_12 = __pyx_f_6scloop_5utils_16distance_metrics_7frechet_list_to_vec_2d(((PyObject*)__pyx_t_11)); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 88, __pyx_L6_except_error)
+      if (!(likely(PyList_CheckExact(__pyx_t_11))||((__pyx_t_11) == Py_None) || __Pyx_RaiseUnexpectedTypeError("list", __pyx_t_11))) __PYX_ERR(0, 89, __pyx_L6_except_error)
+      __pyx_t_12 = __pyx_f_6scloop_5utils_16distance_metrics_7frechet_list_to_vec_2d(((PyObject*)__pyx_t_11)); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 89, __pyx_L6_except_error)
       __Pyx_DECREF(__pyx_t_11); __pyx_t_11 = 0;
       __pyx_v_curve_a_vec = __PYX_STD_MOVE_IF_SUPPORTED(__pyx_t_12);
 
-      /* "scloop/utils/distance_metrics/frechet.pyx":89
+      /* "scloop/utils/distance_metrics/frechet.pyx":90
  *     except (TypeError, ValueError):
  *         curve_a_vec = list_to_vec_2d(curve_a)
  *         curve_b_vec = list_to_vec_2d(curve_b)             # <<<<<<<<<<<<<<
@@ -18018,18 +18018,18 @@ static PyObject *__pyx_pf_6scloop_5utils_16distance_metrics_7frechet_2compute_lo
 */
       __pyx_t_11 = __pyx_v_curve_b;
       __Pyx_INCREF(__pyx_t_11);
-      if (!(likely(PyList_CheckExact(__pyx_t_11))||((__pyx_t_11) == Py_None) || __Pyx_RaiseUnexpectedTypeError("list", __pyx_t_11))) __PYX_ERR(0, 89, __pyx_L6_except_error)
-      __pyx_t_12 = __pyx_f_6scloop_5utils_16distance_metrics_7frechet_list_to_vec_2d(((PyObject*)__pyx_t_11)); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 89, __pyx_L6_except_error)
+      if (!(likely(PyList_CheckExact(__pyx_t_11))||((__pyx_t_11) == Py_None) || __Pyx_RaiseUnexpectedTypeError("list", __pyx_t_11))) __PYX_ERR(0, 90, __pyx_L6_except_error)
+      __pyx_t_12 = __pyx_f_6scloop_5utils_16distance_metrics_7frechet_list_to_vec_2d(((PyObject*)__pyx_t_11)); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 90, __pyx_L6_except_error)
       __Pyx_DECREF(__pyx_t_11); __pyx_t_11 = 0;
       __pyx_v_curve_b_vec = __PYX_STD_MOVE_IF_SUPPORTED(__pyx_t_12);
 
-      /* "scloop/utils/distance_metrics/frechet.pyx":90
+      /* "scloop/utils/distance_metrics/frechet.pyx":91
  *         curve_a_vec = list_to_vec_2d(curve_a)
  *         curve_b_vec = list_to_vec_2d(curve_b)
  *         return computeLoopFrechet(curve_a_vec, curve_b_vec)             # <<<<<<<<<<<<<<
 */
       __Pyx_XDECREF(__pyx_r);
-      __pyx_t_11 = PyFloat_FromDouble(computeLoopFrechet(__pyx_v_curve_a_vec, __pyx_v_curve_b_vec)); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 90, __pyx_L6_except_error)
+      __pyx_t_11 = PyFloat_FromDouble(computeLoopFrechet(__pyx_v_curve_a_vec, __pyx_v_curve_b_vec)); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 91, __pyx_L6_except_error)
       __Pyx_GOTREF(__pyx_t_11);
       __pyx_r = __pyx_t_11;
       __pyx_t_11 = 0;
@@ -18040,7 +18040,7 @@ static PyObject *__pyx_pf_6scloop_5utils_16distance_metrics_7frechet_2compute_lo
     }
     goto __pyx_L6_except_error;
 
-    /* "scloop/utils/distance_metrics/frechet.pyx":81
+    /* "scloop/utils/distance_metrics/frechet.pyx":82
  *     cdef double result
  * 
  *     try:             # <<<<<<<<<<<<<<
@@ -18067,7 +18067,7 @@ static PyObject *__pyx_pf_6scloop_5utils_16distance_metrics_7frechet_2compute_lo
     goto __pyx_L0;
   }
 
-  /* "scloop/utils/distance_metrics/frechet.pyx":67
+  /* "scloop/utils/distance_metrics/frechet.pyx":68
  * 
  * # Backward-compatible wrapper for Python lists
  * def compute_loop_frechet(             # <<<<<<<<<<<<<<
@@ -19939,33 +19939,33 @@ __Pyx_RefNannySetupContext("PyInit_frechet", 0);
   if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_np, __pyx_t_4) < (0)) __PYX_ERR(0, 6, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "scloop/utils/distance_metrics/frechet.pyx":51
- *     return computeLoopFrechet(curve_a_vec, curve_b_vec)
+  /* "scloop/utils/distance_metrics/frechet.pyx":52
  * 
+ * # ISSUE: crash a lot, probably due to constantly acquiring gil lock?
  * def compute_loop_set_frechet(             # <<<<<<<<<<<<<<
  *     curve_pairs
  * ):
 */
-  __pyx_t_4 = __Pyx_CyFunction_New(&__pyx_mdef_6scloop_5utils_16distance_metrics_7frechet_1compute_loop_set_frechet, 0, __pyx_mstate_global->__pyx_n_u_compute_loop_set_frechet, NULL, __pyx_mstate_global->__pyx_n_u_scloop_utils_distance_metrics_fr, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[0])); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 51, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_CyFunction_New(&__pyx_mdef_6scloop_5utils_16distance_metrics_7frechet_1compute_loop_set_frechet, 0, __pyx_mstate_global->__pyx_n_u_compute_loop_set_frechet, NULL, __pyx_mstate_global->__pyx_n_u_scloop_utils_distance_metrics_fr, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[0])); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 52, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   #if CYTHON_COMPILING_IN_CPYTHON && PY_VERSION_HEX >= 0x030E0000
   PyUnstable_Object_EnableDeferredRefcount(__pyx_t_4);
   #endif
-  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_compute_loop_set_frechet, __pyx_t_4) < (0)) __PYX_ERR(0, 51, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_compute_loop_set_frechet, __pyx_t_4) < (0)) __PYX_ERR(0, 52, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "scloop/utils/distance_metrics/frechet.pyx":67
+  /* "scloop/utils/distance_metrics/frechet.pyx":68
  * 
  * # Backward-compatible wrapper for Python lists
  * def compute_loop_frechet(             # <<<<<<<<<<<<<<
  *     curve_a,
  *     curve_b,
 */
-  __pyx_t_4 = __Pyx_PyDict_NewPresized(2); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 67, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyDict_NewPresized(2); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 68, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
-  if (PyDict_SetItem(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_distance_type, __pyx_mstate_global->__pyx_n_u_str) < (0)) __PYX_ERR(0, 67, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_return, __pyx_mstate_global->__pyx_n_u_float) < (0)) __PYX_ERR(0, 67, __pyx_L1_error)
-  __pyx_t_5 = __Pyx_CyFunction_New(&__pyx_mdef_6scloop_5utils_16distance_metrics_7frechet_3compute_loop_frechet, 0, __pyx_mstate_global->__pyx_n_u_compute_loop_frechet, NULL, __pyx_mstate_global->__pyx_n_u_scloop_utils_distance_metrics_fr, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[1])); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 67, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_distance_type, __pyx_mstate_global->__pyx_n_u_str) < (0)) __PYX_ERR(0, 68, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_return, __pyx_mstate_global->__pyx_n_u_float) < (0)) __PYX_ERR(0, 68, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_CyFunction_New(&__pyx_mdef_6scloop_5utils_16distance_metrics_7frechet_3compute_loop_frechet, 0, __pyx_mstate_global->__pyx_n_u_compute_loop_frechet, NULL, __pyx_mstate_global->__pyx_n_u_scloop_utils_distance_metrics_fr, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[1])); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 68, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
   #if CYTHON_COMPILING_IN_CPYTHON && PY_VERSION_HEX >= 0x030E0000
   PyUnstable_Object_EnableDeferredRefcount(__pyx_t_5);
@@ -19973,7 +19973,7 @@ __Pyx_RefNannySetupContext("PyInit_frechet", 0);
   __Pyx_CyFunction_SetDefaultsTuple(__pyx_t_5, __pyx_mstate_global->__pyx_tuple[2]);
   __Pyx_CyFunction_SetAnnotationsDict(__pyx_t_5, __pyx_t_4);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_compute_loop_frechet, __pyx_t_5) < (0)) __PYX_ERR(0, 67, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_compute_loop_frechet, __pyx_t_5) < (0)) __PYX_ERR(0, 68, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
   /* "scloop/utils/distance_metrics/frechet.pyx":1
@@ -20082,14 +20082,14 @@ static int __Pyx_InitCachedConstants(__pyx_mstatetype *__pyx_mstate) {
   __Pyx_GOTREF(__pyx_mstate_global->__pyx_slice[0]);
   __Pyx_GIVEREF(__pyx_mstate_global->__pyx_slice[0]);
 
-  /* "scloop/utils/distance_metrics/frechet.pyx":67
+  /* "scloop/utils/distance_metrics/frechet.pyx":68
  * 
  * # Backward-compatible wrapper for Python lists
  * def compute_loop_frechet(             # <<<<<<<<<<<<<<
  *     curve_a,
  *     curve_b,
 */
-  __pyx_mstate_global->__pyx_tuple[2] = PyTuple_Pack(1, ((PyObject*)__pyx_mstate_global->__pyx_n_u_euclidean)); if (unlikely(!__pyx_mstate_global->__pyx_tuple[2])) __PYX_ERR(0, 67, __pyx_L1_error)
+  __pyx_mstate_global->__pyx_tuple[2] = PyTuple_Pack(1, ((PyObject*)__pyx_mstate_global->__pyx_n_u_euclidean)); if (unlikely(!__pyx_mstate_global->__pyx_tuple[2])) __PYX_ERR(0, 68, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_mstate_global->__pyx_tuple[2]);
   __Pyx_GIVEREF(__pyx_mstate_global->__pyx_tuple[2]);
   #if CYTHON_IMMORTAL_CONSTANTS
@@ -20240,12 +20240,12 @@ static int __Pyx_CreateCodeObjects(__pyx_mstatetype *__pyx_mstate) {
   PyObject* tuple_dedup_map = PyDict_New();
   if (unlikely(!tuple_dedup_map)) return -1;
   {
-    const __Pyx_PyCode_New_function_description descr = {1, 0, 0, 6, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 51};
+    const __Pyx_PyCode_New_function_description descr = {1, 0, 0, 6, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 52};
     PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_curve_pairs, __pyx_mstate->__pyx_n_u_n, __pyx_mstate->__pyx_n_u_results, __pyx_mstate->__pyx_n_u_i, __pyx_mstate->__pyx_n_u_a, __pyx_mstate->__pyx_n_u_b};
     __pyx_mstate_global->__pyx_codeobj_tab[0] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_src_scloop_utils_distance_metric, __pyx_mstate->__pyx_n_u_compute_loop_set_frechet, __pyx_mstate->__pyx_kp_b_iso88591_AQ_RvQc_r_1A_t_aq_q_q_1_2XQa, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[0])) goto bad;
   }
   {
-    const __Pyx_PyCode_New_function_description descr = {3, 0, 0, 8, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 67};
+    const __Pyx_PyCode_New_function_description descr = {3, 0, 0, 8, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 68};
     PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_curve_a, __pyx_mstate->__pyx_n_u_curve_b, __pyx_mstate->__pyx_n_u_distance_type, __pyx_mstate->__pyx_n_u_curve_a_view, __pyx_mstate->__pyx_n_u_curve_b_view, __pyx_mstate->__pyx_n_u_curve_a_vec, __pyx_mstate->__pyx_n_u_curve_b_vec, __pyx_mstate->__pyx_n_u_result};
     __pyx_mstate_global->__pyx_codeobj_tab[1] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_src_scloop_utils_distance_metric, __pyx_mstate->__pyx_n_u_compute_loop_frechet, __pyx_mstate->__pyx_kp_b_iso88591_1_S_j_7q_q_q_q_a_q_q_nAQ_nAQ_q, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[1])) goto bad;
   }

@@ -9,7 +9,7 @@ from scipy.sparse import csr_matrix
 from scipy.spatial.distance import directed_hausdorff
 from sklearn.neighbors import radius_neighbors_graph
 
-from ..data.constants import DEFAULT_N_MAX_WORKERS
+from ..data.constants import DEFAULT_LOOP_DIST_METHOD, DEFAULT_N_MAX_WORKERS
 from ..data.metadata import ScloopMeta
 from ..data.ripser_lib import (  # type: ignore[import-not-found]
     get_boundary_matrix,
@@ -239,7 +239,7 @@ def compute_loop_homological_equivalence(
 def compute_loop_geometric_distance(
     source_coords_list: list[list[list[float]]] | list[np.ndarray],
     target_coords_list: list[list[list[float]]] | list[np.ndarray],
-    method: LoopDistMethod = "hausdorff",
+    method: LoopDistMethod = DEFAULT_LOOP_DIST_METHOD,
     n_workers: Count_t = DEFAULT_N_MAX_WORKERS,
 ) -> np.ndarray:
     if len(source_coords_list) == 0 or len(target_coords_list) == 0:

@@ -37,6 +37,7 @@ from .analysis_containers import (
 )
 from .base_components import LoopClass
 from .constants import (
+    DEFAULT_LOOP_DIST_METHOD,
     DEFAULT_MAXITER_EIGENDECOMPOSITION,
     DEFAULT_N_HODGE_COMPONENTS,
     DEFAULT_N_MAX_WORKERS,
@@ -53,6 +54,7 @@ from .types import (
     LoopDistMethod,
     MultipleTestCorrectionMethod,
     Percent_t,
+    PositiveFloat,
     Size_t,
 )
 from .utils import (
@@ -74,7 +76,6 @@ def _run_eigsh_worker(
     maxiter: int | None,
 ) -> None:
     try:
-        # Re-import to ensure it works in process
         from scipy.sparse.linalg import eigsh
 
         vals, vecs = eigsh(hodge_matrix, k=k, which="SA", tol=tol, maxiter=maxiter)
@@ -862,7 +863,7 @@ class HomologyData:
         source_class_idx: Index_t,
         target_class_idx: Index_t,
         idx_bootstrap: int = 0,
-        method: LoopDistMethod = "hausdorff",
+        method: LoopDistMethod = DEFAULT_LOOP_DIST_METHOD,
         n_workers: Count_t = DEFAULT_N_MAX_WORKERS,
     ) -> tuple[int, int, float]:
         assert self.bootstrap_data is not None
@@ -901,6 +902,8 @@ class HomologyData:
         target_class_idx: int | None = None,
         idx_bootstrap: int = 0,
         n_pairs_check: int = 10,
+        extra_diameter_homology_equivalence: PositiveFloat = 0.2,
+        filter_column_homology_equivalence: bool = True,
     ) -> tuple[int, int, bool]:
         assert self.bootstrap_data is not None
         self._ensure_loop_tracks()
@@ -938,9 +941,15 @@ class HomologyData:
         source_lifetime = source_loop_class.death - source_loop_class.birth
         target_lifetime = target_loop_class.death - target_loop_class.birth
         max_lifetime = max(source_lifetime, target_lifetime)
-        max_column_diameter = (
-            max(source_loop_death, target_loop_death) + 0.2 * max_lifetime
-        )
+        if not filter_column_homology_equivalence:
+            max_column_diameter = None
+        else:
+            if extra_diameter_homology_equivalence < 0:
+                raise ValueError("extra_diameter_homology_equivalence must be >= 0")
+            max_column_diameter = (
+                max(source_loop_death, target_loop_death)
+                + float(extra_diameter_homology_equivalence) * max_lifetime
+            )
 
         mask_a = self._loops_to_edge_mask(source_loops)
         mask_b = self._loops_to_edge_mask(target_loops)
@@ -988,9 +997,11 @@ class HomologyData:
         loop_lower_t_pct: float = 2.5,
         loop_upper_t_pct: float = 97.5,
         n_pairs_check_equivalence: int = 4,
+        extra_diameter_homology_equivalence: PositiveFloat = 0.2,
+        filter_column_homology_equivalence: bool = True,
         n_max_workers: int = DEFAULT_N_MAX_WORKERS,
         k_neighbors_check_equivalence: int = 3,
-        method_geometric_equivalence: LoopDistMethod = "hausdorff",
+        method_geometric_equivalence: LoopDistMethod = DEFAULT_LOOP_DIST_METHOD,
         verbose: bool = False,
         **nei_kwargs,
     ) -> None:
@@ -1125,6 +1136,8 @@ class HomologyData:
                                     target_class_idx=tj,
                                     idx_bootstrap=idx_bootstrap,
                                     n_pairs_check=n_pairs_check_equivalence,
+                                    extra_diameter_homology_equivalence=extra_diameter_homology_equivalence,
+                                    filter_column_homology_equivalence=filter_column_homology_equivalence,
                                 )
                                 tasks[task] = (si, tj, neighbor_distances[si, k], k)
 
