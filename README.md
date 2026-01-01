@@ -53,22 +53,29 @@ pip install scloop
 ```
 src/scloop/
 ├── analyzing
+│   ├── bootstrap.py
 │   ├── feature_selection.py
 │   ├── gene_trend.py
-│   └── __init__.py
+│   ├── hodge.py
+│   ├── __init__.py
+│   └── stats.py
 ├── benchmarking
 │   └── __init__.py
 ├── computing
+│   ├── boundary.py
+│   ├── hodge_decomposition.py
 │   ├── hodge.py
 │   ├── homology.py
-│   └── __init__.py
+│   ├── __init__.py
+│   ├── loops.py
+│   └── matching.py
 ├── data
 │   ├── analysis_containers.py
 │   ├── base_components.py
+│   ├── boundary.py
 │   ├── constants.py
 │   ├── containers.py
 │   ├── __init__.py
-│   ├── loop_reconstruction.py
 │   ├── metadata.py
 │   ├── ripser.cpp
 │   ├── ripser.hpp
@@ -84,10 +91,10 @@ src/scloop/
 │   ├── mlp.py
 │   └── nf.py
 ├── plotting
+│   ├── _cross_match.py
 │   ├── _hodge.py
 │   ├── _homology.py
 │   ├── __init__.py
-│   ├── _match.py
 │   └── _utils.py
 ├── preprocessing
 │   ├── delve
@@ -115,5 +122,6 @@ src/scloop/
     │   ├── __init__.py
     │   ├── m4ri_lib.c
     │   └── m4ri_lib.pyx
+    ├── logging.py
     └── pvalues.py
 ```
