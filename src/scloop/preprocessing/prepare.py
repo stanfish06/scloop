@@ -13,8 +13,10 @@ from ..data.types import (
     EmbeddingMethod,
     EmbeddingNeighbors,
     FeatureSelectionMethod,
+    NonZeroCount_t,
     Percent_t,
 )
+from ..utils.logging import LogDisplay
 from .downsample import sample
 
 __all__ = ["prepare_adata"]
@@ -136,6 +138,7 @@ def prepare_adata(
     random_state_downsample: int = 0,
     verbose: bool = True,
     copy: bool = False,
+    max_log_messages: NonZeroCount_t | None = None,
 ):
     """
     prepare_adata(adata, n_comps, n_neighbors, use_highly_variable, compute_diffmap, n_dcs)
@@ -156,7 +159,15 @@ def prepare_adata(
     """
     adata = adata.copy() if copy else adata
 
-    if verbose:
+    use_log_display = verbose and max_log_messages is not None
+    log_display_ctx = LogDisplay(maxlen=max_log_messages) if use_log_display else None
+
+    if use_log_display:
+        log_display_ctx.__enter__()
+        logger.info(
+            f"Preparing AnnData with {adata.n_obs} cells and {adata.n_vars} genes"
+        )
+    elif verbose:
         logger.remove()
         logger.add(
             lambda s: console.print(s, end=""),
@@ -310,5 +321,8 @@ def prepare_adata(
 
     if verbose:
         logger.success("AnnData preparation complete")
+
+    if use_log_display and log_display_ctx:
+        log_display_ctx.__exit__(None, None, None)
 
     return adata if copy else None

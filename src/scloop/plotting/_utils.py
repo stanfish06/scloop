@@ -6,14 +6,15 @@ from anndata import AnnData
 from matplotlib.axes import Axes
 from pydantic import ConfigDict, validate_call
 
+from ..data.constants import DEFAULT_DPI, DEFAULT_FIGSIZE
 from ..data.containers import HomologyData
 from ..data.types import PositiveFloat
 
 
 @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def _create_figure_standard(
-    figsize: tuple[PositiveFloat, PositiveFloat] = (5, 5),
-    dpi: PositiveFloat = 300,
+    figsize: tuple[PositiveFloat, PositiveFloat] = DEFAULT_FIGSIZE,
+    dpi: PositiveFloat = DEFAULT_DPI,
     kwargs_figure: dict | None = None,
     kwargs_axes: dict | None = None,
     kwargs_layout: dict | None = None,

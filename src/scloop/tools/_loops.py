@@ -7,6 +7,7 @@ import numpy as np
 from anndata import AnnData
 from loguru import logger
 from pydantic import Field
+from rich.console import Console
 from rich.progress import (
     BarColumn,
     Progress,
@@ -30,6 +31,7 @@ from ..data.containers import HomologyData
 from ..data.metadata import ScloopMeta
 from ..data.types import Index_t, NonZeroCount_t, Percent_t, PositiveFloat, Size_t
 from ..preprocessing.downsample import sample
+from ..utils.logging import LogDisplay
 
 __all__ = ["find_loops", "analyze_loops"]
 
@@ -52,6 +54,7 @@ def find_loops(
     n_check_per_candidate: NonZeroCount_t = 1,
     n_max_workers: NonZeroCount_t = DEFAULT_N_MAX_WORKERS,
     verbose: bool = False,
+    max_log_messages: int | None = None,
     kwargs_bootstrap: dict | None = None,
     kwargs_loop_test: dict | None = None,
     *,
@@ -61,97 +64,126 @@ def find_loops(
     auto_shrink_factor: Percent_t = 0.9,
     **kwargs,
 ) -> None:
-    meta = _get_scloop_meta(adata)
-    if meta.bootstrap is None:
-        from ..data.metadata import BootstrapMeta
+    use_log_display = verbose and max_log_messages is not None
+    log_display_ctx = None
+    progress_main = None
+    console = Console()
 
-        meta.bootstrap = BootstrapMeta()
-    meta.bootstrap.life_pct = tightness_loops
-    hd: HomologyData = HomologyData(meta=meta)
-    sparse_dist_mat = hd._compute_homology(adata=adata, thresh=threshold_homology)
-    boundary_thresh = threshold_boundary
-    if boundary_thresh is None:
-        boundary_thresh = threshold_homology
-    hd._compute_boundary_matrix_d1(adata=adata, thresh=boundary_thresh, verbose=verbose)
-    logger.info(f"Boundary matrix computed with threshold {boundary_thresh}")
-    assert hd.boundary_matrix_d1 is not None
-    assert meta.preprocess is not None
-    if hd.boundary_matrix_d1.shape[1] > max_columns_boundary_matrix:
-        logger.warning(
-            f"Boundary matrix has more than {max_columns_boundary_matrix} columns. Downstream computation could be slow"
+    if use_log_display:
+        progress_main = Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TaskProgressColumn(),
+            TimeRemainingColumn(),
+            TimeElapsedColumn(),
+            console=console,
         )
-        if auto_shrink_boundary_matrix:
-            logger.info(
-                f"Autoshrink boundary matrix by re-downsample the data: dropping {(1 - auto_shrink_factor) * 100:.1f}% cells each attempt"
+        log_display_ctx = LogDisplay(
+            maxlen=max_log_messages, progress=progress_main, console=console
+        )
+        log_display_ctx.__enter__()
+
+    try:
+        meta = _get_scloop_meta(adata)
+        if meta.bootstrap is None:
+            from ..data.metadata import BootstrapMeta
+
+            meta.bootstrap = BootstrapMeta()
+        meta.bootstrap.life_pct = tightness_loops
+        hd: HomologyData = HomologyData(meta=meta)
+        sparse_dist_mat = hd._compute_homology(adata=adata, thresh=threshold_homology)
+        boundary_thresh = threshold_boundary
+        if boundary_thresh is None:
+            boundary_thresh = threshold_homology
+        hd._compute_boundary_matrix_d1(
+            adata=adata, thresh=boundary_thresh, verbose=verbose
+        )
+        logger.info(f"Boundary matrix computed with threshold {boundary_thresh}")
+        assert hd.boundary_matrix_d1 is not None
+        assert meta.preprocess is not None
+        if hd.boundary_matrix_d1.shape[1] > max_columns_boundary_matrix:
+            logger.warning(
+                f"Boundary matrix has more than {max_columns_boundary_matrix} columns. Downstream computation could be slow"
             )
-            assert meta.preprocess.kwargs_downsample is not None
-            kwargs_downsample = meta.preprocess.kwargs_downsample.copy()
-            n_current = kwargs_downsample.pop("n")
-            embedding_downsample = kwargs_downsample.get("embedding_method")
-            assert n_current is not None
-            if meta.preprocess.indices_downsample is not None:
-                n_current = int(n_current * auto_shrink_factor)
-            n_downsample_final = n_current
-            while (
-                hd.boundary_matrix_d1.shape[1] > max_columns_boundary_matrix
-                and n_current > 0
-            ):
+            if auto_shrink_boundary_matrix:
                 logger.info(
-                    f"Downsampling to {n_current} cells using {embedding_downsample} embedding"
+                    f"Autoshrink boundary matrix by re-downsample the data: dropping {(1 - auto_shrink_factor) * 100:.1f}% cells each attempt"
                 )
-                indices_downsample = sample(
-                    adata=adata, n=n_current, **kwargs_downsample
-                )
-                meta.preprocess.indices_downsample = indices_downsample
-                hd._compute_boundary_matrix_d1(
-                    adata=adata, thresh=boundary_thresh, verbose=verbose
-                )
+                assert meta.preprocess.kwargs_downsample is not None
+                kwargs_downsample = meta.preprocess.kwargs_downsample.copy()
+                n_current = kwargs_downsample.pop("n")
+                embedding_downsample = kwargs_downsample.get("embedding_method")
+                assert n_current is not None
+                if meta.preprocess.indices_downsample is not None:
+                    n_current = int(n_current * auto_shrink_factor)
                 n_downsample_final = n_current
-                n_current = int(n_current * auto_shrink_factor)
-            kwargs_downsample["n"] = n_downsample_final
-            meta.preprocess.kwargs_downsample = kwargs_downsample
-            # re-compute homology with the new downsample indices
-            sparse_dist_mat = hd._compute_homology(
-                adata=adata, thresh=threshold_homology
-            )
+                while (
+                    hd.boundary_matrix_d1.shape[1] > max_columns_boundary_matrix
+                    and n_current > 0
+                ):
+                    logger.info(
+                        f"Downsampling to {n_current} cells using {embedding_downsample} embedding"
+                    )
+                    indices_downsample = sample(
+                        adata=adata, n=n_current, **kwargs_downsample
+                    )
+                    meta.preprocess.indices_downsample = indices_downsample
+                    hd._compute_boundary_matrix_d1(
+                        adata=adata, thresh=boundary_thresh, verbose=verbose
+                    )
+                    n_downsample_final = n_current
+                    n_current = int(n_current * auto_shrink_factor)
+                kwargs_downsample["n"] = n_downsample_final
+                meta.preprocess.kwargs_downsample = kwargs_downsample
+                # re-compute homology with the new downsample indices
+                sparse_dist_mat = hd._compute_homology(
+                    adata=adata, thresh=threshold_homology
+                )
 
-    assert meta.preprocess.embedding_method is not None
+        assert meta.preprocess.embedding_method is not None
 
-    embedding = np.array(adata.obsm[f"X_{meta.preprocess.embedding_method}"])
-    hd._compute_loop_representatives(
-        embedding=embedding,
-        pairwise_distance_matrix=sparse_dist_mat,
-        top_k=n_candidates,
-        life_pct=tightness_loops,
-    )
-    """
-    ========= bootstrap =========
-    - resample data
-    - find loops in resamples
-    - map loops to original loops
-    =============================
-    """
-    hd._bootstrap(
-        adata=adata,
-        n_bootstrap=n_bootstrap,
-        thresh=threshold_homology,
-        top_k=n_candidates * n_check_per_candidate,
-        k_neighbors_check_equivalence=1,
-        n_max_workers=n_max_workers,
-        life_pct=tightness_loops,
-        verbose=verbose,
-        **(kwargs_bootstrap or {}),
-    )
+        embedding = np.array(adata.obsm[f"X_{meta.preprocess.embedding_method}"])
+        hd._compute_loop_representatives(
+            embedding=embedding,
+            pairwise_distance_matrix=sparse_dist_mat,
+            top_k=n_candidates,
+            life_pct=tightness_loops,
+        )
+        """
+        ========= bootstrap =========
+        - resample data
+        - find loops in resamples
+        - map loops to original loops
+        =============================
+        """
+        hd._bootstrap(
+            adata=adata,
+            n_bootstrap=n_bootstrap,
+            thresh=threshold_homology,
+            top_k=n_candidates * n_check_per_candidate,
+            k_neighbors_check_equivalence=1,
+            n_max_workers=n_max_workers,
+            life_pct=tightness_loops,
+            verbose=verbose,
+            progress_main=progress_main,
+            use_log_display=use_log_display,
+            **(kwargs_bootstrap or {}),
+        )
 
-    """
-    ========= statistcal tests =========
-    - fisher exact test loop presence
-    - gamma test of persistence
-    ====================================
-    """
-    assert hd.bootstrap_data is not None
-    hd._test_loops(**(kwargs_loop_test or {}))
-    adata.uns[SCLOOP_UNS_KEY] = hd
+        """
+        ========= statistcal tests =========
+        - fisher exact test loop presence
+        - gamma test of persistence
+        ====================================
+        """
+        assert hd.bootstrap_data is not None
+        hd._test_loops(**(kwargs_loop_test or {}))
+        adata.uns[SCLOOP_UNS_KEY] = hd
+
+    finally:
+        if use_log_display and log_display_ctx:
+            log_display_ctx.__exit__(None, None, None)
 
 
 def analyze_loops(

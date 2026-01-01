@@ -8,6 +8,7 @@ from matplotlib.axes import Axes
 from pydantic import ConfigDict, validate_call
 
 from ..data.analysis_containers import BootstrapAnalysis
+from ..data.constants import DEFAULT_DPI, DEFAULT_FIGSIZE
 from ..data.containers import HomologyData
 from ..data.types import Index_t, PositiveFloat
 from ._utils import _create_figure_standard, _get_homology_data
@@ -60,15 +61,16 @@ def _get_track_loop(
 def hist_lifetimes(
     adata: AnnData,
     key_homology: str = "scloop",
-    dimension_homology: Index_t = 1,
-    show_bootstrap: bool = True,
-    figsize: tuple[float, float] = (5, 5),
-    dpi: float = 300,
     ax: Axes | None = None,
     kwargs_figure: dict | None = None,
     kwargs_axes: dict | None = None,
     kwargs_layout: dict | None = None,
     kwargs_hist: dict | None = None,
+    *,
+    dimension_homology: Index_t = 1,
+    show_bootstrap: bool = True,
+    figsize: tuple[PositiveFloat, PositiveFloat] = DEFAULT_FIGSIZE,
+    dpi: PositiveFloat = DEFAULT_DPI,
 ) -> Axes:
     kwargs_axes = kwargs_axes or {}
     kwargs_axes.setdefault("rect", (0, 0, 1, 1))
@@ -105,7 +107,7 @@ def hist_lifetimes(
                 axis=1,
             )
     lifetime_full = lifetime_full[1] - lifetime_full[0]
-    _, bins, _ = ax.hist(lifetime_full, **(kwargs_hist or {}))
+    ax.hist(lifetime_full, **(kwargs_hist or {}))
 
     return ax
 
@@ -119,8 +121,8 @@ def bar_lifetimes(
     *,
     dimension_homology: Index_t = 1,
     show_bootstrap: bool = True,
-    figsize: tuple[float, float] = (5, 5),
-    dpi: float = 300,
+    figsize: tuple[PositiveFloat, PositiveFloat] = DEFAULT_FIGSIZE,
+    dpi: PositiveFloat = DEFAULT_DPI,
     kwargs_figure: dict | None = None,
     kwargs_axes: dict | None = None,
     kwargs_layout: dict | None = None,
@@ -232,9 +234,9 @@ def persistence_diagram(
     *,
     dimension_homology: Index_t = 1,
     show_bootstrap: bool = True,
-    s: float = 1,
-    figsize: tuple[float, float] = (5, 5),
-    dpi: float = 300,
+    s: PositiveFloat = 1,
+    figsize: tuple[PositiveFloat, PositiveFloat] = DEFAULT_FIGSIZE,
+    dpi: PositiveFloat = DEFAULT_DPI,
     kwargs_figure: dict | None = None,
     kwargs_axes: dict | None = None,
     kwargs_layout: dict | None = None,
@@ -352,8 +354,8 @@ def loops(
     *,
     show_bootstrap: bool = True,
     pointsize: PositiveFloat = 1,
-    figsize: tuple[PositiveFloat, PositiveFloat] = (5, 5),
-    dpi: PositiveFloat = 300,
+    figsize: tuple[PositiveFloat, PositiveFloat] = DEFAULT_FIGSIZE,
+    dpi: PositiveFloat = DEFAULT_DPI,
     kwargs_figure: dict | None = None,
     kwargs_axes: dict | None = None,
     kwargs_layout: dict | None = None,

@@ -11,6 +11,7 @@ from matplotlib.collections import LineCollection
 from matplotlib.colors import Normalize
 from pydantic import ConfigDict, validate_call
 
+from ..data.constants import DEFAULT_DPI, DEFAULT_FIGSIZE
 from ..data.types import Index_t, PositiveFloat
 from ._utils import _create_figure_standard, _get_homology_data
 
@@ -30,8 +31,8 @@ def loop_edge_embedding(
     use_smooth: bool = False,
     color_by: Literal["position", "gradient"] = "position",
     pointsize: PositiveFloat = 5,
-    figsize: tuple[PositiveFloat, PositiveFloat] = (5, 5),
-    dpi: PositiveFloat = 300,
+    figsize: tuple[PositiveFloat, PositiveFloat] = DEFAULT_FIGSIZE,
+    dpi: PositiveFloat = DEFAULT_DPI,
     kwargs_figure: dict | None = None,
     kwargs_axes: dict | None = None,
     kwargs_layout: dict | None = None,
@@ -135,8 +136,8 @@ def loop_edge_overlay(
     use_smooth: bool = False,
     color_by: Literal["embedding", "gradient", "position"] = "embedding",
     pointsize: PositiveFloat = 10,
-    figsize: tuple[PositiveFloat, PositiveFloat] = (5, 5),
-    dpi: PositiveFloat = 300,
+    figsize: tuple[PositiveFloat, PositiveFloat] = DEFAULT_FIGSIZE,
+    dpi: PositiveFloat = DEFAULT_DPI,
     kwargs_figure: dict | None = None,
     kwargs_axes: dict | None = None,
     kwargs_layout: dict | None = None,

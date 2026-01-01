@@ -1003,6 +1003,8 @@ class HomologyData:
         k_neighbors_check_equivalence: int = 3,
         method_geometric_equivalence: LoopDistMethod = DEFAULT_LOOP_DIST_METHOD,
         verbose: bool = False,
+        progress_main: Progress | None = None,
+        use_log_display: bool = False,
         **nei_kwargs,
     ) -> None:
         self.bootstrap_data = BootstrapAnalysis()
@@ -1014,24 +1016,25 @@ class HomologyData:
             else:
                 self.meta.bootstrap.indices_resample.clear()
 
-        console = Console()
-        progress_main = Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
-            TaskProgressColumn(),
-            TimeRemainingColumn(),
-            TimeElapsedColumn(),
-            console=console,
-        )
-        logger.remove()
-        # https://github.com/Delgan/loguru/issues/444
-        logger.add(
-            lambda s: console.print(s, end=""),
-            colorize=False,
-            level="TRACE",
-            format="<green>{time:YYYY/MM/DD HH:mm:ss}</green> | {level.icon} - <level>{message}</level>",
-        )
+        if not use_log_display:
+            console = Console()
+            if progress_main is None:
+                progress_main = Progress(
+                    SpinnerColumn(),
+                    TextColumn("[progress.description]{task.description}"),
+                    BarColumn(),
+                    TaskProgressColumn(),
+                    TimeRemainingColumn(),
+                    TimeElapsedColumn(),
+                    console=console,
+                )
+            logger.remove()
+            logger.add(
+                lambda s: console.print(s, end=""),
+                colorize=False,
+                level="TRACE",
+                format="<green>{time:YYYY/MM/DD HH:mm:ss}</green> | {level.icon} - <level>{message}</level>",
+            )
 
         with progress_main:
             for idx_bootstrap in progress_main.track(range(n_bootstrap)):

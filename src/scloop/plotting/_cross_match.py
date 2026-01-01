@@ -9,7 +9,12 @@ from anndata import AnnData
 from matplotlib.axes import Axes
 from pydantic import ConfigDict, validate_call
 
-from ..data.constants import CROSS_MATCH_KEY, CROSS_MATCH_RESULT_KEY
+from ..data.constants import (
+    CROSS_MATCH_KEY,
+    CROSS_MATCH_RESULT_KEY,
+    DEFAULT_DPI,
+    DEFAULT_FIGSIZE,
+)
 from ..data.types import Index_t, PositiveFloat
 from ..matching import CrossDatasetMatcher
 from ._utils import _create_figure_standard, _get_embedding_key
@@ -30,8 +35,8 @@ def match_loops_overlay(
     include_bootstrap_loops: bool = True,
     show_loop_vertices: bool = True,
     pointsize: PositiveFloat = 1,
-    figsize: tuple[PositiveFloat, PositiveFloat] = (5, 5),
-    dpi: PositiveFloat = 300,
+    figsize: tuple[PositiveFloat, PositiveFloat] = DEFAULT_FIGSIZE,
+    dpi: PositiveFloat = DEFAULT_DPI,
     kwargs_figure: dict | None = None,
     kwargs_axes: dict | None = None,
     kwargs_layout: dict | None = None,

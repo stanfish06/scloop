@@ -65,4 +65,4 @@ run = [
 run = "uv run ruff check || uv run ty check"
 
 [tasks.kernel]
-run = "uv run ipython kernel install --name 'scLoop' --user"
+run = "uv run ipython kernel install --name 'scloop' --user"

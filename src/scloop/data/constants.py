@@ -1,10 +1,13 @@
 # Copyright 2025 Zhiyuan Yu (Heemskerk's lab, University of Michigan)
 from __future__ import annotations
 
-from .types import LoopDistMethod
+from .types import LoopDistMethod, PositiveFloat
 
 CROSS_MATCH_KEY = "X_scloop_alilgned"
 CROSS_MATCH_RESULT_KEY = "scloop_cross_match"
+
+DEFAULT_FIGSIZE: tuple[PositiveFloat, PositiveFloat] = (5, 5)
+DEFAULT_DPI: PositiveFloat = 300
 
 DEFAULT_N_MAX_WORKERS: int = 8
 DEFAULT_N_HODGE_COMPONENTS: int = 10
