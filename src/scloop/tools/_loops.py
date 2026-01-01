@@ -55,6 +55,7 @@ def find_loops(
     n_max_workers: NonZeroCount_t = DEFAULT_N_MAX_WORKERS,
     verbose: bool = False,
     max_log_messages: int | None = None,
+    use_parallel: bool = False,
     kwargs_bootstrap: dict | None = None,
     kwargs_loop_test: dict | None = None,
     *,
@@ -162,12 +163,13 @@ def find_loops(
             n_bootstrap=n_bootstrap,
             thresh=threshold_homology,
             top_k=n_candidates * n_check_per_candidate,
-            k_neighbors_check_equivalence=1,
+            k_neighbors_check_equivalence=1,  # typically one neighbor is sufficient for checking
             n_max_workers=n_max_workers,
             life_pct=tightness_loops,
             verbose=verbose,
             progress_main=progress_main,
             use_log_display=use_log_display,
+            use_parallel=use_parallel,
             **(kwargs_bootstrap or {}),
         )
 

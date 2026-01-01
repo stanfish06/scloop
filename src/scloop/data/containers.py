@@ -21,13 +21,21 @@ from rich.progress import (
     TimeElapsedColumn,
     TimeRemainingColumn,
 )
-from scipy.sparse import csr_matrix, triu
+from scipy.sparse import csr_matrix
 
+from ..analyzing.bootstrap import run_bootstrap_pipeline
+from ..computing.boundary import (
+    compute_boundary_matrix_d0,
+    compute_boundary_matrix_d1,
+)
 from ..computing.homology import (
-    compute_boundary_matrix_data,
-    compute_loop_geometric_distance,
-    compute_loop_homological_equivalence,
     compute_persistence_diagram_and_cocycles,
+)
+from ..computing.loops import compute_loop_representatives
+from ..computing.matching import (
+    check_homological_equivalence,
+    compute_geometric_distance,
+    loops_to_edge_mask,
 )
 from .analysis_containers import (
     BootstrapAnalysis,
@@ -44,7 +52,6 @@ from .constants import (
     DEFAULT_N_NEIGHBORS_EDGE_EMBEDDING,
     DEFAULT_TIMEOUT_EIGENDECOMPOSITION,
 )
-from .loop_reconstruction import reconstruct_n_loop_representatives
 from .metadata import BootstrapMeta, ScloopMeta
 from .types import (
     Count_t,
@@ -57,8 +64,6 @@ from .types import (
     PositiveFloat,
 )
 from .utils import (
-    extract_edges_from_coo,
-    loop_vertices_to_edge_ids_with_signs,
     loops_masks_to_edges_masks,
     loops_to_coords,
     nearest_neighbor_per_row,
@@ -75,7 +80,7 @@ def _run_eigsh_worker(
     try:
         from scipy.sparse.linalg import eigsh
 
-        vals, vecs = eigsh(hodge_matrix, k=k, which="SA", tol=tol, maxiter=maxiter)
+        vals, vecs = eigsh(hodge_matrix, k=k, which="SA", tol=tol, maxiter=maxiter)  # type: ignore
         q.put(("success", (vals, vecs)))
     except Exception as e:
         q.put(("error", e))
@@ -106,40 +111,12 @@ class HomologyData:
         use_order: bool = False,
     ) -> np.ndarray | tuple[np.ndarray, list[list[int]], list[np.ndarray]]:
         assert self.boundary_matrix_d1 is not None
-        num_vertices = self.boundary_matrix_d1.num_vertices
-        n_edges = self.boundary_matrix_d1.shape[0]
-
-        edge_lookup = {
-            int(edge_id): row_idx
-            for row_idx, edge_id in enumerate(self.boundary_matrix_d1.row_simplex_ids)
-        }
-
-        dtype = np.int32 if use_order else bool
-        mask = np.zeros((len(loops), n_edges), dtype=dtype)
-        valid_indices_per_rep = []
-        edge_signs_per_rep = []
-        for idx, loop in enumerate(loops):
-            edge_ids, edge_signs = loop_vertices_to_edge_ids_with_signs(
-                np.asarray(loop, dtype=np.int64), num_vertices
-            )
-            valid_indices = []
-            valid_signs = []
-            seen_row_ids = set()
-            order = 1  # 1-based traversal order
-            for edge_idx, (eid, sign) in enumerate(zip(edge_ids, edge_signs)):
-                row_id = edge_lookup.get(int(eid), -1)
-                if row_id >= 0 and row_id not in seen_row_ids:
-                    mask[idx, row_id] = order if use_order else True
-                    order += 1
-                    valid_indices.append(edge_idx)
-                    valid_signs.append(sign)
-                    seen_row_ids.add(row_id)
-            valid_indices_per_rep.append(valid_indices)
-            edge_signs_per_rep.append(np.array(valid_signs, dtype=np.int8))
-
-        if return_valid_indices:
-            return mask, valid_indices_per_rep, edge_signs_per_rep
-        return mask
+        return loops_to_edge_mask(
+            loops=loops,
+            boundary_matrix_d1=self.boundary_matrix_d1,
+            return_valid_indices=return_valid_indices,
+            use_order=use_order,
+        )
 
     def _compute_homology(
         self,
@@ -181,45 +158,13 @@ class HomologyData:
         verbose: bool = False,
         **nei_kwargs,
     ) -> None:
-        assert self.meta.preprocess
-        assert self.meta.preprocess.num_vertices
-        (
-            result,
-            edge_ids,
-            trig_ids,
-            edge_diameters,
-            _,
-            _,
-        ) = compute_boundary_matrix_data(
-            adata=adata, meta=self.meta, thresh=thresh, **nei_kwargs
+        self.boundary_matrix_d1 = compute_boundary_matrix_d1(
+            adata=adata,
+            meta=self.meta,
+            thresh=thresh,
+            verbose=verbose,
+            **nei_kwargs,
         )
-        edge_ids_flat = np.array(edge_ids, dtype=np.int64).flatten()
-        edge_diams_flat = np.array(edge_diameters, dtype=float)
-        edge_ids_1d, uniq_idx = np.unique(edge_ids_flat, return_index=True)
-        row_simplex_diams = edge_diams_flat[uniq_idx]
-        edge_ids_reindex = np.searchsorted(edge_ids_1d, edge_ids)
-        num_triangles = len(trig_ids)
-        values = np.tile([1, -1, 1], num_triangles).tolist()
-        self.boundary_matrix_d1 = BoundaryMatrixD1(
-            num_vertices=self.meta.preprocess.num_vertices,
-            data=(
-                edge_ids_reindex.flatten().tolist(),
-                np.repeat(np.expand_dims(np.arange(num_triangles), 1), 3, axis=1)
-                .flatten()
-                .tolist(),
-                values,
-            ),
-            shape=(len(edge_ids_1d), num_triangles),
-            row_simplex_ids=edge_ids_1d.tolist(),
-            col_simplex_ids=trig_ids,
-            row_simplex_diams=row_simplex_diams.tolist(),
-            col_simplex_diams=result.triangle_diameters,
-        )
-        if verbose:
-            logger.info(
-                f"Boundary matrix (dim 1) built: edges x triangles = "
-                f"{self.boundary_matrix_d1.shape[0]} x {self.boundary_matrix_d1.shape[1]}"
-            )
 
     @property
     def _original_vertex_ids(self):
@@ -240,41 +185,13 @@ class HomologyData:
         assert self.meta.preprocess
         assert self.meta.preprocess.num_vertices
 
-        # important, if downsampled, vertex indecies are no longer sorted
         vertex_ids = sorted(self._original_vertex_ids)
-        vertex_lookup = {
-            int(vertex_id): row_idx for row_idx, vertex_id in enumerate(vertex_ids)
-        }
-        edges = self.boundary_matrix_d1.row_simplex_decode
-
-        one_rows, one_cols, one_values = [], [], []
-        for col_idx, e in enumerate(edges):
-            # e is a sorted tuple (u, v) from edge decoding
-            # boundary is v - u, so u gets -1 and v gets +1
-            u, v = e[0], e[1]
-
-            one_rows.append(vertex_lookup[u])
-            one_cols.append(col_idx)
-            one_values.append(-1)
-
-            one_rows.append(vertex_lookup[v])
-            one_cols.append(col_idx)
-            one_values.append(1)
-
-        self.boundary_matrix_d0 = BoundaryMatrixD0(
+        self.boundary_matrix_d0 = compute_boundary_matrix_d0(
+            boundary_matrix_d1=self.boundary_matrix_d1,
             num_vertices=self.meta.preprocess.num_vertices,
-            data=(one_rows, one_cols, one_values),
-            shape=(len(vertex_ids), self.boundary_matrix_d1.shape[0]),
-            row_simplex_ids=vertex_ids,
-            col_simplex_ids=self.boundary_matrix_d1.row_simplex_ids,
-            row_simplex_diams=np.zeros(len(vertex_ids)).tolist(),
-            col_simplex_diams=self.boundary_matrix_d1.row_simplex_diams,
+            vertex_ids=vertex_ids,
+            verbose=verbose,
         )
-        if verbose:
-            logger.info(
-                f"Boundary matrix (dim 0) built: vertices x edges = "
-                f"{self.boundary_matrix_d0.shape[0]} x {self.boundary_matrix_d0.shape[1]}"
-            )
 
     def _compute_hodge_matrix(
         self, thresh: Diameter_t, normalized: bool = True
@@ -562,7 +479,7 @@ class HomologyData:
         self,
         embedding: np.ndarray,
         pairwise_distance_matrix: csr_matrix,
-        top_k: int | None = None,  # top k homology classes to compute representatives
+        top_k: int | None = None,
         bootstrap: bool = False,
         idx_bootstrap: int = 0,
         n_reps_per_loop: int = 4,
@@ -575,11 +492,13 @@ class HomologyData:
     ):
         assert pairwise_distance_matrix.shape is not None
         assert self.meta.preprocess is not None
+        assert self.boundary_matrix_d1 is not None
+
+        # Extract data from self based on bootstrap flag
         if not bootstrap:
             assert self.persistence_diagram is not None
             assert self.cocycles is not None
-            loop_births = np.array(self.persistence_diagram[1][0], dtype=np.float32)
-            loop_deaths = np.array(self.persistence_diagram[1][1], dtype=np.float32)
+            persistence_diagram = self.persistence_diagram[1]
             cocycles = self.cocycles[1]
             vertex_ids = self._original_vertex_ids
         else:
@@ -589,141 +508,46 @@ class HomologyData:
             assert self.meta.bootstrap is not None
             assert self.meta.bootstrap.indices_resample is not None
             assert len(self.meta.bootstrap.indices_resample) > idx_bootstrap
-            loop_births = np.array(
-                self.bootstrap_data.persistence_diagrams[idx_bootstrap][1][0],
-                dtype=np.float32,
-            )
-            loop_deaths = np.array(
-                self.bootstrap_data.persistence_diagrams[idx_bootstrap][1][1],
-                dtype=np.float32,
-            )
+            persistence_diagram = self.bootstrap_data.persistence_diagrams[
+                idx_bootstrap
+            ][1]
             cocycles = self.bootstrap_data.cocycles[idx_bootstrap][1]
             vertex_ids = self.meta.bootstrap.indices_resample[idx_bootstrap]
 
-        if loop_births.size == 0:
-            return [], []
-        if top_k is None:
-            top_k = loop_births.size
-        if top_k <= 0:
-            return [], []
-        top_k = min(top_k, loop_births.size)
-
-        persistence = loop_deaths - loop_births
-        indices_top_k = np.argsort(persistence)[::-1][:top_k]
-
-        dm_upper = triu(pairwise_distance_matrix, k=1).tocoo()
-        edges_array, edge_diameters = extract_edges_from_coo(
-            dm_upper.row, dm_upper.col, dm_upper.data
+        loop_classes = compute_loop_representatives(
+            embedding=embedding,
+            pairwise_distance_matrix=pairwise_distance_matrix,
+            persistence_diagram=persistence_diagram,
+            cocycles=cocycles,
+            boundary_matrix_d1=self.boundary_matrix_d1,
+            vertex_ids=vertex_ids,
+            top_k=top_k,
+            n_reps_per_loop=n_reps_per_loop,
+            life_pct=life_pct,
+            n_cocycles_used=n_cocycles_used,
+            n_force_deviate=n_force_deviate,
+            k_yen=k_yen,
+            loop_lower_t_pct=loop_lower_t_pct,
+            loop_upper_t_pct=loop_upper_t_pct,
+            bootstrap=bootstrap,
+            rank_offset=0,
         )
 
-        if len(edges_array) == 0:
-            return [], []
-
-        assert self.boundary_matrix_d1 is not None
-        boundary_edge_set = self.boundary_matrix_d1.edge_set
-
         if not bootstrap:
-            while len(self.selected_loop_classes) < len(indices_top_k):
+            while len(self.selected_loop_classes) < len(loop_classes):
                 self.selected_loop_classes.append(None)
+            for i, loop_class in enumerate(loop_classes):
+                self.selected_loop_classes[i] = loop_class
         else:
             assert self.bootstrap_data is not None
             while len(self.bootstrap_data.selected_loop_classes) <= idx_bootstrap:
                 self.bootstrap_data.selected_loop_classes.append([])
             while len(self.bootstrap_data.selected_loop_classes[idx_bootstrap]) < len(
-                indices_top_k
+                loop_classes
             ):
                 self.bootstrap_data.selected_loop_classes[idx_bootstrap].append(None)
-
-        for loop_idx, i in enumerate(indices_top_k):
-            loop_birth = loop_births[i].item()
-            loop_death = loop_deaths[i].item()
-
-            valid_cocycles = []
-            n_cocycles_original = len(cocycles[i])
-            for simplex in cocycles[i]:
-                try:
-                    verts, coeff = simplex
-                except ValueError:
-                    continue
-                if coeff == 0 or len(verts) != 2:
-                    continue
-                u_global = vertex_ids[int(verts[0])]
-                v_global = vertex_ids[int(verts[1])]
-                edge_global = (min(u_global, v_global), max(u_global, v_global))
-                if bootstrap:
-                    if edge_global in boundary_edge_set or u_global == v_global:
-                        valid_cocycles.append(simplex)
-                else:
-                    if edge_global in boundary_edge_set:
-                        valid_cocycles.append(simplex)
-
-            if len(valid_cocycles) == 0:
-                logger.warning(
-                    f"Loop class {loop_idx}: All {n_cocycles_original} cocycle edges "
-                    f"filtered (not in boundary matrix). Skipping reconstruction."
-                )
-                continue
-
-            if len(valid_cocycles) < n_cocycles_original:
-                logger.info(
-                    f"Loop class {loop_idx}: Filtered {n_cocycles_original - len(valid_cocycles)}/"
-                    f"{n_cocycles_original} cocycle edges not in boundary matrix"
-                )
-
-            valid_edge_mask = []
-            for edge_local in edges_array:
-                u_global = vertex_ids[int(edge_local[0])]
-                v_global = vertex_ids[int(edge_local[1])]
-                edge_global = (min(u_global, v_global), max(u_global, v_global))
-                if bootstrap:
-                    valid = (edge_global in boundary_edge_set) or (u_global == v_global)
-                else:
-                    valid = edge_global in boundary_edge_set
-                valid_edge_mask.append(valid)
-
-            valid_edge_mask = np.array(valid_edge_mask, dtype=bool)
-            edges_array_filtered = edges_array[valid_edge_mask]
-            edge_diameters_filtered = edge_diameters[valid_edge_mask]
-
-            loops_local, _ = reconstruct_n_loop_representatives(
-                cocycles_dim1=valid_cocycles,
-                edges=edges_array_filtered,
-                edge_diameters=edge_diameters_filtered,
-                loop_birth=loop_birth,
-                loop_death=loop_death,
-                n=n_reps_per_loop,
-                life_pct=life_pct,
-                n_force_deviate=n_force_deviate,
-                k_yen=k_yen,
-                loop_lower_pct=loop_lower_t_pct,
-                loop_upper_pct=loop_upper_t_pct,
-                n_cocycles_used=n_cocycles_used,
-            )
-
-            loops = [[vertex_ids[v] for v in loop] for loop in loops_local]
-            loops_coords = loops_to_coords(embedding=embedding, loops_vertices=loops)
-
-            if not bootstrap:
-                self.selected_loop_classes[loop_idx] = LoopClass(
-                    rank=loop_idx,
-                    birth=loop_birth,
-                    death=loop_death,
-                    cocycles=cocycles[i],
-                    representatives=loops,
-                    coordinates_vertices_representatives=loops_coords,
-                )
-            else:
-                assert self.bootstrap_data is not None
-                self.bootstrap_data.selected_loop_classes[idx_bootstrap][loop_idx] = (
-                    LoopClass(
-                        rank=loop_idx,
-                        birth=loop_birth,
-                        death=loop_death,
-                        cocycles=cocycles[i],
-                        representatives=loops,
-                        coordinates_vertices_representatives=loops_coords,
-                    )
-                )
+            for i, loop_class in enumerate(loop_classes):
+                self.bootstrap_data.selected_loop_classes[idx_bootstrap][i] = loop_class
 
     def _get_loop_embedding(
         self,
@@ -792,7 +616,6 @@ class HomologyData:
             return (source_class_idx, target_class_idx, np.nan)
         if source_class_idx >= len(self.selected_loop_classes):
             return (source_class_idx, target_class_idx, np.nan)
-
         if target_class_idx >= len(
             self.bootstrap_data.selected_loop_classes[idx_bootstrap]
         ):
@@ -805,13 +628,12 @@ class HomologyData:
             selector=(idx_bootstrap, target_class_idx), include_bootstrap=False
         )
 
-        distances_arr = compute_loop_geometric_distance(
+        mean_distance = compute_geometric_distance(
             source_coords_list=source_coords_list,
             target_coords_list=target_coords_list,
             method=method,
             n_workers=n_workers,
         )
-        mean_distance = float(np.nanmean(distances_arr))
         return (source_class_idx, target_class_idx, mean_distance)
 
     def _assess_bootstrap_homology_equivalence(
@@ -859,9 +681,9 @@ class HomologyData:
         source_lifetime = source_loop_class.death - source_loop_class.birth
         target_lifetime = target_loop_class.death - target_loop_class.birth
         max_lifetime = max(source_lifetime, target_lifetime)
-        if not filter_column_homology_equivalence:
-            max_column_diameter = None
-        else:
+
+        max_column_diameter = None
+        if filter_column_homology_equivalence:
             if extra_diameter_homology_equivalence < 0:
                 raise ValueError("extra_diameter_homology_equivalence must be >= 0")
             max_column_diameter = (
@@ -869,22 +691,15 @@ class HomologyData:
                 + float(extra_diameter_homology_equivalence) * max_lifetime
             )
 
-        mask_a = self._loops_to_edge_mask(source_loops)
-        mask_b = self._loops_to_edge_mask(target_loops)
-
-        assert isinstance(mask_a, np.ndarray)
-        assert isinstance(mask_b, np.ndarray)
-
-        boundary_matrix_d1 = self.boundary_matrix_d1
-        assert boundary_matrix_d1 is not None
-        results, _ = compute_loop_homological_equivalence(
-            boundary_matrix_d1=boundary_matrix_d1,
-            loop_mask_a=mask_a,
-            loop_mask_b=mask_b,
+        assert self.boundary_matrix_d1 is not None
+        is_equivalent = check_homological_equivalence(
+            source_loops=source_loops,
+            target_loops=target_loops,
+            boundary_matrix_d1=self.boundary_matrix_d1,
             n_pairs_check=n_pairs_check,
             max_column_diameter=max_column_diameter,
         )
-        return (source_class_idx, target_class_idx, any(r == 0 for r in results))
+        return (source_class_idx, target_class_idx, is_equivalent)
 
     def _ensure_loop_tracks(self) -> None:
         if self.bootstrap_data is None:
@@ -923,6 +738,7 @@ class HomologyData:
         verbose: bool = False,
         progress_main: Progress | None = None,
         use_log_display: bool = False,
+        use_parallel: bool = False,
         **nei_kwargs,
     ) -> None:
         self.bootstrap_data = BootstrapAnalysis()
@@ -933,6 +749,32 @@ class HomologyData:
                 self.meta.bootstrap.indices_resample = []
             else:
                 self.meta.bootstrap.indices_resample.clear()
+
+        if use_parallel:
+            self._bootstrap_parallel(
+                adata=adata,
+                n_bootstrap=n_bootstrap,
+                thresh=thresh,
+                top_k=top_k,
+                noise_scale=noise_scale,
+                n_reps_per_loop=n_reps_per_loop,
+                life_pct=life_pct,
+                n_cocycles_used=n_cocycles_used,
+                n_force_deviate=n_force_deviate,
+                k_yen=k_yen,
+                loop_lower_t_pct=loop_lower_t_pct,
+                loop_upper_t_pct=loop_upper_t_pct,
+                n_pairs_check_equivalence=n_pairs_check_equivalence,
+                extra_diameter_homology_equivalence=extra_diameter_homology_equivalence,
+                filter_column_homology_equivalence=filter_column_homology_equivalence,
+                n_max_workers=n_max_workers,
+                k_neighbors_check_equivalence=k_neighbors_check_equivalence,
+                method_geometric_equivalence=method_geometric_equivalence,
+                verbose=verbose,
+                progress_main=progress_main,
+                **nei_kwargs,
+            )
+            return
 
         if not use_log_display:
             console = Console()
@@ -1095,6 +937,82 @@ class HomologyData:
                     logger.success(
                         f"Round {idx_bootstrap + 1}/{n_bootstrap} finished in {int(time_elapsed // 3600)}h {int(time_elapsed % 3600 // 60)}m {int(time_elapsed % 60)}s"
                     )
+
+    def _bootstrap_parallel(
+        self,
+        adata: AnnData,
+        n_bootstrap: Count_t,
+        thresh: Diameter_t | None = None,
+        top_k: int = 1,
+        noise_scale: float = 1e-3,
+        n_reps_per_loop: int = 4,
+        life_pct: float = 0.1,
+        n_cocycles_used: int = 3,
+        n_force_deviate: int = 4,
+        k_yen: int = 8,
+        loop_lower_t_pct: float = 2.5,
+        loop_upper_t_pct: float = 97.5,
+        n_pairs_check_equivalence: int = 4,
+        extra_diameter_homology_equivalence: PositiveFloat = 1.0,
+        filter_column_homology_equivalence: bool = True,
+        n_max_workers: int = DEFAULT_N_MAX_WORKERS,
+        k_neighbors_check_equivalence: int = 3,
+        method_geometric_equivalence: LoopDistMethod = DEFAULT_LOOP_DIST_METHOD,
+        verbose: bool = False,
+        progress_main: Progress | None = None,
+        **nei_kwargs,
+    ) -> None:
+        assert self.boundary_matrix_d1 is not None
+
+        results = run_bootstrap_pipeline(
+            n_bootstrap=n_bootstrap,
+            adata=adata,
+            meta=self.meta,
+            original_loop_classes=self.selected_loop_classes,
+            original_boundary_matrix_d1=self.boundary_matrix_d1,
+            n_max_workers=n_max_workers,
+            verbose=verbose,
+            progress=progress_main,
+            thresh=thresh,
+            noise_scale=noise_scale,
+            top_k=top_k,
+            n_reps_per_loop=n_reps_per_loop,
+            life_pct=life_pct,
+            n_cocycles_used=n_cocycles_used,
+            n_force_deviate=n_force_deviate,
+            k_yen=k_yen,
+            loop_lower_t_pct=loop_lower_t_pct,
+            loop_upper_t_pct=loop_upper_t_pct,
+            k_neighbors_check_equivalence=k_neighbors_check_equivalence,
+            method_geometric_equivalence=method_geometric_equivalence,
+            n_pairs_check_equivalence=n_pairs_check_equivalence,
+            extra_diameter_homology_equivalence=extra_diameter_homology_equivalence,
+            filter_column_homology_equivalence=filter_column_homology_equivalence,
+            **nei_kwargs,
+        )
+
+        assert self.meta.bootstrap is not None
+        assert self.meta.bootstrap.indices_resample is not None
+        assert self.bootstrap_data is not None
+
+        for result in results:
+            self.meta.bootstrap.indices_resample.append(result.indices_resample)
+            if result.persistence_diagram is not None:
+                self.bootstrap_data.persistence_diagrams.append(
+                    result.persistence_diagram  # type: ignore[arg-type]
+                )
+            if result.cocycles is not None:
+                self.bootstrap_data.cocycles.append(result.cocycles)  # type: ignore[arg-type]
+            self.bootstrap_data.selected_loop_classes.append(result.loop_classes)
+
+            for source_idx, matches in result.matches.items():
+                if source_idx not in self.bootstrap_data.loop_tracks:
+                    self.bootstrap_data.loop_tracks[source_idx] = LoopTrack(
+                        source_class_idx=source_idx, matches=[]
+                    )
+                self.bootstrap_data.loop_tracks[source_idx].matches.extend(matches)
+
+            self.bootstrap_data.num_bootstraps += 1
 
     def _test_loops(
         self,

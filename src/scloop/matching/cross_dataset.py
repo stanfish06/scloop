@@ -22,7 +22,7 @@ from rich.progress import (
 )
 from scipy.stats import ttest_ind
 
-from ..computing.homology import compute_loop_geometric_distance
+from ..computing.matching import compute_geometric_distance
 from ..data.constants import (
     CROSS_MATCH_KEY,
     DEFAULT_LOOP_DIST_METHOD,
@@ -317,22 +317,6 @@ class CrossDatasetMatcher:
 
             adata.obsm[CROSS_MATCH_KEY] = ref_emb
 
-    def _assess_permutation_geometric_equivalence(
-        self,
-        source_loops_embedding: list[list[list[float]]] | list[np.ndarray],
-        target_loops_embedding: list[list[list[float]]] | list[np.ndarray],
-        method: LoopDistMethod = DEFAULT_LOOP_DIST_METHOD,
-        n_workers: Count_t = DEFAULT_N_MAX_WORKERS,
-    ) -> float:
-        distances_arr = compute_loop_geometric_distance(
-            source_coords_list=source_loops_embedding,
-            target_coords_list=target_loops_embedding,
-            method=method,
-            n_workers=n_workers,
-        )
-        mean_distance = float(np.nanmean(distances_arr))
-        return mean_distance
-
     def _get_loop_class_embedding(
         self,
         dataset_idx: Index_t,
@@ -424,10 +408,11 @@ class CrossDatasetMatcher:
                             ]
 
                         task = executor.submit(
-                            self._assess_permutation_geometric_equivalence,
-                            source_loops_embedding=embedding_source,
-                            target_loops_embedding=embedding_target,
+                            compute_geometric_distance,
+                            source_coords_list=embedding_source,
+                            target_coords_list=embedding_target,
                             method=method,
+                            n_workers=1,
                         )
                         tasks[task] = (idx_permute, i, j)
 

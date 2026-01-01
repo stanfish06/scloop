@@ -24,17 +24,24 @@ def compute_pairwise_loop_frechet(
 
     results = np.empty(n_total, dtype=np.float64)
 
-    with ThreadPoolExecutor(max_workers=n_workers) as executor:
-        tasks = {}
+    if n_workers == 1:
         idx = 0
         for a in loop_set_a_arr:
             for b in loop_set_b_arr:
-                task = executor.submit(compute_loop_frechet, a, b)
-                tasks[task] = idx
+                results[idx] = compute_loop_frechet(a, b)
                 idx += 1
+    else:
+        with ThreadPoolExecutor(max_workers=n_workers) as executor:
+            tasks = {}
+            idx = 0
+            for a in loop_set_a_arr:
+                for b in loop_set_b_arr:
+                    task = executor.submit(compute_loop_frechet, a, b)
+                    tasks[task] = idx
+                    idx += 1
 
-        for task in as_completed(tasks):
-            idx = tasks[task]
-            results[idx] = task.result()
+            for task in as_completed(tasks):
+                idx = tasks[task]
+                results[idx] = task.result()
 
     return results
