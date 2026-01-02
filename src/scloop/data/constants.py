@@ -21,3 +21,30 @@ NUMERIC_EPSILON: float = 1e-10
 SCLOOP_UNS_KEY: str = "scloop"
 SCLOOP_META_UNS_KEY: str = "scloop_meta"
 SCLOOP_NEIGHBORS_KEY: str = "neighbors_scloop"
+
+# simple look-up for jupyter output width
+# set JUPYTER_COLUMNS to adjust rich console width
+from IPython.display import Javascript
+
+js_code = """
+const outputJL = document.querySelector(".jp-OutputArea");
+const outputJN = document.querySelector(".output_area");
+const output = outputJL || outputJN;
+const testStr = document.createElement("span");
+testStr.textContent = "DOG";
+document.body.appendChild(testStr);
+const pixelWidthPerChar = testStr.offsetWidth / testStr.textContent.length;
+const outputColumns = output.offsetWidth / pixelWidthPerChar;
+element.append(outputColumns)
+"""
+CURRENT_JUPYTER_OUTPUT_WIDTH = Javascript(js_code)
+
+import os
+
+DEFAULT_RICH_CONSOLE_WIDTH: str = "100"
+DEFAULT_RICH_CONSOLE_HEIGHT: str = "27"
+
+if "JUPYTER_COLUMNS" not in os.environ:
+    os.environ["JUPYTER_COLUMNS"] = DEFAULT_RICH_CONSOLE_WIDTH
+if "JUPYTER_LINES" not in os.environ:
+    os.environ["JUPYTER_LINES"] = DEFAULT_RICH_CONSOLE_HEIGHT

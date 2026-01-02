@@ -135,6 +135,11 @@ class LogDisplay(BaseModel):
             return Layout(self._create_table())
 
     def __enter__(self) -> LogCache:
+        import os
+
+        recommended_lines = self.maxlen + (11 if self.progress else 7)
+        os.environ.setdefault("JUPYTER_LINES", str(recommended_lines))
+
         logger.remove()
         self._handler_id = logger.add(
             self.cache.append,
