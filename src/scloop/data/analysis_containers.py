@@ -260,9 +260,12 @@ class BootstrapAnalysis:
 
 class LoopClassAnalysis(LoopClass):
     coordinates_edges: list[np.ndarray] | None = None
+    edge_values_raw: list[np.ndarray] | None = None
     edge_gradient_raw: list[np.ndarray] | None = None
     edge_embedding_raw: list[np.ndarray] | None = None
     edge_embedding_smooth: list[np.ndarray] | None = None
+    edge_involvement_raw: list[np.ndarray] | None = None
+    edge_involvement_smooth: list[np.ndarray] | None = None
     valid_edge_indices_per_rep: list[list[int]] = Field(default_factory=list)
     edge_signs_per_rep: list[np.ndarray] = Field(default_factory=list)
 
@@ -272,9 +275,19 @@ class LoopClassAnalysis(LoopClass):
         return np.concatenate(self.coordinates_edges)
 
     @property
+    def edge_values_raw_all(self):
+        assert self.edge_values_raw is not None
+        return np.concatenate(self.edge_values_raw)
+
+    @property
     def edge_embedding_raw_all(self):
         assert self.edge_embedding_raw is not None
         return np.concatenate(self.edge_embedding_raw)
+
+    @property
+    def edge_involvement_raw_all(self):
+        assert self.edge_involvement_raw is not None
+        return np.concatenate(self.edge_involvement_raw)
 
     @classmethod
     def from_super(
@@ -308,6 +321,14 @@ class LoopClassAnalysis(LoopClass):
         if values_vertices.ndim == 1:
             values_vertices = values_vertices.reshape(-1, 1)
 
+        edge_values_raw = loops_to_coords(
+            embedding=values_vertices, loops_vertices=representatives
+        )
+        edge_values_raw = [
+            (np.array(vals)[0:-1, :] + np.array(vals)[1:, :]) / 2
+            for vals in edge_values_raw
+        ]
+
         edge_gradient_raw = loops_to_coords(
             embedding=values_vertices, loops_vertices=representatives
         )
@@ -325,6 +346,7 @@ class LoopClassAnalysis(LoopClass):
                 c.tolist() for c in coordinates_vertices
             ],
             coordinates_edges=coordinates_edges,
+            edge_values_raw=edge_values_raw,
             edge_gradient_raw=edge_gradient_raw,
         )
 
@@ -335,6 +357,7 @@ class HodgeAnalysis(BaseModel):
     hodge_eigenvectors: list | None = None
     edges_masks_loop_classes: list[list[np.ndarray]] = Field(default_factory=list)
     selected_loop_classes: list[LoopClassAnalysis] = Field(default_factory=list)
+    trajectories: list[np.ndarray] = Field(default_factory=list)
 
     def _embed_edges(self, weight_hodge: Percent_t, half_window: int = 2):
         if self.hodge_eigenvectors is None:
@@ -342,13 +365,13 @@ class HodgeAnalysis(BaseModel):
 
         hodge_evecs = np.array(self.hodge_eigenvectors)
 
-        # TODO: looks jittable
         for loop_idx, loop in enumerate(self.selected_loop_classes):
             if loop.edge_gradient_raw is None or loop.coordinates_edges is None:
                 continue
 
             edge_masks = self.edges_masks_loop_classes[loop_idx]
             loop.edge_embedding_raw = []
+            loop.edge_involvement_raw = []
 
             for rep_idx, edge_mask in enumerate(edge_masks):
                 valid_indices = loop.valid_edge_indices_per_rep[rep_idx]
@@ -360,12 +383,10 @@ class HodgeAnalysis(BaseModel):
                 ]
                 edge_evec_values = edge_mask.astype(np.float64) @ hodge_evecs.T
 
-                # apply sign correction for edge traversal direction
                 if loop.edge_signs_per_rep and rep_idx < len(loop.edge_signs_per_rep):
                     edge_signs = loop.edge_signs_per_rep[rep_idx][:, None]
                     edge_evec_values = edge_evec_values * edge_signs
 
-                # window smoothing along loop
                 if half_window > 0:
                     edge_gradients_smooth = smooth_along_loop_1d(
                         edge_gradients.flatten().astype(np.float64), half_window
@@ -377,71 +398,134 @@ class HodgeAnalysis(BaseModel):
                     edge_gradients_smooth = edge_gradients
                     edge_evec_smooth = edge_evec_values
 
-                weighted_edge_hodge = compute_weighted_hodge_embedding(
-                    edge_evecs=edge_evec_smooth,
-                    eigenvalues=np.array(self.hodge_eigenvalues),
-                    edge_gradients=edge_gradients_smooth,
+                weighted_edge_hodge, involvement_hodge = (
+                    compute_weighted_hodge_embedding(
+                        edge_evecs=edge_evec_smooth,
+                        eigenvalues=np.array(self.hodge_eigenvalues),
+                        edge_gradients=edge_gradients_smooth,
+                    )
                 )
                 grad_1d = edge_gradients_smooth.flatten()
                 edge_embedding = weighted_edge_hodge * weight_hodge + grad_1d * (
                     1 - weight_hodge
                 )
-                # raw edge embedding: too noisy to use
-                # edge_embedding = (
-                #     edge_gradients[:, :, None] * edge_evec_values[:, None, :]
-                # )
                 loop.edge_embedding_raw.append(edge_embedding)
+                loop.edge_involvement_raw.append(involvement_hodge)
 
     def _smoothening_edge_embedding(self, n_neighbors: Count_t = 10):
-        """weighted-knn-smoothing of edge embedding
-
-        Parameters
-        ----------
-        n_neighbors : positive int
-        """
         coordinates_edges_all = np.concatenate(
             [loops.coordinates_edges_all for loops in self.selected_loop_classes]
         )
         edge_embedding_raw_all = np.concatenate(
             [loops.edge_embedding_raw_all for loops in self.selected_loop_classes]
         )
+        edge_involvement_raw_all = np.concatenate(
+            [loops.edge_involvement_raw_all for loops in self.selected_loop_classes]
+        )
         search_index = NNDescent(coordinates_edges_all)
         for loops in self.selected_loop_classes:
             loops.edge_embedding_smooth = []
+            loops.edge_involvement_smooth = []
             assert loops.edge_embedding_raw is not None
+            assert loops.edge_involvement_raw is not None
             assert loops.coordinates_edges is not None
             for coords in loops.coordinates_edges:
                 nn_indices, nn_distances = search_index.query(
                     query_data=coords, k=n_neighbors
                 )
-                assert nn_indices.shape == (coords.shape[0], n_neighbors)
-                assert nn_distances.shape == nn_indices.shape
                 length_scale = np.median(nn_distances, axis=1, keepdims=True) + 1e-8
                 nn_similarities = np.exp(-nn_distances / length_scale)
-                neighbor_embeddings = edge_embedding_raw_all[nn_indices]
                 nn_weights = nn_similarities / nn_similarities.sum(
                     axis=1, keepdims=True
                 )
+
+                neighbor_embeddings = edge_embedding_raw_all[nn_indices]
                 if neighbor_embeddings.ndim == 2:
-                    smoothed = (neighbor_embeddings * nn_weights).sum(axis=1)
+                    smoothed_emb = (neighbor_embeddings * nn_weights).sum(axis=1)
                 else:
-                    smoothed = (neighbor_embeddings * nn_weights[:, :, None]).sum(
+                    smoothed_emb = (neighbor_embeddings * nn_weights[:, :, None]).sum(
                         axis=1
                     )
-                loops.edge_embedding_smooth.append(smoothed)
+                loops.edge_embedding_smooth.append(smoothed_emb)
 
-    def _trajectory_identification(self):
-        """Identify trajectories using raw/smooth edge emebedding
+                neighbor_involvements = edge_involvement_raw_all[nn_indices]
+                if neighbor_involvements.ndim == 2:
+                    smoothed_inv = (neighbor_involvements * nn_weights).sum(axis=1)
+                else:
+                    smoothed_inv = (neighbor_involvements * nn_weights[:, :, None]).sum(
+                        axis=1
+                    )
+                loops.edge_involvement_smooth.append(smoothed_inv)
 
-        Parameters
-        ----------
-        param_name : type
-        Description of parameter.
+    def _trajectory_identification(
+        self, threshold_involvement: float = 0.1, n_bins: int = 15, s: float = 0.1
+    ):
+        from scipy.interpolate import splev, splprep
 
-        Returns
-        -------
-        return_type
-        Description of return value.
-        """
+        coords_all = np.concatenate(
+            [lc.coordinates_edges_all for lc in self.selected_loop_classes]
+        )
+        vals_all = np.concatenate(
+            [lc.edge_values_raw_all for lc in self.selected_loop_classes]
+        ).flatten()
+        emb_all = np.concatenate(
+            [
+                np.concatenate(lc.edge_embedding_smooth)
+                for lc in self.selected_loop_classes
+            ]
+        )
+        inv_all = np.concatenate(
+            [
+                np.concatenate(lc.edge_involvement_smooth)
+                for lc in self.selected_loop_classes
+            ]
+        )
 
-        pass
+        mask_valid = inv_all > (np.max(inv_all) * threshold_involvement)
+
+        trajs = []
+        for sign in [1, -1]:
+            mask_arm = mask_valid & (np.sign(emb_all) == sign)
+            if not np.any(mask_arm):
+                continue
+
+            c_arm = coords_all[mask_arm]
+            v_arm = vals_all[mask_arm]
+            w_arm = inv_all[mask_arm]
+
+            bins = np.linspace(v_arm.min(), v_arm.max(), n_bins + 1)
+            bin_centers = []
+            spatial_centers = []
+            bin_weights = []
+
+            for i in range(n_bins):
+                m_bin = (v_arm >= bins[i]) & (v_arm < bins[i + 1])
+                if np.any(m_bin):
+                    weights_bin = w_arm[m_bin]
+                    total_weight = np.sum(weights_bin) + 1e-9
+                    center = np.average(c_arm[m_bin], axis=0, weights=weights_bin)
+
+                    bin_centers.append((bins[i] + bins[i + 1]) / 2)
+                    spatial_centers.append(center)
+                    bin_weights.append(total_weight)
+
+            if len(spatial_centers) < 4:
+                continue
+
+            pts = np.array(spatial_centers).T
+            w_pts = np.array(bin_weights)
+
+            idx_sort = np.argsort(bin_centers)
+            pts = pts[:, idx_sort]
+            w_pts = w_pts[idx_sort]
+            w_pts = w_pts / np.max(w_pts)
+
+            try:
+                tck, u = splprep(pts, w=w_pts, s=s)
+                u_fine = np.linspace(0, 1, 100)
+                traj_fine = np.array(splev(u_fine, tck)).T
+                trajs.append(traj_fine)
+            except Exception:
+                continue
+
+        self.trajectories = trajs

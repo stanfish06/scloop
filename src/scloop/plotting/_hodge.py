@@ -134,7 +134,8 @@ def loop_edge_overlay(
     *,
     components: tuple[Index_t, Index_t] | list[Index_t] = (0, 1),
     use_smooth: bool = False,
-    color_by: Literal["embedding", "gradient", "position"] = "embedding",
+    color_by: Literal["embedding", "gradient", "position", "involvement"] = "embedding",
+    show_trajectories: bool = True,
     pointsize: PositiveFloat = 10,
     figsize: tuple[PositiveFloat, PositiveFloat] = DEFAULT_FIGSIZE,
     dpi: PositiveFloat = DEFAULT_DPI,
@@ -192,6 +193,9 @@ def loop_edge_overlay(
     assert track.hodge_analysis is not None
     hodge = track.hodge_analysis
 
+    if cmap == "coolwarm" and color_by in ["involvement", "position"]:
+        cmap = "viridis"
+
     all_color_values = []
 
     for loop_class in hodge.selected_loop_classes:
@@ -199,6 +203,11 @@ def loop_edge_overlay(
             loop_class.edge_embedding_smooth
             if use_smooth
             else loop_class.edge_embedding_raw
+        )
+        edge_involvements = (
+            loop_class.edge_involvement_smooth
+            if use_smooth
+            else loop_class.edge_involvement_raw
         )
         assert edge_embeddings is not None
         assert loop_class.coordinates_edges is not None
@@ -209,6 +218,9 @@ def loop_edge_overlay(
 
             if color_by == "embedding":
                 colors = edge_emb
+            elif color_by == "involvement":
+                assert edge_involvements is not None
+                colors = edge_involvements[rep_idx]
             elif color_by == "gradient":
                 assert loop_class.edge_gradient_raw is not None
                 gradients = loop_class.edge_gradient_raw[rep_idx][valid_indices]
@@ -231,6 +243,16 @@ def loop_edge_overlay(
             lc.set_array(colors[:-1])
             lc.set_linewidth(2)
             ax.add_collection(lc)
+
+    if show_trajectories and hasattr(hodge, "trajectories") and hodge.trajectories:
+        for traj in hodge.trajectories:
+            ax.plot(
+                traj[:, components[0]],
+                traj[:, components[1]],
+                color="black",
+                linewidth=2,
+                linestyle="--",
+            )
 
     if len(all_color_values) > 0:
         if vmin is None:

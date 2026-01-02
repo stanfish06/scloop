@@ -1,8 +1,6 @@
 # Copyright 2025 Zhiyuan Yu (Heemskerk's lab, University of Michigan)
 from __future__ import annotations
 
-import multiprocessing
-import queue
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -24,9 +22,14 @@ from rich.progress import (
 from scipy.sparse import csr_matrix
 
 from ..analyzing.bootstrap import run_bootstrap_pipeline
+from ..analyzing.hodge import compute_hodge_analysis
 from ..computing.boundary import (
     compute_boundary_matrix_d0,
     compute_boundary_matrix_d1,
+)
+from ..computing.hodge_decomposition import (
+    compute_hodge_eigendecomposition,
+    compute_hodge_matrix,
 )
 from ..computing.homology import (
     compute_persistence_diagram_and_cocycles,
@@ -64,26 +67,9 @@ from .types import (
     PositiveFloat,
 )
 from .utils import (
-    loops_masks_to_edges_masks,
     loops_to_coords,
     nearest_neighbor_per_row,
 )
-
-
-def _run_eigsh_worker(
-    q: multiprocessing.Queue,
-    hodge_matrix: csr_matrix,
-    k: int,
-    tol: float,
-    maxiter: int | None,
-) -> None:
-    try:
-        from scipy.sparse.linalg import eigsh
-
-        vals, vecs = eigsh(hodge_matrix, k=k, which="SA", tol=tol, maxiter=maxiter)  # type: ignore
-        q.put(("success", (vals, vecs)))
-    except Exception as e:
-        q.put(("error", e))
 
 
 @dataclass
@@ -200,111 +186,42 @@ class HomologyData:
             raise ValueError("Boundary matrices must be computed first.")
 
         d1_rows, d1_cols, d1_vals = self.boundary_matrix_d0.data
-        bd1 = csr_matrix(
+        bd0 = csr_matrix(
             (d1_vals, (d1_rows, d1_cols)), shape=self.boundary_matrix_d0.shape
         )
 
         d2_rows, d2_cols, d2_vals = self.boundary_matrix_d1.data
-        bd2_full = csr_matrix(
+        bd1 = csr_matrix(
             (d2_vals, (d2_rows, d2_cols)), shape=self.boundary_matrix_d1.shape
         )
 
-        bd1_bd2 = bd1.dot(bd2_full)
-        assert type(bd1_bd2) is csr_matrix
-        if bd1_bd2.count_nonzero() != 0:
-            raise ValueError(
-                f"d1 @ d2 has {bd1_bd2.count_nonzero()} nonzero entries. "
-                f"Simplex orientation is incorrect."
-            )
-
         triangle_diams = np.array(self.boundary_matrix_d1.col_simplex_diams)
-        cols_use = np.where(triangle_diams <= thresh)[0]
 
-        if cols_use.size == 0:
-            logger.warning(
-                f"No triangles below threshold {thresh}. hodge_matrix_d1 is d1T*d1 only."
-            )
-            bd2 = csr_matrix(bd2_full.shape)
-        else:
-            bd2 = bd2_full[:, cols_use]
-
-        if normalized:
-            D2 = np.maximum(abs(bd2).sum(1), 1)
-            D1 = 2 * (abs(bd1) @ D2)
-            D3 = 1 / 3
-            L1 = (bd1.T.multiply(D2).multiply(1 / D1.T)) @ bd1 + (
-                (bd2 * D3) @ bd2.T
-            ).multiply(1 / D2.T)
-            L1 = L1.multiply(1 / np.sqrt(D2)).multiply(np.sqrt(D2).T)
-            hodge_matrix_d1: csr_matrix = csr_matrix(L1)
-        else:
-            hodge_matrix_d1 = csr_matrix(bd1.transpose() @ bd1 + bd2 @ bd2.transpose())
-
-        return hodge_matrix_d1
+        return compute_hodge_matrix(
+            boundary_matrix_d0=bd0,
+            boundary_matrix_d1=bd1,
+            triangle_diams=triangle_diams,
+            thresh=thresh,
+            normalized=normalized,
+        )
 
     def _compute_hodge_eigendecomposition(
         self,
         hodge_matrix: csr_matrix,
-        n_components: int = 10,
         timeout: float = DEFAULT_TIMEOUT_EIGENDECOMPOSITION,
+        n_components: int = DEFAULT_N_HODGE_COMPONENTS,
         maxiter: int | None = DEFAULT_MAXITER_EIGENDECOMPOSITION,
     ) -> tuple[np.ndarray, np.ndarray] | None:
-        assert type(hodge_matrix) is csr_matrix
-        assert hodge_matrix.shape is not None
-        if hodge_matrix.shape[0] < 2:
-            logger.warning("hodge_matrix too small for eigendecomposition (shape < 2).")
-            return None
-
-        k = min(n_components, hodge_matrix.shape[0] - 2)
-        if k <= 0:
-            logger.warning(f"Not enough dimensions for eigendecomposition (k={k}).")
-            return None
-
-        tolerances = [1e-6, 1e-5, 1e-4, 1e-3]
-
-        for tol in tolerances:
-            q = multiprocessing.Queue()
-            p = multiprocessing.Process(
-                target=_run_eigsh_worker,
-                args=(q, hodge_matrix, k, tol, maxiter),
-            )
-            p.start()
-
-            try:
-                status, result = q.get(timeout=timeout)
-                p.join()
-                if status == "success":
-                    eigenvalues, eigenvectors = result
-                    sort_idx = np.argsort(eigenvalues)
-                    return eigenvalues[sort_idx], eigenvectors[:, sort_idx]
-                else:
-                    logger.warning(
-                        f"Eigendecomposition failed with tol={tol}: {result}. Retrying..."
-                    )
-                    continue
-            except queue.Empty:
-                logger.warning(
-                    f"Eigendecomposition timed out ({timeout}s) with tol={tol}. "
-                    "Retrying with looser tolerance."
-                )
-                p.terminate()
-                p.join()
-                continue
-            except Exception as e:
-                logger.warning(
-                    f"Eigendecomposition failed with tol={tol}: {e}. Retrying..."
-                )
-                if p.is_alive():
-                    p.terminate()
-                    p.join()
-                continue
-
-        logger.error("Eigendecomposition failed after all retries.")
-        return None
+        return compute_hodge_eigendecomposition(
+            hodge_matrix=hodge_matrix,
+            n_components=n_components,
+            timeout=timeout,
+            maxiter=maxiter,
+        )
 
     def _compute_hodge_analysis_for_track(
         self,
-        idx_track: Index_t,
+        idx_track: Index_t,  # TODO: potentially allow multiple tracks and parallelize them
         values_vertices: np.ndarray,
         life_pct: Percent_t | None = None,
         n_hodge_components: int = DEFAULT_N_HODGE_COMPONENTS,
@@ -317,163 +234,30 @@ class HomologyData:
         timeout_eigendecomposition: float = DEFAULT_TIMEOUT_EIGENDECOMPOSITION,
         maxiter_eigendecomposition: int | None = DEFAULT_MAXITER_EIGENDECOMPOSITION,
     ) -> None:
-        """Analyze a specific loop track
-
-        Parameters
-        ----------
-        idx_track : Index_t
-            Index of the loop track to analyze.
-        values_vertices : np.ndarray
-            Values at vertices (e.g., pseudotime) for computing gradients.
-        life_pct : Percent_t | None
-            Percentage of lifetime to use for threshold.
-        n_hodge_components : int
-            Number of Hodge eigenvector components to compute.
-        normalized : bool
-            Whether to use normalized Hodge Laplacian.
-        n_neighbors_edge_embedding : Count_t
-            Number of neighbors for KNN smoothing of edge embedding.
-        weight_hodge : Percent_t
-            Weight for Hodge embedding vs gradient (0-1). Higher = more Hodge.
-        half_window : int
-            Half window size for along-loop smoothing. 0 disables smoothing.
-        verbose : bool
-            Whether to print progress messages.
-        progress : Progress | None
-            Rich progress object for status updates.
-
-        Returns
-        -------
-        None
-        """
-
         assert self.bootstrap_data is not None
-        assert idx_track in self.bootstrap_data.loop_tracks
+        assert self.boundary_matrix_d0 is not None
+        assert self.boundary_matrix_d1 is not None
 
-        track = self.bootstrap_data.loop_tracks[idx_track]
-
-        if life_pct is None:
-            if (
-                self.meta.bootstrap is not None
-                and self.meta.bootstrap.life_pct is not None
-            ):
-                life_pct = self.meta.bootstrap.life_pct
-            else:
-                raise ValueError("life_pct not provided and not found in metadata")
-        assert life_pct is not None
-        assert idx_track < len(self.selected_loop_classes)
-        loop_class = self.selected_loop_classes[idx_track]
-        assert loop_class is not None
-        birth_t = loop_class.birth
-        death_t = loop_class.death
-        thresh_t = birth_t + (death_t - birth_t) * life_pct
-
-        start_time = time.perf_counter()
-
-        task_step = None
-        if progress is not None:
-            task_step = progress.add_task("Computing Hodge matrix...", total=None)
-
-        if verbose:
-            logger.info("Computing Hodge matrix")
-        hodge_matrix_d1 = self._compute_hodge_matrix(
-            thresh=thresh_t, normalized=normalized
-        )
-        if hodge_matrix_d1 is None:
-            logger.warning(f"Could not compute Hodge matrix for track {idx_track}")
-            if progress is not None and task_step is not None:
-                progress.remove_task(task_step)
-            return
-
-        if progress is not None and task_step is not None:
-            progress.update(
-                task_step, description="Computing Hodge eigendecomposition..."
-            )
-
-        if verbose:
-            logger.info("Computing Hodge eigendecomposition")
-        result = self._compute_hodge_eigendecomposition(
-            hodge_matrix=hodge_matrix_d1,
-            timeout=timeout_eigendecomposition,
-            n_components=n_hodge_components,
-            maxiter=maxiter_eigendecomposition,
-        )
-
-        if result is None:
-            logger.warning(f"Eigendecomposition failed for track {idx_track}")
-            if progress is not None and task_step is not None:
-                progress.remove_task(task_step)
-            return
-
-        eigenvalues, eigenvectors = result
-
-        from .analysis_containers import HodgeAnalysis
-
-        track.hodge_analysis = HodgeAnalysis(
-            hodge_eigenvalues=eigenvalues.tolist(),
-            hodge_eigenvectors=eigenvectors.T.tolist(),  # needs transpose (columns are eig-vecs)
-        )
-
-        source_loop_class = self.selected_loop_classes[idx_track]
-        assert source_loop_class is not None
-
-        if progress is not None and task_step is not None:
-            progress.update(task_step, description="Analyzing loop classes...")
-
-        if verbose:
-            logger.info("Analyzing loop classes for track")
-        self.bootstrap_data._analyze_track_loop_classes(
+        compute_hodge_analysis(
             idx_track=idx_track,
-            source_loop_class=source_loop_class,
+            track_id=idx_track,
+            bootstrap_data=self.bootstrap_data,
+            selected_loop_classes=self.selected_loop_classes,
+            boundary_matrix_d0=self.boundary_matrix_d0,
+            boundary_matrix_d1=self.boundary_matrix_d1,
+            meta=self.meta,
             values_vertices=values_vertices,
-        )
-
-        """
-        ============= edge embedding =============
-        - compute edge masks for loops
-        - embed edges using edge masks and hodge
-        - guassian smooth edge embedding
-        - trajectory discovery
-        ==========================================
-        """
-        if progress is not None and task_step is not None:
-            progress.update(task_step, description="Embedding edges...")
-
-        if verbose:
-            logger.info("Embedding edges")
-        for loop in track.hodge_analysis.selected_loop_classes:
-            assert loop.representatives is not None
-            loops_mask, valid_indices_per_rep, edge_signs = self._loops_to_edge_mask(
-                loops=loop.representatives,
-                return_valid_indices=True,
-                use_order=True,
-            )
-            loop.valid_edge_indices_per_rep = valid_indices_per_rep
-            loop.edge_signs_per_rep = edge_signs
-            track.hodge_analysis.edges_masks_loop_classes.append(
-                loops_masks_to_edges_masks(loops_mask)
-            )
-
-        track.hodge_analysis._embed_edges(
+            life_pct=life_pct,
+            n_hodge_components=n_hodge_components,
+            normalized=normalized,
+            n_neighbors_edge_embedding=n_neighbors_edge_embedding,
             weight_hodge=weight_hodge,
             half_window=half_window,
+            verbose=verbose,
+            progress=progress,
+            timeout_eigendecomposition=timeout_eigendecomposition,
+            maxiter_eigendecomposition=maxiter_eigendecomposition,
         )
-        try:
-            if progress is not None and task_step is not None:
-                progress.update(task_step, description="Smoothing edge embedding...")
-            track.hodge_analysis._smoothening_edge_embedding(
-                n_neighbors=n_neighbors_edge_embedding
-            )
-        except Exception as e:
-            logger.warning(f"Edge smoothing failed: {e}")
-
-        if progress is not None and task_step is not None:
-            progress.remove_task(task_step)
-
-        if verbose:
-            logger.success(
-                f"Hodge analysis finished in {time.perf_counter() - start_time:.2f}s"
-            )
 
     def _compute_loop_representatives(
         self,
