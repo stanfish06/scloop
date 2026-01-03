@@ -11,6 +11,7 @@ from scipy.sparse import csr_matrix, triu
 
 from ..data.base_components import LoopClass
 from ..data.boundary import BoundaryMatrixD1
+from ..data.constants import DEFAULT_LIFE_PCT
 from ..data.types import Percent_t
 from ..data.utils import extract_edges_from_coo, loops_to_coords
 
@@ -24,7 +25,7 @@ def compute_loop_representatives(
     vertex_ids: list[int],
     top_k: int | None = None,
     n_reps_per_loop: int = 4,
-    life_pct: Percent_t = 0.1,
+    life_pct: Percent_t = DEFAULT_LIFE_PCT,
     n_cocycles_used: int = 3,
     n_force_deviate: int = 4,
     k_yen: int = 8,
@@ -151,7 +152,7 @@ def reconstruct_n_loop_representatives(
     loop_birth: float,
     loop_death: float,
     n: int,
-    life_pct: float = 0.1,
+    life_pct: float = DEFAULT_LIFE_PCT,
     n_force_deviate: int = 4,
     k_yen: int = 8,
     loop_lower_pct: float = 5,

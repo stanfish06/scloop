@@ -21,7 +21,7 @@ from ..computing.matching import (
 from ..data.analysis_containers import LoopMatch
 from ..data.base_components import LoopClass
 from ..data.boundary import BoundaryMatrixD1
-from ..data.constants import DEFAULT_N_MAX_WORKERS
+from ..data.constants import DEFAULT_LIFE_PCT, DEFAULT_N_MAX_WORKERS
 from ..data.metadata import ScloopMeta
 from ..data.types import LoopDistMethod
 from ..data.utils import nearest_neighbor_per_row
@@ -48,7 +48,7 @@ def run_single_bootstrap(
     noise_scale: float = 1e-3,
     top_k: int = 1,
     n_reps_per_loop: int = 4,
-    life_pct: float = 0.1,
+    life_pct: float = DEFAULT_LIFE_PCT,
     n_cocycles_used: int = 3,
     n_force_deviate: int = 4,
     k_yen: int = 8,

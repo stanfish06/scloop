@@ -62,7 +62,7 @@ run = [
 ]
 
 [tasks.lint]
-run = "uv run ruff check || uv run ty check"
+run = "pyright src || uv run ruff check || uv run ty check"
 
 [tasks.kernel]
 run = "uv run ipython kernel install --name 'scloop' --user"

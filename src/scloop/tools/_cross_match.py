@@ -4,7 +4,11 @@ import pandas as pd
 from anndata import AnnData
 from loguru import logger
 
-from ..data.constants import CROSS_MATCH_RESULT_KEY, DEFAULT_LOOP_DIST_METHOD
+from ..data.constants import (
+    CROSS_MATCH_RESULT_KEY,
+    DEFAULT_LOOP_DIST_METHOD,
+    DEFAULT_N_PERMUTATIONS,
+)
 from ..data.metadata import CrossDatasetMatchingMeta
 from ..data.types import Count_t, CrossMatchModelTypes, Index_t, LoopDistMethod
 from ..matching import CrossDatasetMatcher
@@ -19,7 +23,7 @@ def match_loops(
     shared_embedding_key: str,
     model_type: CrossMatchModelTypes = "nf",
     distance_method: LoopDistMethod = DEFAULT_LOOP_DIST_METHOD,
-    n_permutations: Count_t = 1000,
+    n_permutations: Count_t = DEFAULT_N_PERMUTATIONS,
     kwargs_model: dict | None = None,
     kwargs_match: dict | None = None,
 ) -> tuple[AnnData, pd.DataFrame, pd.DataFrame]:

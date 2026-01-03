@@ -48,11 +48,13 @@ from .analysis_containers import (
 from .base_components import LoopClass
 from .boundary import BoundaryMatrixD0, BoundaryMatrixD1
 from .constants import (
+    DEFAULT_LIFE_PCT,
     DEFAULT_LOOP_DIST_METHOD,
     DEFAULT_MAXITER_EIGENDECOMPOSITION,
     DEFAULT_N_HODGE_COMPONENTS,
     DEFAULT_N_MAX_WORKERS,
     DEFAULT_N_NEIGHBORS_EDGE_EMBEDDING,
+    DEFAULT_N_PAIRS_CHECK,
     DEFAULT_TIMEOUT_EIGENDECOMPOSITION,
 )
 from .metadata import BootstrapMeta, ScloopMeta
@@ -102,6 +104,174 @@ class HomologyData:
             boundary_matrix_d1=self.boundary_matrix_d1,
             return_valid_indices=return_valid_indices,
             use_order=use_order,
+        )
+
+    def to_hdf5_group(self, group, compress: bool = True) -> None:
+
+        kw = {"compression": "gzip"} if compress else {}
+
+        # meta
+        meta_grp = group.create_group("meta")
+        self.meta.to_hdf5_group(meta_grp, compress=compress)
+
+        # persistence_diagram: list of [births, deaths] per dimension
+        if self.persistence_diagram is not None:
+            pd_grp = group.create_group("persistence_diagram")
+            pd_grp.attrs["_n_dims"] = len(self.persistence_diagram)
+            for dim_idx, dim_pd in enumerate(self.persistence_diagram):
+                dim_grp = pd_grp.create_group(str(dim_idx))
+                if dim_pd is not None and len(dim_pd) >= 2:
+                    dim_grp.create_dataset(
+                        "births", data=np.asarray(dim_pd[0], dtype=np.float64), **kw
+                    )
+                    dim_grp.create_dataset(
+                        "deaths", data=np.asarray(dim_pd[1], dtype=np.float64), **kw
+                    )
+
+        # cocycles: list of list of (vertices, coeff) per dimension
+        if self.cocycles is not None:
+            cc_grp = group.create_group("cocycles")
+            cc_grp.attrs["_n_dims"] = len(self.cocycles)
+            for dim_idx, dim_cocycles in enumerate(self.cocycles):
+                dim_grp = cc_grp.create_group(str(dim_idx))
+                if dim_cocycles is not None:
+                    dim_grp.attrs["_n_cocycles"] = len(dim_cocycles)
+                    for cc_idx, cocycle in enumerate(dim_cocycles):
+                        cc_subgrp = dim_grp.create_group(str(cc_idx))
+                        if cocycle is not None and len(cocycle) > 0:
+                            verts_list = []
+                            coeffs_list = []
+                            for simplex in cocycle:
+                                try:
+                                    verts, coeff = simplex
+                                    verts_list.append(list(verts))
+                                    coeffs_list.append(int(coeff))
+                                except (ValueError, TypeError):
+                                    continue
+                            if verts_list:
+                                max_len = max(len(v) for v in verts_list)
+                                verts_arr = np.full(
+                                    (len(verts_list), max_len), -1, dtype=np.int64
+                                )
+                                for i, v in enumerate(verts_list):
+                                    verts_arr[i, : len(v)] = v
+                                cc_subgrp.create_dataset(
+                                    "vertices", data=verts_arr, **kw
+                                )
+                                cc_subgrp.create_dataset(
+                                    "coefficients",
+                                    data=np.array(coeffs_list, dtype=np.int32),
+                                    **kw,
+                                )
+
+        # selected_loop_classes
+        slc_grp = group.create_group("selected_loop_classes")
+        slc_grp.attrs["_count"] = len(self.selected_loop_classes)
+        for i, lc in enumerate(self.selected_loop_classes):
+            lc_grp = slc_grp.create_group(str(i))
+            if lc is None:
+                lc_grp.attrs["_is_none"] = True
+            else:
+                lc_grp.attrs["_is_none"] = False
+                lc.to_hdf5_group(lc_grp, compress=compress)
+
+        # boundary matrices
+        if self.boundary_matrix_d1 is not None:
+            bd1_grp = group.create_group("boundary_matrix_d1")
+            self.boundary_matrix_d1.to_hdf5_group(bd1_grp, compress=compress)
+
+        if self.boundary_matrix_d0 is not None:
+            bd0_grp = group.create_group("boundary_matrix_d0")
+            self.boundary_matrix_d0.to_hdf5_group(bd0_grp, compress=compress)
+
+        # bootstrap data
+        if self.bootstrap_data is not None:
+            boot_grp = group.create_group("bootstrap_data")
+            self.bootstrap_data.to_hdf5_group(boot_grp, compress=compress)
+
+    @classmethod
+    def from_hdf5_group(cls, group) -> "HomologyData":
+        import h5py
+
+        # meta
+        meta_grp: h5py.Group = group["meta"]  # type: ignore[assignment]
+        meta = ScloopMeta.from_hdf5_group(meta_grp)
+
+        # persistence_diagram
+        persistence_diagram = None
+        if "persistence_diagram" in group:
+            pd_grp: h5py.Group = group["persistence_diagram"]  # type: ignore[assignment]
+            n_dims = int(pd_grp.attrs["_n_dims"])  # type: ignore[arg-type]
+            persistence_diagram = []
+            for dim_idx in range(n_dims):
+                dim_grp: h5py.Group = pd_grp[str(dim_idx)]  # type: ignore[assignment]
+                if "births" in dim_grp and "deaths" in dim_grp:
+                    births = np.asarray(dim_grp["births"]).tolist()
+                    deaths = np.asarray(dim_grp["deaths"]).tolist()
+                    persistence_diagram.append([births, deaths])
+                else:
+                    persistence_diagram.append(None)
+
+        # cocycles
+        cocycles = None
+        if "cocycles" in group:
+            cc_grp: h5py.Group = group["cocycles"]  # type: ignore[assignment]
+            n_dims = int(cc_grp.attrs["_n_dims"])  # type: ignore[arg-type]
+            cocycles = []
+            for dim_idx in range(n_dims):
+                dim_grp: h5py.Group = cc_grp[str(dim_idx)]  # type: ignore[assignment]
+                n_cocycles = int(dim_grp.attrs.get("_n_cocycles", 0))  # type: ignore[arg-type]
+                dim_cocycles = []
+                for cc_idx in range(n_cocycles):
+                    cc_subgrp: h5py.Group = dim_grp[str(cc_idx)]  # type: ignore[assignment]
+                    if "vertices" in cc_subgrp and "coefficients" in cc_subgrp:
+                        verts_arr = np.asarray(cc_subgrp["vertices"])
+                        coeffs_arr = np.asarray(cc_subgrp["coefficients"])
+                        cocycle = []
+                        for i in range(len(coeffs_arr)):
+                            verts = [int(v) for v in verts_arr[i] if v >= 0]
+                            cocycle.append((verts, int(coeffs_arr[i])))
+                        dim_cocycles.append(cocycle)
+                    else:
+                        dim_cocycles.append([])
+                cocycles.append(dim_cocycles)
+
+        # selected_loop_classes
+        selected_loop_classes: list[LoopClass | None] = []
+        slc_grp: h5py.Group = group["selected_loop_classes"]  # type: ignore[assignment]
+        n_lcs = int(slc_grp.attrs["_count"])  # type: ignore[arg-type]
+        for i in range(n_lcs):
+            lc_grp: h5py.Group = slc_grp[str(i)]  # type: ignore[assignment]
+            if lc_grp.attrs.get("_is_none", False):
+                selected_loop_classes.append(None)
+            else:
+                selected_loop_classes.append(LoopClass.from_hdf5_group(lc_grp))
+
+        # boundary matrices
+        boundary_matrix_d1 = None
+        if "boundary_matrix_d1" in group:
+            bd1_grp: h5py.Group = group["boundary_matrix_d1"]  # type: ignore[assignment]
+            boundary_matrix_d1 = BoundaryMatrixD1.from_hdf5_group(bd1_grp)
+
+        boundary_matrix_d0 = None
+        if "boundary_matrix_d0" in group:
+            bd0_grp: h5py.Group = group["boundary_matrix_d0"]  # type: ignore[assignment]
+            boundary_matrix_d0 = BoundaryMatrixD0.from_hdf5_group(bd0_grp)
+
+        # bootstrap data
+        bootstrap_data = None
+        if "bootstrap_data" in group:
+            boot_grp: h5py.Group = group["bootstrap_data"]  # type: ignore[assignment]
+            bootstrap_data = BootstrapAnalysis.from_hdf5_group(boot_grp)
+
+        return cls(
+            meta=meta,
+            persistence_diagram=persistence_diagram,
+            cocycles=cocycles,
+            selected_loop_classes=selected_loop_classes,
+            boundary_matrix_d1=boundary_matrix_d1,
+            boundary_matrix_d0=boundary_matrix_d0,
+            bootstrap_data=bootstrap_data,
         )
 
     def _compute_homology(
@@ -267,7 +437,7 @@ class HomologyData:
         bootstrap: bool = False,
         idx_bootstrap: int = 0,
         n_reps_per_loop: int = 4,
-        life_pct: Percent_t = 0.1,
+        life_pct: Percent_t = DEFAULT_LIFE_PCT,
         n_cocycles_used: int = 3,
         n_force_deviate: int = 4,
         k_yen: int = 8,
@@ -425,7 +595,7 @@ class HomologyData:
         source_class_idx: int,
         target_class_idx: int | None = None,
         idx_bootstrap: int = 0,
-        n_pairs_check: int = 10,
+        n_pairs_check: int = DEFAULT_N_PAIRS_CHECK,
         extra_diameter_homology_equivalence: PositiveFloat = 0.2,
         filter_column_homology_equivalence: bool = True,
     ) -> tuple[int, int, bool]:
@@ -507,7 +677,7 @@ class HomologyData:
         top_k: int = 1,
         noise_scale: float = 1e-3,
         n_reps_per_loop: int = 4,
-        life_pct: float = 0.1,
+        life_pct: float = DEFAULT_LIFE_PCT,
         n_cocycles_used: int = 3,
         n_force_deviate: int = 4,
         k_yen: int = 8,
@@ -730,7 +900,7 @@ class HomologyData:
         top_k: int = 1,
         noise_scale: float = 1e-3,
         n_reps_per_loop: int = 4,
-        life_pct: float = 0.1,
+        life_pct: float = DEFAULT_LIFE_PCT,
         n_cocycles_used: int = 3,
         n_force_deviate: int = 4,
         k_yen: int = 8,

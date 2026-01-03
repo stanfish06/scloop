@@ -2,12 +2,16 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 
 import numpy as np
 from pydantic import BaseModel, ValidationInfo, field_validator
 
 from .types import Diameter_t, Index_t, Size_t
 from .utils import decode_edges, decode_triangles
+
+if TYPE_CHECKING:
+    import h5py
 
 
 class BoundaryMatrix(BaseModel, ABC):
@@ -52,6 +56,50 @@ class BoundaryMatrix(BaseModel, ABC):
     def col_simplex_decode(self) -> list:
         pass
 
+    def to_hdf5_group(self, group: h5py.Group, compress: bool = True) -> None:
+        group.attrs["num_vertices"] = self.num_vertices
+        group.attrs["shape"] = self.shape
+
+        kw = {"compression": "gzip"} if compress else {}
+        rows, cols, vals = self.data
+        data_grp = group.create_group("data")
+        data_grp.create_dataset("rows", data=np.array(rows, dtype=np.int64), **kw)
+        data_grp.create_dataset("cols", data=np.array(cols, dtype=np.int64), **kw)
+        data_grp.create_dataset("vals", data=np.array(vals, dtype=np.int8), **kw)
+
+        group.create_dataset(
+            "row_simplex_ids", data=np.array(self.row_simplex_ids, dtype=np.int64), **kw
+        )
+        group.create_dataset(
+            "col_simplex_ids", data=np.array(self.col_simplex_ids, dtype=np.int64), **kw
+        )
+        group.create_dataset(
+            "row_simplex_diams",
+            data=np.array(self.row_simplex_diams, dtype=np.float64),
+            **kw,
+        )
+        group.create_dataset(
+            "col_simplex_diams",
+            data=np.array(self.col_simplex_diams, dtype=np.float64),
+            **kw,
+        )
+
+    @classmethod
+    def _from_hdf5_group_data(cls, group: h5py.Group) -> dict:
+        data_grp: h5py.Group = group["data"]  # type: ignore[assignment]
+        rows = np.asarray(data_grp["rows"]).tolist()
+        cols = np.asarray(data_grp["cols"]).tolist()
+        vals = np.asarray(data_grp["vals"]).tolist()
+        return {
+            "num_vertices": int(group.attrs["num_vertices"]),  # type: ignore[arg-type]
+            "data": (rows, cols, vals),
+            "shape": tuple(group.attrs["shape"]),  # type: ignore[arg-type]
+            "row_simplex_ids": np.asarray(group["row_simplex_ids"]).tolist(),
+            "col_simplex_ids": np.asarray(group["col_simplex_ids"]).tolist(),
+            "row_simplex_diams": np.asarray(group["row_simplex_diams"]).tolist(),
+            "col_simplex_diams": np.asarray(group["col_simplex_diams"]).tolist(),
+        }
+
 
 class BoundaryMatrixD1(BoundaryMatrix):
     _cached_edge_set: set[tuple[Index_t, Index_t]] | None = None
@@ -70,6 +118,15 @@ class BoundaryMatrixD1(BoundaryMatrix):
             self._cached_edge_set = set(self.row_simplex_decode)
         return self._cached_edge_set
 
+    def to_hdf5_group(self, group: h5py.Group, compress: bool = True) -> None:
+        group.attrs["_type"] = "BoundaryMatrixD1"
+        super().to_hdf5_group(group, compress=compress)
+
+    @classmethod
+    def from_hdf5_group(cls, group: h5py.Group) -> BoundaryMatrixD1:
+        data = cls._from_hdf5_group_data(group)
+        return cls(**data)
+
 
 class BoundaryMatrixD0(BoundaryMatrix):
     @property
@@ -79,3 +136,12 @@ class BoundaryMatrixD0(BoundaryMatrix):
     @property
     def col_simplex_decode(self) -> list[tuple[Index_t, Index_t]]:
         return decode_edges(np.array(self.col_simplex_ids), self.num_vertices)
+
+    def to_hdf5_group(self, group: h5py.Group, compress: bool = True) -> None:
+        group.attrs["_type"] = "BoundaryMatrixD0"
+        super().to_hdf5_group(group, compress=compress)
+
+    @classmethod
+    def from_hdf5_group(cls, group: h5py.Group) -> BoundaryMatrixD0:
+        data = cls._from_hdf5_group_data(group)
+        return cls(**data)

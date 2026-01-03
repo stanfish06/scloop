@@ -1,7 +1,7 @@
 # Copyright 2025 Zhiyuan Yu (Heemskerk's lab, University of Michigan)
 from __future__ import annotations
 
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
@@ -29,6 +29,9 @@ from .utils import (
     smooth_along_loop_2d,
 )
 
+if TYPE_CHECKING:
+    import h5py
+
 
 @dataclass(config=ConfigDict(arbitrary_types_allowed=True))
 class LoopMatch:
@@ -36,6 +39,65 @@ class LoopMatch:
     target_class_idx: int
     geometric_distance: Optional[float] = None
     neighbor_rank: Optional[int] = None
+
+
+def _serialize_loop_matches(
+    matches: list[LoopMatch], group: h5py.Group, compress: bool = True
+) -> None:
+    if not matches:
+        group.attrs["_count"] = 0
+        return
+
+    group.attrs["_count"] = len(matches)
+    kw = {"compression": "gzip"} if compress else {}
+    group.create_dataset(
+        "idx_bootstrap",
+        data=np.array([m.idx_bootstrap for m in matches], dtype=np.int64),
+        **kw,
+    )
+    group.create_dataset(
+        "target_class_idx",
+        data=np.array([m.target_class_idx for m in matches], dtype=np.int64),
+        **kw,
+    )
+    geo_dists = [
+        m.geometric_distance if m.geometric_distance is not None else np.nan
+        for m in matches
+    ]
+    group.create_dataset(
+        "geometric_distance", data=np.array(geo_dists, dtype=np.float64), **kw
+    )
+    neighbor_ranks = [
+        m.neighbor_rank if m.neighbor_rank is not None else -1 for m in matches
+    ]
+    group.create_dataset(
+        "neighbor_rank", data=np.array(neighbor_ranks, dtype=np.int64), **kw
+    )
+
+
+def _deserialize_loop_matches(group: h5py.Group) -> list[LoopMatch]:
+    count = int(group.attrs.get("_count", 0))
+    if count == 0:
+        return []
+
+    idx_bootstraps = np.asarray(group["idx_bootstrap"])
+    target_class_idxs = np.asarray(group["target_class_idx"])
+    geo_dists = np.asarray(group["geometric_distance"])
+    neighbor_ranks = np.asarray(group["neighbor_rank"])
+
+    matches = []
+    for i in range(count):
+        geo_dist = float(geo_dists[i]) if not np.isnan(geo_dists[i]) else None
+        rank = int(neighbor_ranks[i]) if neighbor_ranks[i] >= 0 else None
+        matches.append(
+            LoopMatch(
+                idx_bootstrap=int(idx_bootstraps[i]),
+                target_class_idx=int(target_class_idxs[i]),
+                geometric_distance=geo_dist,
+                neighbor_rank=rank,
+            )
+        )
+    return matches
 
 
 @dataclass
@@ -54,6 +116,22 @@ class LoopTrack:
         if self.matches is None:
             return []
         return [(m.idx_bootstrap, m.target_class_idx) for m in self.matches]
+
+    def to_hdf5_group(self, group: h5py.Group, compress: bool = True) -> None:
+        group.attrs["_type"] = "LoopTrack"
+        group.attrs["source_class_idx"] = self.source_class_idx
+
+        matches_grp = group.create_group("matches")
+        _serialize_loop_matches(self.matches, matches_grp, compress=compress)
+
+    @classmethod
+    def from_hdf5_group(cls, group: h5py.Group) -> LoopTrack:
+        source_class_idx = int(group.attrs["source_class_idx"])  # type: ignore[arg-type]
+        matches_grp: h5py.Group = group["matches"]  # type: ignore[assignment]
+        matches = _deserialize_loop_matches(matches_grp)
+        return cls(
+            source_class_idx=source_class_idx, matches=matches, hodge_analysis=None
+        )
 
 
 @dataclass
@@ -256,6 +334,88 @@ class BootstrapAnalysis:
             gamma_null_params=self.gamma_null_params,
         )
         return self.gamma_persistence_results
+
+    def to_hdf5_group(self, group: h5py.Group, compress: bool = True) -> None:
+        group.attrs["_type"] = "BootstrapAnalysis"
+        group.attrs["num_bootstraps"] = self.num_bootstraps
+
+        kw = {"compression": "gzip"} if compress else {}
+
+        slc_grp = group.create_group("selected_loop_classes")
+        slc_grp.attrs["_count"] = len(self.selected_loop_classes)
+        for boot_idx, loop_classes in enumerate(self.selected_loop_classes):
+            boot_grp = slc_grp.create_group(str(boot_idx))
+            boot_grp.attrs["_count"] = len(loop_classes)
+            for lc_idx, lc in enumerate(loop_classes):
+                lc_grp = boot_grp.create_group(str(lc_idx))
+                if lc is None:
+                    lc_grp.attrs["_is_none"] = True
+                else:
+                    lc_grp.attrs["_is_none"] = False
+                    lc.to_hdf5_group(lc_grp, compress=compress)
+
+        # loop_tracks: dict[int, LoopTrack]
+        tracks_grp = group.create_group("loop_tracks")
+        for track_id, track in self.loop_tracks.items():
+            track_grp = tracks_grp.create_group(str(track_id))
+            track.to_hdf5_group(track_grp, compress=compress)
+
+        # test results
+        if self.fisher_presence_results is not None:
+            fisher_grp = group.create_group("fisher_presence_results")
+            self.fisher_presence_results.to_hdf5_group(fisher_grp, compress=compress)
+
+        if self.gamma_persistence_results is not None:
+            gamma_grp = group.create_group("gamma_persistence_results")
+            self.gamma_persistence_results.to_hdf5_group(gamma_grp, compress=compress)
+
+    @classmethod
+    def from_hdf5_group(cls, group: h5py.Group) -> BootstrapAnalysis:
+        num_bootstraps = int(group.attrs["num_bootstraps"])  # type: ignore[arg-type]
+
+        # selected_loop_classes
+        selected_loop_classes: list[list[LoopClass | None]] = []
+        slc_grp: h5py.Group = group["selected_loop_classes"]  # type: ignore[assignment]
+        n_boots = int(slc_grp.attrs["_count"])  # type: ignore[arg-type]
+        for boot_idx in range(n_boots):
+            boot_grp: h5py.Group = slc_grp[str(boot_idx)]  # type: ignore[assignment]
+            n_lcs = int(boot_grp.attrs["_count"])  # type: ignore[arg-type]
+            loop_classes: list[LoopClass | None] = []
+            for lc_idx in range(n_lcs):
+                lc_grp: h5py.Group = boot_grp[str(lc_idx)]  # type: ignore[assignment]
+                if lc_grp.attrs.get("_is_none", False):
+                    loop_classes.append(None)
+                else:
+                    loop_classes.append(LoopClass.from_hdf5_group(lc_grp))
+            selected_loop_classes.append(loop_classes)
+
+        # loop_tracks
+        loop_tracks: dict[int, LoopTrack] = {}
+        tracks_grp: h5py.Group = group["loop_tracks"]  # type: ignore[assignment]
+        for track_id_str in tracks_grp.keys():
+            track_grp: h5py.Group = tracks_grp[track_id_str]  # type: ignore[assignment]
+            loop_tracks[int(track_id_str)] = LoopTrack.from_hdf5_group(track_grp)
+
+        # test results
+        fisher_presence_results = None
+        if "fisher_presence_results" in group:
+            fisher_grp: h5py.Group = group["fisher_presence_results"]  # type: ignore[assignment]
+            fisher_presence_results = PresenceTestResult.from_hdf5_group(fisher_grp)
+
+        gamma_persistence_results = None
+        if "gamma_persistence_results" in group:
+            gamma_grp: h5py.Group = group["gamma_persistence_results"]  # type: ignore[assignment]
+            gamma_persistence_results = PersistenceTestResult.from_hdf5_group(gamma_grp)
+
+        return cls(
+            num_bootstraps=num_bootstraps,
+            persistence_diagrams=[],
+            cocycles=[],
+            selected_loop_classes=selected_loop_classes,
+            loop_tracks=loop_tracks,
+            fisher_presence_results=fisher_presence_results,
+            gamma_persistence_results=gamma_persistence_results,
+        )
 
 
 class LoopClassAnalysis(LoopClass):

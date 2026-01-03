@@ -8,6 +8,7 @@ from ..computing.homology import (
     compute_loop_homological_equivalence,
 )
 from ..data.boundary import BoundaryMatrixD1
+from ..data.constants import DEFAULT_N_PAIRS_CHECK
 from ..data.types import Count_t, LoopDistMethod, PositiveFloat
 from ..data.utils import loop_vertices_to_edge_ids_with_signs
 
@@ -74,7 +75,7 @@ def check_homological_equivalence(
     source_loops: list[list[int]],
     target_loops: list[list[int]],
     boundary_matrix_d1: BoundaryMatrixD1,
-    n_pairs_check: int = 10,
+    n_pairs_check: int = DEFAULT_N_PAIRS_CHECK,
     max_column_diameter: PositiveFloat | None = None,
 ) -> bool:
     if len(source_loops) == 0 or len(target_loops) == 0:
