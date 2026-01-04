@@ -818,7 +818,7 @@ class HodgeAnalysis(BaseModel):
             w_pts = w_pts / np.max(w_pts)
 
             try:
-                # TODO: how to make it more robust?
+                # TODO: how to make it more robust? Weight centers by involvement sometims make trajectories overally biased at narrow region
                 # tck, u = splprep(pts, w=w_pts, s=s)
                 tck, u = splprep(pts)
                 u_fine = np.linspace(0, 1, n_bins * 10)

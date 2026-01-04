@@ -564,11 +564,17 @@ class HomologyData:
                             )
                 if include_bootstrap:
                     assert self.bootstrap_data is not None
-                    loops.extend(
-                        self.bootstrap_data._get_track_embedding(
-                            idx_track=selector, embedding_alt=embedding_alt
+                    if selector in self.bootstrap_data.loop_tracks:
+                        loops.extend(
+                            self.bootstrap_data._get_track_embedding(
+                                idx_track=selector, embedding_alt=embedding_alt
+                            )
                         )
-                    )
+                    else:
+                        logger.warning(
+                            f"No bootstrap track found for loop {selector}. "
+                            "Only original loop embedding will be used."
+                        )
             case tuple():
                 assert self.bootstrap_data is not None
                 assert selector[0] < len(self.bootstrap_data.selected_loop_classes)
