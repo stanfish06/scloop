@@ -22,26 +22,26 @@ extensions = [
         extra_compile_args=["-fopenmp"],
         extra_link_args=["-fopenmp"],
     ),
-    Extension(
-        "scloop.utils.linear_algebra_gf2.gf2toolkit_lib",
-        sources=[
-            "./src/scloop/utils/linear_algebra_gf2/gf2toolkit_lib.pyx",
-            "./src/scloop/utils/linear_algebra_gf2/gf2toolkit_wrapper.cpp",
-        ],
-        include_dirs=[
-            gf2_dir,
-            gf2toolkit_srcs,
-            os.path.join(gf2_dir, "include"),
-            os.path.join(gf2_dir, "GF2toolkit/submodules/m4ri"),
-        ],
-        extra_objects=[
-            os.path.join(gf2_dir, "libGF2toolkit.a"),
-            os.path.join(gf2_dir, "libm4ri.a"),
-        ],
-        language="c++",
-        extra_compile_args=["-std=c++11", "-O3", "-fopenmp"],
-        extra_link_args=["-fopenmp"],
-    ),
+    # Extension(
+    #     "scloop.utils.linear_algebra_gf2.gf2toolkit_lib",
+    #     sources=[
+    #         "./src/scloop/utils/linear_algebra_gf2/gf2toolkit_lib.pyx",
+    #         "./src/scloop/utils/linear_algebra_gf2/gf2toolkit_wrapper.cpp",
+    #     ],
+    #     include_dirs=[
+    #         gf2_dir,
+    #         gf2toolkit_srcs,
+    #         os.path.join(gf2_dir, "include"),
+    #         os.path.join(gf2_dir, "GF2toolkit/submodules/m4ri"),
+    #     ],
+    #     extra_objects=[
+    #         os.path.join(gf2_dir, "libGF2toolkit.a"),
+    #         os.path.join(gf2_dir, "libm4ri.a"),
+    #     ],
+    #     language="c++",
+    #     extra_compile_args=["-std=c++11", "-O3", "-fopenmp"],
+    #     extra_link_args=["-fopenmp"],
+    # ),
     Extension(
         "scloop.utils.distance_metrics.frechet",
         sources=[

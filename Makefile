@@ -5,6 +5,14 @@ PROJECT_ROOT := $(shell pwd)
 M4RI_SRC := $(PROJECT_ROOT)/src/scloop/utils/linear_algebra_gf2/m4ri
 M4RI_PREFIX := $(PROJECT_ROOT)/src/scloop/utils/linear_algebra_gf2
 DM_PREFIX := $(PROJECT_ROOT)/src/scloop/utils/distance_metrics
+GF2TOOLKIT_SRC := $(PROJECT_ROOT)/src/scloop/utils/linear_algebra_gf2/GF2toolkit
+GF2TOOLKIT_PREFIX := $(PROJECT_ROOT)/src/scloop/utils/linear_algebra_gf2
+
+build-gf2toolkit: build-m4ri
+	cd $(GF2TOOLKIT_SRC) && \
+		$(MAKE) clean || true && \
+		$(MAKE) libGF2toolkit.a INC="-Isrcs -I$(M4RI_PREFIX)/include" AR="ar rcs"
+	cp $(GF2TOOLKIT_SRC)/libGF2toolkit.a $(GF2TOOLKIT_PREFIX)/
 
 build-m4ri:
 	cd $(M4RI_SRC) && \
