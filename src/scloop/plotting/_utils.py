@@ -12,6 +12,26 @@ from ..data.types import PositiveFloat
 
 
 @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
+def savefig_or_show(
+    name: str,
+    show: bool | None = None,
+    save: str | bool | None = None,
+) -> None:
+    if save is not None:
+        if isinstance(save, str):
+            filename = save
+        else:
+            filename = f"scloop_{name}.png"
+        plt.savefig(filename, bbox_inches="tight")
+
+    if show is None:
+        show = save is None
+
+    if show:
+        plt.show()
+
+
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def _create_figure_standard(
     figsize: tuple[PositiveFloat, PositiveFloat] = DEFAULT_FIGSIZE,
     dpi: PositiveFloat = DEFAULT_DPI,

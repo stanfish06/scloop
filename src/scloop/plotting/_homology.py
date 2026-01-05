@@ -11,7 +11,7 @@ from ..data.analysis_containers import BootstrapAnalysis
 from ..data.constants import DEFAULT_DPI, DEFAULT_FIGSIZE, SCLOOP_UNS_KEY
 from ..data.containers import HomologyData
 from ..data.types import Index_t, PositiveFloat
-from ._utils import _create_figure_standard, _get_homology_data
+from ._utils import _create_figure_standard, _get_homology_data, savefig_or_show
 
 __all__ = [
     "hist_lifetimes",
@@ -71,7 +71,9 @@ def hist_lifetimes(
     show_bootstrap: bool = True,
     figsize: tuple[PositiveFloat, PositiveFloat] = DEFAULT_FIGSIZE,
     dpi: PositiveFloat = DEFAULT_DPI,
-) -> Axes:
+    show: bool | None = None,
+    save: str | bool | None = None,
+) -> Axes | None:
     kwargs_axes = kwargs_axes or {}
     kwargs_axes.setdefault("rect", (0, 0, 1, 1))
     kwargs_axes.setdefault("aspect", "auto")
@@ -109,7 +111,10 @@ def hist_lifetimes(
     lifetime_full = lifetime_full[1] - lifetime_full[0]
     ax.hist(lifetime_full, **(kwargs_hist or {}))
 
-    return ax
+    savefig_or_show(name="hist_lifetimes", show=show, save=save)
+    if show is False:
+        return ax
+    return None
 
 
 @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
@@ -126,8 +131,10 @@ def bar_lifetimes(
     kwargs_figure: dict | None = None,
     kwargs_axes: dict | None = None,
     kwargs_layout: dict | None = None,
+    show: bool | None = None,
+    save: str | bool | None = None,
     **kwargs,
-) -> Axes:
+) -> Axes | None:
     kwargs_axes = kwargs_axes or {}
     kwargs_axes.setdefault("rect", (0, 0, 1, 1))
     kwargs_axes.setdefault("aspect", "auto")
@@ -222,7 +229,10 @@ def bar_lifetimes(
                 **kwargs,
             )
 
-    return ax
+    savefig_or_show(name="bar_lifetimes", show=show, save=save)
+    if show is False:
+        return ax
+    return None
 
 
 @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
@@ -242,7 +252,9 @@ def persistence_diagram(
     kwargs_layout: dict | None = None,
     kwargs_scatter: dict | None = None,
     kwargs_line: dict | None = None,
-) -> Axes:
+    show: bool | None = None,
+    save: str | bool | None = None,
+) -> Axes | None:
     data = _get_homology_data(adata, key_homology)
 
     kwargs_axes = kwargs_axes or {}
@@ -339,7 +351,10 @@ def persistence_diagram(
         linestyle="--",
         **(kwargs_line or {}),
     )
-    return ax
+    savefig_or_show(name="persistence_diagram", show=show, save=save)
+    if show is False:
+        return ax
+    return None
 
 
 @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
@@ -360,7 +375,9 @@ def loops(
     kwargs_axes: dict | None = None,
     kwargs_layout: dict | None = None,
     kwargs_scatter: dict | None = None,
-) -> Axes:
+    show: bool | None = None,
+    save: str | bool | None = None,
+) -> Axes | None:
     data = _get_homology_data(adata, key_homology)
     if len(components) != 2:
         raise ValueError("components must contain exactly two entries.")
@@ -443,4 +460,7 @@ def loops(
                 **(kwargs_scatter or {}),
             )
 
-    return ax
+    savefig_or_show(name="loops", show=show, save=save)
+    if show is False:
+        return ax
+    return None

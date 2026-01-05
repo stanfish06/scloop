@@ -18,8 +18,8 @@ from ..data.ripser_lib import (  # type: ignore[import-not-found]
 from ..data.types import Count_t, Diameter_t, IndexListDistMatrix, LoopDistMethod
 from ..data.utils import encode_triangles_and_edges
 from ..utils.distance_metrics.frechet_py import compute_pairwise_loop_frechet
-from ..utils.linear_algebra_gf2.m4ri_lib import (  # type: ignore
-    solve_multiple_gf2,  # type: ignore[import-not-found]
+from ..utils.linear_algebra_gf2 import (  # type: ignore
+    solve_multiple_gf2_m4ri,  # type: ignore[import-not-found]
 )
 
 if TYPE_CHECKING:
@@ -225,7 +225,7 @@ def compute_loop_homological_equivalence(
     one_idx_b_list = [
         np.flatnonzero(loop_sums[i]).astype(int).tolist() for i in range(n_pairs_check)
     ]
-    results, solutions = solve_multiple_gf2(
+    results, solutions = solve_multiple_gf2_m4ri(
         one_ridx_A=one_ridx_A.tolist(),
         one_cidx_A=one_cidx_A.tolist(),
         nrow_A=nrow_A,

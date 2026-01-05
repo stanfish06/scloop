@@ -9,7 +9,7 @@ from pydantic import ConfigDict, validate_call
 
 from ..data.constants import DEFAULT_DPI, DEFAULT_FIGSIZE, SCLOOP_UNS_KEY
 from ..data.types import Index_t, PositiveFloat
-from ._utils import _create_figure_standard, _get_homology_data
+from ._utils import _create_figure_standard, _get_homology_data, savefig_or_show
 
 __all__ = ["plot_trajectory", "plot_gene_trends"]
 
@@ -31,7 +31,9 @@ def plot_trajectory(
     kwargs_axes: dict | None = None,
     kwargs_layout: dict | None = None,
     kwargs_scatter: dict | None = None,
-) -> Axes:
+    show: bool | None = None,
+    save: str | bool | None = None,
+) -> Axes | None:
     data = _get_homology_data(adata, key_homology)
 
     if basis in adata.obsm:
@@ -116,7 +118,10 @@ def plot_trajectory(
             )
         ax.legend()
 
-    return ax
+    savefig_or_show(name="plot_trajectory", show=show, save=save)
+    if show is False:
+        return ax
+    return None
 
 
 @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
@@ -135,7 +140,9 @@ def plot_gene_trends(
     kwargs_layout: dict | None = None,
     kwargs_plot: dict | None = None,
     cmap: str = "tab10",
-) -> Axes:
+    show: bool | None = None,
+    save: str | bool | None = None,
+) -> Axes | None:
     from matplotlib.colors import ListedColormap
 
     from .custom_colormaps import dye, earth, gem12, meadow, reef
@@ -265,4 +272,7 @@ def plot_gene_trends(
     ax.set_ylabel("Gene Expression")
     ax.legend(bbox_to_anchor=(1.05, 1), loc="upper left", fontsize=8)
 
-    return ax
+    savefig_or_show(name="plot_gene_trends", show=show, save=save)
+    if show is False:
+        return ax
+    return None

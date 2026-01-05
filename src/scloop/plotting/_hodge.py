@@ -13,7 +13,7 @@ from pydantic import ConfigDict, validate_call
 
 from ..data.constants import DEFAULT_DPI, DEFAULT_FIGSIZE, SCLOOP_UNS_KEY
 from ..data.types import Index_t, PositiveFloat
-from ._utils import _create_figure_standard, _get_homology_data
+from ._utils import _create_figure_standard, _get_homology_data, savefig_or_show
 
 __all__ = [
     "loop_edge_embedding",
@@ -38,7 +38,9 @@ def loop_edge_embedding(
     kwargs_layout: dict | None = None,
     kwargs_scatter: dict | None = None,
     cmap: str = "coolwarm",
-) -> Axes:
+    show: bool | None = None,
+    save: str | bool | None = None,
+) -> Axes | None:
     data = _get_homology_data(adata, key_homology)
 
     kwargs_axes = kwargs_axes or {}
@@ -121,7 +123,10 @@ def loop_edge_embedding(
     if len(ax.collections) > 0:
         plt.colorbar(ax.collections[-1], ax=ax)
 
-    return ax
+    savefig_or_show(name="loop_edge_embedding", show=show, save=save)
+    if show is False:
+        return ax
+    return None
 
 
 @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
@@ -147,7 +152,9 @@ def loop_edge_overlay(
     cmap: str = "coolwarm",
     vmin: float | None = None,
     vmax: float | None = None,
-) -> Axes:
+    show: bool | None = None,
+    save: str | bool | None = None,
+) -> Axes | None:
     data = _get_homology_data(adata, key_homology)
 
     if basis in adata.obsm:
@@ -269,4 +276,7 @@ def loop_edge_overlay(
         sm.set_array([])
         plt.colorbar(sm, ax=ax)
 
-    return ax
+    savefig_or_show(name="loop_edge_overlay", show=show, save=save)
+    if show is False:
+        return ax
+    return None

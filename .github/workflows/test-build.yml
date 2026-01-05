@@ -36,6 +36,12 @@ jobs:
         source .venv/bin/activate
         make build-m4ri
 
+    - name: Build gf2toolkit library
+      run: |
+        export PATH="$HOME/.cargo/bin:$PATH"
+        source .venv/bin/activate
+        make build-gf2toolkit
+
     - name: Test package build
       run: |
         export PATH="$HOME/.cargo/bin:$PATH"

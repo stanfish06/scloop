@@ -23,6 +23,7 @@ jobs:
               cd {project}
               unset CFLAGS LDFLAGS CPLUS_INCLUDE_PATH
               make build-m4ri
+              make build-gf2toolkit
             env_linux: >
               CFLAGS="-I{project}/src/scloop/utils/linear_algebra_gf2/include"
               LDFLAGS="-L{project}/src/scloop/utils/linear_algebra_gf2"
@@ -39,6 +40,7 @@ jobs:
                 CFLAGS="-fopenmp -O3 -fPIC" \
                 LDFLAGS="-L$(brew --prefix llvm)/lib -Wl,-rpath,$(brew --prefix llvm)/lib -lomp" \
                 make build-m4ri
+				make build-gf2toolkit
             env_macos: >
               CC="/opt/homebrew/opt/llvm/bin/clang"
               CXX="/opt/homebrew/opt/llvm/bin/clang++"
@@ -51,7 +53,7 @@ jobs:
             cibw_archs: AMD64
             cibw_build: cp312-win_amd64
             before_windows: |
-              msys2 -c "export PATH=/usr/bin:$PATH; cd {project} && make build-m4ri"
+              msys2 -c "export PATH=/usr/bin:$PATH; cd {project} && make build-m4ri && make build-gf2toolkit"
             env_windows: >
               MSYSTEM=UCRT64
               MSYS2_PATH_TYPE=inherit
@@ -132,6 +134,7 @@ jobs:
         run: |
           python -m pip install build
           make build-m4ri
+          make build-gf2toolkit
           python -m build --sdist
 
       - name: Upload sdist

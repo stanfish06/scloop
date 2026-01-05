@@ -136,7 +136,7 @@ def prepare_adata(
     downsample: bool = True,
     n_downsample: int = 1000,
     groupby_downsample: str | None = None,
-    random_state_downsample: int = 0,
+    random_state: int = 0,
     verbose: bool = True,
     copy: bool = False,
     max_log_messages: int | None = None,
@@ -223,7 +223,12 @@ def prepare_adata(
             sc.pp.scale(adata)
         if verbose:
             logger.info(f"Computing PCA with {n_pca_comps} components")
-        sc.pp.pca(adata, n_comps=n_pca_comps, use_highly_variable=needs_hvg)
+
+        pca_kwargs = {k: v for k, v in kwargs_pca.items() if k != "scale_before_pca"}
+        pca_kwargs.setdefault("random_state", random_state)
+        sc.pp.pca(
+            adata, n_comps=n_pca_comps, use_highly_variable=needs_hvg, **pca_kwargs
+        )
     elif "X_pca" in adata.obsm:
         if verbose:
             logger.info("Step 2/4: PCA already computed, skipping")
@@ -285,7 +290,7 @@ def prepare_adata(
             embedding_method=embedding_downsample,
             groupby=groupby_downsample,
             n=n_downsample,
-            random_state=random_state_downsample,
+            random_state=random_state,
             percent_removal_density=percent_removal_density,
             n_neighbors_density=n_neighbors_removal_density,
         )
@@ -299,7 +304,7 @@ def prepare_adata(
         "embedding_method": embedding_downsample,
         "groupby": groupby_downsample,
         "n": n_downsample,
-        "random_state": random_state_downsample,
+        "random_state": random_state,
         "percent_removal_density": percent_removal_density,
         "n_neighbors_density": n_neighbors_removal_density,
     }
