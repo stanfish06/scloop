@@ -30,6 +30,9 @@ def _plot_thumbnail_view(
     dataset_ids: list[Index_t] | None,
     key_matching: str,
     components: tuple[Index_t, Index_t] | list[Index_t],
+    components_thumbnails: dict[Index_t, tuple[Index_t, Index_t]]
+    | tuple[Index_t, Index_t]
+    | None,
     color_by: Literal["dataset", "track"],
     include_bootstrap_loops: bool,
     show_loop_vertices: bool,
@@ -40,7 +43,12 @@ def _plot_thumbnail_view(
     kwargs_axes: dict | None,
     kwargs_layout: dict | None,
     kwargs_scatter: dict | None,
+    title_main: str | None,
+    title_thumbnails: dict[Index_t, str] | str | None,
+    ax: Axes | None = None,
 ) -> Axes:
+    from matplotlib.gridspec import GridSpecFromSubplotSpec
+
     matcher: CrossDatasetMatcher = adata_combined.uns[key_matching]
 
     if len(components) != 2:
@@ -57,21 +65,36 @@ def _plot_thumbnail_view(
     assert matcher.loop_matching_result is not None
     assert matcher.loop_matching_result.tracks is not None
 
-    fig = plt.figure(figsize=figsize, dpi=dpi, **(kwargs_figure or {}))
-    height_ratios = [3, 1]
-    gs = GridSpec(
-        2,
-        n_datasets_plot,
-        figure=fig,
-        height_ratios=height_ratios,
-        hspace=0.3,
-        wspace=0.2,
-    )
+    if ax is None:
+        fig = plt.figure(figsize=figsize, dpi=dpi, **(kwargs_figure or {}))
+        height_ratios = [3, 1]
+        gs = GridSpec(
+            2,
+            n_datasets_plot,
+            figure=fig,
+            height_ratios=height_ratios,
+            hspace=0.3,
+            wspace=0.2,
+        )
+    else:
+        fig = ax.figure
+        gs = GridSpecFromSubplotSpec(
+            2,
+            n_datasets_plot,
+            subplot_spec=ax.get_subplotspec(),
+            height_ratios=[3, 1],
+            hspace=0.3,
+            wspace=0.2,
+        )
+        ax.remove()
 
     ax_main = fig.add_subplot(gs[0, :])
 
     if kwargs_axes:
         ax_main.set(**kwargs_axes)
+
+    if title_main:
+        ax_main.set_title(title_main)
 
     _plot_thumbnail_main_panel(
         ax=ax_main,
@@ -91,12 +114,27 @@ def _plot_thumbnail_view(
         if kwargs_axes:
             ax_thumb.set(**kwargs_axes)
 
+        if title_thumbnails is not None:
+            if isinstance(title_thumbnails, dict):
+                thumb_title = title_thumbnails.get(ds_id, None)
+            else:
+                thumb_title = title_thumbnails
+            if thumb_title:
+                ax_thumb.set_title(thumb_title)
+
+        if components_thumbnails is None:
+            thumb_components = components
+        elif isinstance(components_thumbnails, dict):
+            thumb_components = components_thumbnails.get(ds_id, components)
+        else:
+            thumb_components = components_thumbnails
+
         _plot_thumbnail_dataset(
             ax=ax_thumb,
             matcher=matcher,
             dataset_idx=ds_id,
             track_ids=track_ids,
-            components=components,
+            components=thumb_components,
             color_by=color_by,
             pointsize=pointsize,
             include_bootstrap_loops=include_bootstrap_loops,
@@ -339,6 +377,9 @@ def match_loops_overlay(
     embedding: Literal["joint", "separate", "both"] = "joint",
     key_matching: str = CROSS_MATCH_RESULT_KEY,
     components: tuple[Index_t, Index_t] | list[Index_t] = (0, 1),
+    components_thumbnails: dict[Index_t, tuple[Index_t, Index_t]]
+    | tuple[Index_t, Index_t]
+    | None = None,
     ax: Axes | None = None,
     *,
     color_by: Literal["dataset", "track"] = "dataset",
@@ -347,6 +388,8 @@ def match_loops_overlay(
     pointsize: PositiveFloat = 1,
     figsize: tuple[PositiveFloat, PositiveFloat] = DEFAULT_FIGSIZE,
     dpi: PositiveFloat = DEFAULT_DPI,
+    title_main: str | None = None,
+    title_thumbnails: dict[Index_t, str] | str | None = None,
     kwargs_figure: dict | None = None,
     kwargs_axes: dict | None = None,
     kwargs_layout: dict | None = None,
@@ -359,6 +402,7 @@ def match_loops_overlay(
             dataset_ids=dataset_ids,
             key_matching=key_matching,
             components=components,
+            components_thumbnails=components_thumbnails,
             color_by=color_by,
             include_bootstrap_loops=include_bootstrap_loops,
             show_loop_vertices=show_loop_vertices,
@@ -369,6 +413,9 @@ def match_loops_overlay(
             kwargs_axes=kwargs_axes,
             kwargs_layout=kwargs_layout,
             kwargs_scatter=kwargs_scatter,
+            title_main=title_main,
+            title_thumbnails=title_thumbnails,
+            ax=ax,
         )
 
     matcher: CrossDatasetMatcher = adata_combined.uns[key_matching]

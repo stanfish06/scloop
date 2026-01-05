@@ -1,4 +1,6 @@
 # Copyright 2025 Zhiyuan Yu (Heemskerk's lab, University of Michigan)
+from typing import Literal
+
 import anndata as ad
 import pandas as pd
 from anndata import AnnData
@@ -24,6 +26,9 @@ def match_loops(
     model_type: CrossMatchModelTypes = "nf",
     distance_method: LoopDistMethod = DEFAULT_LOOP_DIST_METHOD,
     n_permutations: Count_t = DEFAULT_N_PERMUTATIONS,
+    reembed_method: Literal["diffmap", "umap", "none"] = "none",
+    n_comps_reembed: int = 15,
+    n_neighbors_reembed: int = 15,
     kwargs_model: dict | None = None,
     kwargs_match: dict | None = None,
 ) -> tuple[AnnData, pd.DataFrame, pd.DataFrame]:
@@ -46,6 +51,13 @@ def match_loops(
     matcher._train_reference_mapping(**kwargs_model)
 
     matcher._transform_all_to_reference()
+
+    if reembed_method != "none":
+        matcher._compute_joint_reembedding(
+            n_neighbors=n_neighbors_reembed,
+            n_comps=n_comps_reembed,
+            reembed_method=reembed_method,  # type: ignore[arg-type]
+        )
 
     for i in range(len(adata_list)):
         for j in range(i + 1, len(adata_list)):

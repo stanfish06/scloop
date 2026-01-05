@@ -8,6 +8,7 @@ from loguru import logger
 from pydantic import validate_call
 from rich.console import Console
 
+from ..computing import compute_diffmap
 from ..data.constants import (
     DEFAULT_BATCH_KEY,
     DEFAULT_SCVI_KEY,
@@ -240,21 +241,19 @@ def prepare_adata(
         if verbose:
             logger.info("Step 3/4: Computing diffusion map")
             logger.info(f"Computing neighbors with n_neighbors={n_neighbors}")
-        sc.pp.neighbors(
+
+        diffmap = compute_diffmap(
             adata,
-            method="gauss",
+            n_comps=n_diffusion_comps,
             n_neighbors=n_neighbors,
-            key_added=SCLOOP_NEIGHBORS_KEY,
             use_rep=embedding_method if embedding_neighbors != "pca" else None,
+            key_added_neighbors=SCLOOP_NEIGHBORS_KEY,
+            random_state=random_state,
         )
-        if verbose:
-            logger.info(f"Computing diffusion map with {n_diffusion_comps} components")
-        sc.tl.diffmap(
-            adata, n_comps=n_diffusion_comps, neighbors_key=SCLOOP_NEIGHBORS_KEY
-        )
+
         # first component of diffusion map represent local density
-        adata.obsm["X_diffmap_original"] = adata.obsm["X_diffmap"].copy()
-        adata.obsm["X_diffmap"] = adata.obsm["X_diffmap"][:, 1:]
+        adata.obsm["X_diffmap_original"] = diffmap.copy()
+        adata.obsm["X_diffmap"] = diffmap[:, 1:]
     elif "X_diffmap" in adata.obsm:
         if verbose:
             logger.info("Step 3/4: Diffusion map already computed, skipping")

@@ -152,7 +152,7 @@ class BootstrapAnalysis:
     def _get_track_embedding(
         self, idx_track: Index_t, embedding_alt: np.ndarray | None = None
     ) -> list[np.ndarray]:
-        assert idx_track < len(self.loop_tracks)
+        assert idx_track in self.loop_tracks
         loops = []
         for boot_id, loop_id in self.loop_tracks[idx_track].track_ipairs:
             if boot_id < len(self.selected_loop_classes) and loop_id < len(

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Annotated, Any, NamedTuple, cast
+from typing import Annotated, Any, Literal, NamedTuple, cast
 
 import numpy as np
 import pandas as pd
@@ -22,6 +22,7 @@ from rich.progress import (
 )
 from scipy.stats import ttest_ind
 
+from ..computing import compute_diffmap
 from ..computing.matching import compute_geometric_distance
 from ..data.constants import (
     CROSS_MATCH_KEY,
@@ -197,8 +198,11 @@ class CrossLoopMatchResult:
             track_rows.append(row)
 
         tracks_df = pd.DataFrame(track_rows)
-        cols = ["track_id"] + [f"dataset_{i}" for i in sorted_dataset_indices]
-        tracks_df = tracks_df[cols]
+        try:
+            cols = ["track_id"] + [f"dataset_{i}" for i in sorted_dataset_indices]
+            tracks_df = tracks_df[cols]
+        except:
+            tracks_df = None
 
         match_rows = []
         for match_list in self.matches.values():
@@ -274,6 +278,8 @@ class CrossDatasetMatcher:
 
         data_module = nnRegressorDataModule(x=X, y=Y)
 
+        max_epochs = model_kwargs.pop("max_epochs", 100)
+
         match self.meta.model_type:
             case "mlp":
                 self.mapping_model = MLPregressor(data=data_module, **model_kwargs)
@@ -287,8 +293,55 @@ class CrossDatasetMatcher:
             case _:
                 raise ValueError(f"unknown model_type: {self.meta.model_type}")
 
-        max_epochs = model_kwargs.pop("max_epochs", 100)
         self.mapping_model.fit(max_epochs=max_epochs)
+
+    def _compute_joint_reembedding(
+        self,
+        n_neighbors: int = 15,
+        n_comps: int = 15,
+        reembed_method: Literal["diffmap", "umap"] = "diffmap",
+    ):
+        embeddings = [adata.obsm[CROSS_MATCH_KEY] for adata in self.adata_list]
+        embeddings_arr = np.concatenate(embeddings, axis=0)
+
+        adata_joint = AnnData(X=np.zeros((embeddings_arr.shape[0], 1)))
+        adata_joint.obsm["X_aligned"] = embeddings_arr
+
+        if reembed_method == "diffmap":
+            diffmap = compute_diffmap(
+                adata_joint,
+                n_comps=n_comps,
+                n_neighbors=n_neighbors,
+                use_rep="X_aligned",
+                key_added_neighbors="neighbors_scloop_reembed",
+            )
+            embedding_joint = diffmap
+        elif reembed_method == "umap":
+            import scanpy as sc
+
+            sc.pp.neighbors(
+                adata_joint,
+                use_rep="X_aligned",
+                n_neighbors=n_neighbors,
+                method="gauss",
+                key_added="neighbors_scloop_reembed",
+            )
+            sc.tl.umap(
+                adata_joint,
+                n_components=min(2, n_comps),
+                neighbors_key="neighbors_scloop_reembed",
+            )
+            embedding_joint = adata_joint.obsm["X_umap"]
+        else:
+            raise ValueError(f"Unknown re-embedding method: {reembed_method}")
+
+        current_idx = 0
+        for adata in self.adata_list:
+            n_obs = adata.n_obs
+            adata.obsm[CROSS_MATCH_KEY] = embedding_joint[
+                current_idx : current_idx + n_obs
+            ]
+            current_idx += n_obs
 
     def _transform_all_to_reference(self):
         ref_idx = self.meta.reference_idx

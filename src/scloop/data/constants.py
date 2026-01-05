@@ -7,7 +7,7 @@ from IPython.display import Javascript
 
 from .types import LoopDistMethod, PositiveFloat
 
-CROSS_MATCH_KEY = "X_scloop_alilgned"
+CROSS_MATCH_KEY = "X_scloop_aligned"
 CROSS_MATCH_RESULT_KEY = "scloop_cross_match"
 
 DEFAULT_FIGSIZE: tuple[PositiveFloat, PositiveFloat] = (5, 5)

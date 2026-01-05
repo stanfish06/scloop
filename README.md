@@ -13,9 +13,13 @@ scLoop is a library to identify statistically significant loops in single-cell R
 ## Basic Usage
 ```python
 import scloop as scl
+# Preprocess anndata
 scl.pp.prepare_adata(adata, downsample=True, n_downsample=500)
+# Identify statistically significant loops
 scl.tl.find_loops(adata, ...)
+# Compute trajectories, gene trends, and important features of each loop
 scl.tl.analyze_loops(adata, ...)
+# Match loops across datasets
 scl.tl.match_loops([adata1, adata2, ...], ...)
 ```
 
