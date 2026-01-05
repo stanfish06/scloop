@@ -10,9 +10,11 @@ gf2toolkit_srcs = os.path.join(gf2_dir, "GF2toolkit/srcs")
 
 is_windows = sys.platform.startswith("win")
 if is_windows:
+    base_link_args = ["-static-libgcc", "-static-libstdc++"]
     openmp_compile = ["-fopenmp"]
-    openmp_link = ["-fopenmp", "-static"]
+    openmp_link = base_link_args + ["-fopenmp", "-static"]
 else:
+    base_link_args = []
     openmp_compile = ["-fopenmp"]
     openmp_link = ["-fopenmp"]
 
@@ -22,6 +24,7 @@ extensions = [
         sources=["./src/scloop/data/ripser_lib.pyx", "./src/scloop/data/ripser.cpp"],
         language="c++",
         include_dirs=["./src/scloop/data"],
+        extra_link_args=base_link_args,
     ),
     Extension(
         "scloop.utils.linear_algebra_gf2.m4ri_lib",
@@ -59,6 +62,7 @@ extensions = [
         ],
         include_dirs=["./src/scloop/utils/distance_metrics/discrete-frechet-distance"],
         language="c++",
+        extra_link_args=base_link_args,
     ),
 ]
 
