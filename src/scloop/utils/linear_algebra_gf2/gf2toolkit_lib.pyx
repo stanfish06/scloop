@@ -32,6 +32,7 @@ cdef extern from "gf2toolkit_wrapper.hpp":
     ) nogil
 
 
+# ~2x slower than m4ri as of now (probably need native trig-solver)
 def solve_gf2(one_ridx_A, one_cidx_A, nrow_A, ncol_A, one_idx_b):
     assert nrow_A >= ncol_A, "number of rows must be greater than or equal to the number of columns"
 
@@ -80,7 +81,7 @@ def solve_gf2(one_ridx_A, one_cidx_A, nrow_A, ncol_A, one_idx_b):
     finally:
         free(solution)
 
-
+# has bug
 def solve_multiple_gf2(one_ridx_A, one_cidx_A, nrow_A, ncol_A, one_idx_b_list):
     cdef int32_t[:] ridx_view
     cdef int32_t[:] cidx_view

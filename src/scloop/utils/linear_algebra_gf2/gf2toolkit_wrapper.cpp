@@ -149,6 +149,46 @@ int gf2toolkit_solve(const int32_t *row_indices, const int32_t *col_indices,
     mzd_write_bit(x, i, 0, mzd_read_bit(Pb, i, 0));
   }
 
+  mzd_t *A_verify = mzd_init(nrow_A, ncol_A);
+  for (int32_t i = 0; i < nnz_A; i++) {
+    if (row_indices[i] < nrow_A && col_indices[i] < ncol_A) {
+      int bit = mzd_read_bit(A_verify, row_indices[i], col_indices[i]);
+      mzd_write_bit(A_verify, row_indices[i], col_indices[i], bit ^ 1);
+    }
+  }
+  
+  mzd_t *b_verify = mzd_init(nrow_A, 1);
+  for (int32_t i = 0; i < nnz_b; i++) {
+    if (b_indices[i] >= 0 && b_indices[i] < nrow_A) {
+      int bit = mzd_read_bit(b_verify, b_indices[i], 0);
+      mzd_write_bit(b_verify, b_indices[i], 0, bit ^ 1);
+    }
+  }
+  
+  mzd_t *Ax = mzd_init(nrow_A, 1);
+  mzd_mul(Ax, A_verify, x, 0);
+  
+  bool solution_valid = true;
+  for (int32_t i = 0; i < nrow_A; i++) {
+    if (mzd_read_bit(Ax, i, 0) != mzd_read_bit(b_verify, i, 0)) {
+      solution_valid = false;
+      break;
+    }
+  }
+  
+  mzd_free(A_verify);
+  mzd_free(b_verify);
+  mzd_free(Ax);
+  
+  if (!solution_valid) {
+    mzd_free(L);
+    mzd_free(U);
+    mzd_free(U_square);
+    mzd_free(Pb);
+    mzd_free(x);
+    return -1;
+  }
+
   for (int32_t i = 0; i < ncol_A; i++) {
     solution_out[i] = mzd_read_bit(x, i, 0);
   }
