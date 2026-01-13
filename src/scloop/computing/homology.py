@@ -17,6 +17,7 @@ from ..data.ripser_lib import (  # type: ignore[import-not-found]
 )
 from ..data.types import Count_t, Diameter_t, IndexListDistMatrix, LoopDistMethod
 from ..data.utils import encode_triangles_and_edges
+from ..preprocessing.downsample import sample_farthest_points
 from ..utils.distance_metrics.frechet_py import compute_pairwise_loop_frechet
 from ..utils.linear_algebra_gf2 import (  # type: ignore
     solve_multiple_gf2_m4ri,  # type: ignore[import-not-found]
@@ -32,6 +33,8 @@ def compute_sparse_pairwise_distance(
     bootstrap: bool = False,
     noise_scale: float = 1e-3,
     thresh: Diameter_t | None = None,
+    bootstrap_sampling: str = "resample",
+    bootstrap_fps_fraction: float = 2 / 3,
     **nei_kwargs,
 ) -> tuple[csr_matrix, IndexListDistMatrix | None]:
     # important, default is binary graph
@@ -47,12 +50,30 @@ def compute_sparse_pairwise_distance(
     X = emb[selected_indices]
     boot_idx = None
     if bootstrap:
-        sample_idx = np.random.choice(
-            len(selected_indices), size=len(selected_indices), replace=True
-        ).tolist()
-        boot_idx = [selected_indices[i] for i in sample_idx]
-        std_X = np.std(X, axis=0)
-        X = X[sample_idx] + np.random.normal(scale=std_X * noise_scale, size=X.shape)
+        if bootstrap_sampling == "resample":
+            sample_idx = np.random.choice(
+                len(selected_indices), size=len(selected_indices), replace=True
+            ).tolist()
+            boot_idx = [selected_indices[i] for i in sample_idx]
+            std_X = np.std(X, axis=0)
+            X = X[sample_idx] + np.random.normal(
+                scale=std_X * noise_scale, size=X.shape
+            )
+        elif bootstrap_sampling == "fps":
+            if not (0 < bootstrap_fps_fraction <= 1):
+                raise ValueError("bootstrap_fps_fraction must be in (0, 1].")
+            n_keep = max(2, int(round(len(selected_indices) * bootstrap_fps_fraction)))
+            n_keep = min(n_keep, len(selected_indices))
+            sample_idx = sample_farthest_points(X, n_keep)
+            boot_idx = [selected_indices[int(i)] for i in sample_idx.tolist()]
+            std_X = np.std(X, axis=0)
+            X = X[sample_idx] + np.random.normal(
+                scale=std_X * noise_scale, size=(n_keep, X.shape[1])
+            )
+        else:
+            raise ValueError(
+                f"Unknown bootstrap_sampling={bootstrap_sampling!r}. Expected 'resample' or 'fps'."
+            )
     else:
         boot_idx = selected_indices
     return (

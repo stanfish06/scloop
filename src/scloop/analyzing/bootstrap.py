@@ -11,9 +11,16 @@ from anndata import AnnData
 from loguru import logger
 from pydantic import BaseModel, ConfigDict
 from rich.progress import Progress
+from scipy.sparse import csr_matrix
 
-from ..computing.homology import compute_persistence_diagram_and_cocycles
-from ..computing.loops import compute_loop_representatives
+from ..computing.homology import (
+    compute_persistence_diagram_and_cocycles,
+    compute_sparse_pairwise_distance,
+)
+from ..computing.loops import (
+    compute_loop_representatives,
+    remap_cocycles_for_full_reconstruction,
+)
 from ..computing.matching import (
     check_homological_equivalence,
     compute_geometric_distance,
@@ -71,6 +78,9 @@ def run_single_bootstrap(
     n_pairs_check_equivalence: int = DEFAULT_N_PAIRS_CHECK_EQUIVALENCE,
     extra_diameter_homology_equivalence: float = DEFAULT_EXTRA_DIAM_EQUIVALENCE,
     filter_column_homology_equivalence: bool = True,
+    full_pairwise_distance_matrix: csr_matrix | None = None,
+    full_vertex_ids: list[int] | None = None,
+    reconstruct_on_full_data: bool = False,
     **kwargs,
 ) -> BootstrapResult:
     (
@@ -93,23 +103,51 @@ def run_single_bootstrap(
 
     embedding = np.array(adata.obsm[f"X_{meta.preprocess.embedding_method}"])
 
-    bootstrap_loop_classes = compute_loop_representatives(
-        embedding=embedding,
-        pairwise_distance_matrix=sparse_pairwise_distance_matrix,
-        persistence_diagram=persistence_diagram[1],
-        cocycles=cocycles[1],
-        boundary_matrix_d1=original_boundary_matrix_d1,
-        vertex_ids=indices_resample,
-        top_k=top_k,
-        n_reps_per_loop=n_reps_per_loop,
-        life_pct=life_pct,
-        n_cocycles_used=n_cocycles_used,
-        n_force_deviate=n_force_deviate,
-        k_yen=k_yen,
-        loop_lower_t_pct=loop_lower_t_pct,
-        loop_upper_t_pct=loop_upper_t_pct,
-        bootstrap=True,
-    )
+    if (
+        reconstruct_on_full_data
+        and full_pairwise_distance_matrix is not None
+        and full_vertex_ids is not None
+    ):
+        remapped_cocycles = remap_cocycles_for_full_reconstruction(
+            cocycles=cocycles[1],
+            bootstrap_vertex_ids=indices_resample,
+            full_vertex_ids=full_vertex_ids,
+        )
+        bootstrap_loop_classes = compute_loop_representatives(
+            embedding=embedding,
+            pairwise_distance_matrix=full_pairwise_distance_matrix,
+            persistence_diagram=persistence_diagram[1],
+            cocycles=remapped_cocycles,
+            boundary_matrix_d1=original_boundary_matrix_d1,
+            vertex_ids=full_vertex_ids,
+            top_k=top_k,
+            n_reps_per_loop=n_reps_per_loop,
+            life_pct=life_pct,
+            n_cocycles_used=n_cocycles_used,
+            n_force_deviate=n_force_deviate,
+            k_yen=k_yen,
+            loop_lower_t_pct=loop_lower_t_pct,
+            loop_upper_t_pct=loop_upper_t_pct,
+            bootstrap=False,
+        )
+    else:
+        bootstrap_loop_classes = compute_loop_representatives(
+            embedding=embedding,
+            pairwise_distance_matrix=sparse_pairwise_distance_matrix,
+            persistence_diagram=persistence_diagram[1],
+            cocycles=cocycles[1],
+            boundary_matrix_d1=original_boundary_matrix_d1,
+            vertex_ids=indices_resample,
+            top_k=top_k,
+            n_reps_per_loop=n_reps_per_loop,
+            life_pct=life_pct,
+            n_cocycles_used=n_cocycles_used,
+            n_force_deviate=n_force_deviate,
+            k_yen=k_yen,
+            loop_lower_t_pct=loop_lower_t_pct,
+            loop_upper_t_pct=loop_upper_t_pct,
+            bootstrap=True,
+        )
 
     n_original = len(original_loop_classes)
     n_bootstrap = len(bootstrap_loop_classes)
@@ -219,9 +257,23 @@ def run_bootstrap_pipeline(
     n_max_workers: int = DEFAULT_N_MAX_WORKERS,
     verbose: bool = False,
     progress: Progress | None = None,
+    reconstruct_on_full_data: bool = False,
+    thresh: float | None = None,
     **kwargs,
 ) -> list[BootstrapResult]:
     results: list[BootstrapResult] = []
+
+    full_pairwise_distance_matrix: csr_matrix | None = None
+    full_vertex_ids: list[int] | None = None
+    if reconstruct_on_full_data:
+        full_pairwise_distance_matrix, full_vertex_ids = (
+            compute_sparse_pairwise_distance(
+                adata=adata,
+                meta=meta,
+                bootstrap=False,
+                thresh=thresh,
+            )
+        )
 
     ExecutorClass = ThreadPoolExecutor
 
@@ -235,6 +287,10 @@ def run_bootstrap_pipeline(
                 meta=meta,
                 original_loop_classes=original_loop_classes,
                 original_boundary_matrix_d1=original_boundary_matrix_d1,
+                full_pairwise_distance_matrix=full_pairwise_distance_matrix,
+                full_vertex_ids=full_vertex_ids,
+                reconstruct_on_full_data=reconstruct_on_full_data,
+                thresh=thresh,
                 **kwargs,
             )
             tasks[task] = i

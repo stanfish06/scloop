@@ -8,7 +8,7 @@ from pynndescent import NNDescent
 
 from ..data.types import EmbeddingMethod, IndexListDownSample, SizeDownSample
 
-__all__ = ["sample"]
+__all__ = ["sample", "sample_farthest_points"]
 
 
 @jit(nopython=True)
@@ -44,6 +44,28 @@ def _sample_impl(
             indices[i] = seed_indices[i]
 
     return indices
+
+
+def sample_farthest_points(
+    embedding: np.ndarray, n: int, *, random_state: int | None = None
+) -> np.ndarray:
+    if n <= 0:
+        raise ValueError("n must be > 0")
+    if n > embedding.shape[0]:
+        raise ValueError(
+            f"n must be <= number of points (got n={n}, n_points={embedding.shape[0]})"
+        )
+
+    embedding_arr = np.ascontiguousarray(embedding)
+    n_points = embedding_arr.shape[0]
+
+    rng = np.random if random_state is None else np.random.RandomState(random_state)
+    seed_indices = np.array([rng.randint(n_points)], dtype=np.int64)
+
+    class_labels = np.zeros(n_points, dtype=np.int64)
+    classes = np.array([0], dtype=np.int64)
+
+    return _sample_impl(embedding_arr, class_labels, classes, seed_indices, n)
 
 
 @validate_call(config={"arbitrary_types_allowed": True})

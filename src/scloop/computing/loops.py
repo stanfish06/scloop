@@ -22,6 +22,35 @@ from ..data.types import Percent_t
 from ..data.utils import extract_edges_from_coo, loops_to_coords
 
 
+def remap_cocycles_for_full_reconstruction(
+    cocycles: list,
+    bootstrap_vertex_ids: list[int],
+    full_vertex_ids: list[int],
+) -> list:
+    global_to_full_local = {gid: lid for lid, gid in enumerate(full_vertex_ids)}
+
+    remapped_cocycles = []
+    for cocycle in cocycles:
+        remapped_simplex = []
+        for simplex in cocycle:
+            try:
+                verts, coeff = simplex
+            except ValueError:
+                continue
+            if coeff == 0 or len(verts) != 2:
+                continue
+            global_u = bootstrap_vertex_ids[int(verts[0])]
+            global_v = bootstrap_vertex_ids[int(verts[1])]
+            if global_u == global_v:
+                continue
+            if global_u in global_to_full_local and global_v in global_to_full_local:
+                full_local_u = global_to_full_local[global_u]
+                full_local_v = global_to_full_local[global_v]
+                remapped_simplex.append(((full_local_u, full_local_v), coeff))
+        remapped_cocycles.append(remapped_simplex)
+    return remapped_cocycles
+
+
 def compute_loop_representatives(
     embedding: np.ndarray,
     pairwise_distance_matrix: csr_matrix,
