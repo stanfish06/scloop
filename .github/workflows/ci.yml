@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install build dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y autoconf automake libtool m4 build-essential
+
+    - name: Install uv
+      run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+    - name: Build and install package
+      run: |
+        export PATH="$HOME/.cargo/bin:$PATH"
+        make build
+        make fresh-sync
+
+    - name: Run tests
+      run: |
+        export PATH="$HOME/.cargo/bin:$PATH"
+        uv run pytest -v
