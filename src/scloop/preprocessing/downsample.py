@@ -8,7 +8,7 @@ from pynndescent import NNDescent
 
 from ..data.types import EmbeddingMethod, IndexListDownSample, SizeDownSample
 
-__all__ = ["sample", "sample_farthest_points"]
+__all__ = ["sample", "sample_farthest_points", "sample_farthest_points_randomized"]
 
 
 @jit(nopython=True)
@@ -46,6 +46,119 @@ def _sample_impl(
     return indices
 
 
+@jit(nopython=True)
+def _select_index_from_candidates(
+    min_dists: np.ndarray,
+    candidate_indices: np.ndarray,
+    top_k: int,
+    alpha: float,
+) -> int:
+    top_idx = np.full(top_k, -1, dtype=np.int64)
+    top_val = np.full(top_k, -1.0)
+
+    for i in range(candidate_indices.shape[0]):
+        idx = candidate_indices[i]
+        val = min_dists[idx]
+        if val < 0:
+            continue
+
+        min_pos = 0
+        min_val = top_val[0]
+        for t in range(1, top_k):
+            if top_val[t] < min_val:
+                min_val = top_val[t]
+                min_pos = t
+        if val > min_val:
+            top_val[min_pos] = val
+            top_idx[min_pos] = idx
+
+    count = 0
+    for t in range(top_k):
+        if top_idx[t] >= 0:
+            top_idx[count] = top_idx[t]
+            top_val[count] = top_val[t]
+            count += 1
+
+    if count == 0:
+        return -1
+
+    total = 0.0
+    for t in range(count):
+        val = top_val[t]
+        if alpha == 0.0:
+            # Uniform selection among top-k candidates.
+            weight = 1.0
+        elif val <= 0.0:
+            weight = 0.0
+        else:
+            weight = val if alpha == 1.0 else val**alpha
+        top_val[t] = weight
+        total += weight
+
+    if total <= 0.0:
+        pick = int(np.random.random() * count)
+        return top_idx[pick]
+
+    r = np.random.random() * total
+    cum = 0.0
+    for t in range(count):
+        cum += top_val[t]
+        if r <= cum:
+            return top_idx[t]
+
+    return top_idx[count - 1]
+
+
+@jit(nopython=True)
+def _sample_impl_randomized(
+    data: np.ndarray,
+    class_labels: np.ndarray,
+    classes: np.ndarray,
+    seed_indices: np.ndarray,
+    n: int,
+    top_k: int,
+    alpha: float,
+    seed: int,
+) -> np.ndarray:
+    if seed >= 0:
+        np.random.seed(seed)
+
+    indices = np.zeros(n, dtype=np.int64)
+    min_dists = np.full(len(data), np.inf)
+
+    num_seeds = len(seed_indices)
+    num_classes = len(classes)
+    indices[0] = seed_indices[0]
+    all_indices = np.arange(len(data))
+
+    for i in range(1, n):
+        last_point = data[indices[i - 1]]
+        dists = np.sum((data - last_point) ** 2, axis=1)
+        min_dists = np.minimum(min_dists, dists)
+        min_dists[indices[:i]] = -1
+
+        if i < num_seeds:
+            indices[i] = seed_indices[i]
+            continue
+
+        if num_classes > 0:
+            class_indices = np.where(class_labels == classes[i % num_classes])[0]
+            next_idx = _select_index_from_candidates(
+                min_dists, class_indices, top_k, alpha
+            )
+        else:
+            next_idx = -1
+
+        if next_idx < 0:
+            next_idx = _select_index_from_candidates(
+                min_dists, all_indices, top_k, alpha
+            )
+
+        indices[i] = next_idx
+
+    return indices
+
+
 def sample_farthest_points(
     embedding: np.ndarray, n: int, *, random_state: int | None = None
 ) -> np.ndarray:
@@ -66,6 +179,47 @@ def sample_farthest_points(
     classes = np.array([0], dtype=np.int64)
 
     return _sample_impl(embedding_arr, class_labels, classes, seed_indices, n)
+
+
+def sample_farthest_points_randomized(
+    embedding: np.ndarray,
+    n: int,
+    *,
+    random_state: int | None = None,
+    top_k: int = 5,
+    alpha: float = 1.0,
+) -> np.ndarray:
+    if n <= 0:
+        raise ValueError("n must be > 0")
+    if top_k <= 0:
+        raise ValueError("top_k must be > 0")
+    if alpha < 0:
+        raise ValueError("alpha must be >= 0")
+
+    embedding_arr = np.ascontiguousarray(embedding)
+    n_points = embedding_arr.shape[0]
+
+    if n > n_points:
+        raise ValueError(
+            f"n must be <= number of points (got n={n}, n_points={n_points})"
+        )
+
+    top_k = min(top_k, n_points)
+
+    if random_state is None:
+        seed = np.random.randint(np.iinfo(np.int32).max)
+    else:
+        seed = int(random_state)
+
+    rng = np.random.RandomState(seed)
+    seed_indices = np.array([rng.randint(n_points)], dtype=np.int64)
+
+    class_labels = np.zeros(n_points, dtype=np.int64)
+    classes = np.array([0], dtype=np.int64)
+
+    return _sample_impl_randomized(
+        embedding_arr, class_labels, classes, seed_indices, n, top_k, alpha, seed
+    )
 
 
 @validate_call(config={"arbitrary_types_allowed": True})

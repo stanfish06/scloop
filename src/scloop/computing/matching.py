@@ -56,6 +56,48 @@ def loops_to_edge_mask(
     return mask
 
 
+def cocycle_to_edge_mask(
+    cocycle: list,
+    boundary_matrix_d1: BoundaryMatrixD1,
+    vertex_ids: list[int],
+) -> np.ndarray | None:
+    if not cocycle:
+        return None
+    num_vertices = boundary_matrix_d1.num_vertices
+    n_edges = boundary_matrix_d1.shape[0]
+    edge_lookup = {
+        int(edge_id): row_idx
+        for row_idx, edge_id in enumerate(boundary_matrix_d1.row_simplex_ids)
+    }
+    mask = np.zeros(n_edges, dtype=bool)
+    for simplex in cocycle:
+        try:
+            verts, coeff = simplex
+        except (ValueError, TypeError):
+            continue
+        if coeff % 2 == 0 or len(verts) != 2:
+            continue
+        u_local = int(verts[0])
+        v_local = int(verts[1])
+        if u_local < 0 or v_local < 0:
+            continue
+        if u_local >= len(vertex_ids) or v_local >= len(vertex_ids):
+            continue
+        u_global = vertex_ids[u_local]
+        v_global = vertex_ids[v_local]
+        if u_global == v_global:
+            continue
+        if u_global > v_global:
+            u_global, v_global = v_global, u_global
+        edge_id = u_global * num_vertices + v_global
+        row_id = edge_lookup.get(int(edge_id), -1)
+        if row_id >= 0:
+            mask[row_id] = not mask[row_id]
+    if not mask.any():
+        return None
+    return mask
+
+
 def compute_geometric_distance(
     source_coords_list: list[list[list[float]]],
     target_coords_list: list[list[list[float]]],
@@ -77,6 +119,7 @@ def check_homological_equivalence(
     boundary_matrix_d1: BoundaryMatrixD1,
     n_pairs_check: int = DEFAULT_N_PAIRS_CHECK,
     max_column_diameter: PositiveFloat | None = None,
+    cocycle_edge_mask: np.ndarray | None = None,
 ) -> bool:
     if len(source_loops) == 0 or len(target_loops) == 0:
         return False
@@ -93,5 +136,6 @@ def check_homological_equivalence(
         loop_mask_b=mask_b,
         n_pairs_check=n_pairs_check,
         max_column_diameter=max_column_diameter,
+        cocycle_edge_mask=cocycle_edge_mask,
     )
     return any(r == 0 for r in results)

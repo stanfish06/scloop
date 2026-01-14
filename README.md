@@ -1,5 +1,6 @@
 # scloop - single-cell loop analysis
 
+[![CI](https://github.com/stanfish06/scLoop/actions/workflows/ci.yml/badge.svg)](https://github.com/stanfish06/scLoop/actions/workflows/ci.yml)
 [![Test Import](https://github.com/stanfish06/scLoop/actions/workflows/test-import.yml/badge.svg)](https://github.com/stanfish06/scLoop/actions/workflows/test-import.yml)
 [![Test Build](https://github.com/stanfish06/scLoop/actions/workflows/test-build.yml/badge.svg)](https://github.com/stanfish06/scLoop/actions/workflows/test-build.yml)
 [![PyPI](https://img.shields.io/pypi/v/scloop)](https://pypi.org/project/scloop)

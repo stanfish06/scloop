@@ -38,6 +38,7 @@ from ..computing.homology import (
 from ..computing.loops import compute_loop_representatives
 from ..computing.matching import (
     check_homological_equivalence,
+    cocycle_to_edge_mask,
     compute_geometric_distance,
     loops_to_edge_mask,
 )
@@ -634,6 +635,7 @@ class HomologyData:
         n_pairs_check: Count_t = DEFAULT_N_PAIRS_CHECK,
         extra_diameter_homology_equivalence: PositiveFloat = DEFAULT_EXTRA_DIAM_EQUIVALENCE,
         filter_column_homology_equivalence: bool = True,
+        cocycle_edge_mask: np.ndarray | None = None,
     ) -> tuple[int, int, bool]:
         assert self.bootstrap_data is not None
         self._ensure_loop_tracks()
@@ -682,12 +684,19 @@ class HomologyData:
             )
 
         assert self.boundary_matrix_d1 is not None
+        if cocycle_edge_mask is None and source_loop_class.cocycles is not None:
+            cocycle_edge_mask = cocycle_to_edge_mask(
+                cocycle=source_loop_class.cocycles,
+                boundary_matrix_d1=self.boundary_matrix_d1,
+                vertex_ids=self._original_vertex_ids,
+            )
         is_equivalent = check_homological_equivalence(
             source_loops=source_loops,
             target_loops=target_loops,
             boundary_matrix_d1=self.boundary_matrix_d1,
             n_pairs_check=n_pairs_check,
             max_column_diameter=max_column_diameter,
+            cocycle_edge_mask=cocycle_edge_mask,
         )
         return (source_class_idx, target_class_idx, is_equivalent)
 
@@ -877,6 +886,19 @@ class HomologyData:
                     f"[Bootstrap {idx_bootstrap + 1}/{n_bootstrap}] "
                     f"Geometric neighbors chosen per class: {k_neighbors_check_equivalence}"
                 )
+                original_vertex_ids = self._original_vertex_ids
+                cocycle_edge_masks: list[np.ndarray | None] = []
+                for loop_class in self.selected_loop_classes:
+                    if loop_class is None or loop_class.cocycles is None:
+                        cocycle_edge_masks.append(None)
+                        continue
+                    cocycle_edge_masks.append(
+                        cocycle_to_edge_mask(
+                            cocycle=loop_class.cocycles,
+                            boundary_matrix_d1=self.boundary_matrix_d1,
+                            vertex_ids=original_vertex_ids,
+                        )
+                    )
                 """
                 ========= homological matching =========
                 - gf2 regression
@@ -896,6 +918,7 @@ class HomologyData:
                                     n_pairs_check=n_pairs_check_equivalence,
                                     extra_diameter_homology_equivalence=extra_diameter_homology_equivalence,
                                     filter_column_homology_equivalence=filter_column_homology_equivalence,
+                                    cocycle_edge_mask=cocycle_edge_masks[si],
                                 )
                                 tasks[task] = (si, tj, neighbor_distances[si, k], k)
 

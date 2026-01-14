@@ -58,6 +58,8 @@ def find_loops(
     n_bootstrap: Size_t = DEFAULT_N_BOOTSTRAP,
     bootstrap_sampling: str = "fps",  # this does help quite a bit
     bootstrap_fps_fraction: float = 2 / 3,
+    bootstrap_fps_top_k: int = 5,
+    bootstrap_fps_alpha: float = 1.0,
     n_check_per_candidate: NonZeroCount_t = 1,
     max_columns_boundary_matrix: NonZeroCount_t = DEFAULT_MAX_COLUMNS_BOUNDARY_MATRIX,
     auto_shrink_boundary_matrix: bool = True,
@@ -175,6 +177,8 @@ def find_loops(
             reconstruct_on_full_data=reconstruct_bootstrap_on_full_data,
             bootstrap_sampling=bootstrap_sampling,
             bootstrap_fps_fraction=bootstrap_fps_fraction,
+            bootstrap_fps_top_k=bootstrap_fps_top_k,
+            bootstrap_fps_alpha=bootstrap_fps_alpha,
             verbose=verbose,
             progress_main=progress_main,
             use_log_display=use_log_display,

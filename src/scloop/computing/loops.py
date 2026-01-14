@@ -7,6 +7,7 @@ from typing import Iterable, List, Sequence, Tuple
 import igraph as ig
 import numpy as np
 from loguru import logger
+from numba import jit
 from scipy.sparse import csr_matrix, triu
 
 from ..data.base_components import LoopClass
@@ -51,6 +52,60 @@ def remap_cocycles_for_full_reconstruction(
     return remapped_cocycles
 
 
+# ISSUE: this often mess up loop reconstruction
+@jit(nopython=True, cache=True)
+def _clean_cocycle_region_impl(
+    edges: np.ndarray,
+    cocycle_vertices: np.ndarray,
+    n_vertices: int,
+) -> np.ndarray:
+    n_edges = edges.shape[0]
+    n_cocycle = len(cocycle_vertices)
+
+    is_cocycle_vertex = np.zeros(n_vertices, dtype=np.bool_)
+    for i in range(n_cocycle):
+        v = cocycle_vertices[i]
+        if v < n_vertices:
+            is_cocycle_vertex[v] = True
+
+    block_mask = np.zeros(n_edges, dtype=np.bool_)
+    for i in range(n_edges):
+        u, v = edges[i, 0], edges[i, 1]
+        if is_cocycle_vertex[u] and is_cocycle_vertex[v]:
+            block_mask[i] = True
+
+    return block_mask
+
+
+def clean_cocycle_region(
+    edges: np.ndarray,
+    cocycle_edges: list[tuple[int, int]],
+) -> set[tuple[int, int]]:
+    if len(cocycle_edges) == 0 or len(edges) == 0:
+        return set()
+
+    cocycle_vertices_set = set()
+    for u, v in cocycle_edges:
+        cocycle_vertices_set.add(u)
+        cocycle_vertices_set.add(v)
+    cocycle_vertices = np.array(list(cocycle_vertices_set), dtype=np.int64)
+
+    n_vertices = max(edges[:, 0].max(), edges[:, 1].max()) + 1
+    n_vertices = max(
+        n_vertices, cocycle_vertices.max() + 1 if len(cocycle_vertices) > 0 else 0
+    )
+
+    block_mask = _clean_cocycle_region_impl(edges, cocycle_vertices, n_vertices)
+
+    edges_to_block = set()
+    for i in range(len(edges)):
+        if block_mask[i]:
+            u, v = int(edges[i, 0]), int(edges[i, 1])
+            edges_to_block.add((min(u, v), max(u, v)))
+
+    return edges_to_block
+
+
 def compute_loop_representatives(
     embedding: np.ndarray,
     pairwise_distance_matrix: csr_matrix,
@@ -68,6 +123,7 @@ def compute_loop_representatives(
     loop_upper_t_pct: float = 97.5,
     bootstrap: bool = False,
     rank_offset: int = 0,
+    do_clean_cocycle_region: bool = False,
 ) -> list[LoopClass | None]:
     assert pairwise_distance_matrix.shape is not None
 
@@ -163,6 +219,7 @@ def compute_loop_representatives(
             loop_lower_pct=loop_lower_t_pct,
             loop_upper_pct=loop_upper_t_pct,
             n_cocycles_used=n_cocycles_used,
+            do_clean_cocycle_region=do_clean_cocycle_region,
         )
 
         loops = [[vertex_ids[v] for v in loop] for loop in loops_local]
@@ -193,6 +250,8 @@ def reconstruct_n_loop_representatives(
     loop_lower_pct: float = 5,
     loop_upper_pct: float = 95,
     n_cocycles_used: int = DEFAULT_N_COCYCLES_USED,
+    *,
+    do_clean_cocycle_region: bool = False,
 ) -> Tuple[List[List[int]], List[float]]:
     """
     Reconstruct diverse loop representatives
@@ -236,6 +295,15 @@ def reconstruct_n_loop_representatives(
     for e in all_cocycle_edges:
         key = (min(e), max(e))
         edge_weight_dict[key] = math.inf
+
+    if do_clean_cocycle_region:
+        edges_to_block = clean_cocycle_region(
+            edges=edges_filt,
+            cocycle_edges=all_cocycle_edges,
+        )
+        for edge_key in edges_to_block:
+            if edge_key in edge_weight_dict:
+                edge_weight_dict[edge_key] = math.inf
 
     cycles_pool: list[list[int]] = []
     cycles_dist: list[float] = []

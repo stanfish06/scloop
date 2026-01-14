@@ -17,7 +17,10 @@ from ..data.ripser_lib import (  # type: ignore[import-not-found]
 )
 from ..data.types import Count_t, Diameter_t, IndexListDistMatrix, LoopDistMethod
 from ..data.utils import encode_triangles_and_edges
-from ..preprocessing.downsample import sample_farthest_points
+from ..preprocessing.downsample import (
+    sample_farthest_points,
+    sample_farthest_points_randomized,
+)
 from ..utils.distance_metrics.frechet_py import compute_pairwise_loop_frechet
 from ..utils.linear_algebra_gf2 import (  # type: ignore
     solve_multiple_gf2_m4ri,  # type: ignore[import-not-found]
@@ -35,6 +38,8 @@ def compute_sparse_pairwise_distance(
     thresh: Diameter_t | None = None,
     bootstrap_sampling: str = "resample",
     bootstrap_fps_fraction: float = 2 / 3,
+    bootstrap_fps_top_k: int = 5,
+    bootstrap_fps_alpha: float = 1.0,
     **nei_kwargs,
 ) -> tuple[csr_matrix, IndexListDistMatrix | None]:
     # important, default is binary graph
@@ -70,9 +75,26 @@ def compute_sparse_pairwise_distance(
             X = X[sample_idx] + np.random.normal(
                 scale=std_X * noise_scale, size=(n_keep, X.shape[1])
             )
+        elif bootstrap_sampling == "fps_random":
+            if not (0 < bootstrap_fps_fraction <= 1):
+                raise ValueError("bootstrap_fps_fraction must be in (0, 1].")
+            if bootstrap_fps_top_k <= 0:
+                raise ValueError("bootstrap_fps_top_k must be > 0.")
+            if bootstrap_fps_alpha < 0:
+                raise ValueError("bootstrap_fps_alpha must be >= 0.")
+            n_keep = max(2, int(round(len(selected_indices) * bootstrap_fps_fraction)))
+            n_keep = min(n_keep, len(selected_indices))
+            sample_idx = sample_farthest_points_randomized(
+                X, n_keep, top_k=bootstrap_fps_top_k, alpha=bootstrap_fps_alpha
+            )
+            boot_idx = [selected_indices[int(i)] for i in sample_idx.tolist()]
+            std_X = np.std(X, axis=0)
+            X = X[sample_idx] + np.random.normal(
+                scale=std_X * noise_scale, size=(n_keep, X.shape[1])
+            )
         else:
             raise ValueError(
-                f"Unknown bootstrap_sampling={bootstrap_sampling!r}. Expected 'resample' or 'fps'."
+                f"Unknown bootstrap_sampling={bootstrap_sampling!r}. Expected 'resample', 'fps', or 'fps_random'."
             )
     else:
         boot_idx = selected_indices
@@ -187,6 +209,7 @@ def compute_loop_homological_equivalence(
     loop_mask_b: np.ndarray,
     n_pairs_check: int = 3,
     max_column_diameter: float | None = None,
+    cocycle_edge_mask: np.ndarray | None = None,
 ) -> tuple[list, list]:
     """
     Parameters
@@ -207,6 +230,16 @@ def compute_loop_homological_equivalence(
     loop_sums = loop_sums.reshape(-1, loop_sums.shape[-1])
     if loop_sums.shape[0] == 0:
         return [], []
+    # early stoping, if sum is not a boundary according to cocycle, then skip it
+    if cocycle_edge_mask is not None:
+        mask = cocycle_edge_mask.astype(bool)
+        if mask.shape[0] != loop_sums.shape[1]:
+            return [], []
+        if mask.any():
+            keep = (loop_sums[:, mask].sum(axis=1) % 2) == 0
+            loop_sums = loop_sums[keep]
+            if loop_sums.shape[0] == 0:
+                return [], []
     n_pairs_check = min(n_pairs_check, loop_sums.shape[0])
 
     one_ridx_A = np.asarray(boundary_matrix_d1.data[0])

@@ -23,6 +23,7 @@ from ..computing.loops import (
 )
 from ..computing.matching import (
     check_homological_equivalence,
+    cocycle_to_edge_mask,
     compute_geometric_distance,
 )
 from ..data.analysis_containers import LoopMatch
@@ -129,6 +130,7 @@ def run_single_bootstrap(
             loop_lower_t_pct=loop_lower_t_pct,
             loop_upper_t_pct=loop_upper_t_pct,
             bootstrap=False,
+            do_clean_cocycle_region=True,
         )
     else:
         bootstrap_loop_classes = compute_loop_representatives(
@@ -163,6 +165,25 @@ def run_single_bootstrap(
             matches=matches,
         )
 
+    assert meta.preprocess is not None
+    assert meta.preprocess.num_vertices is not None
+    if meta.preprocess.indices_downsample is not None:
+        original_vertex_ids = meta.preprocess.indices_downsample
+    else:
+        original_vertex_ids = list(range(meta.preprocess.num_vertices))
+    cocycle_edge_masks: list[np.ndarray | None] = []
+    for loop_class in original_loop_classes:
+        if loop_class is None or loop_class.cocycles is None:
+            cocycle_edge_masks.append(None)
+            continue
+        cocycle_edge_masks.append(
+            cocycle_to_edge_mask(
+                cocycle=loop_class.cocycles,
+                boundary_matrix_d1=original_boundary_matrix_d1,
+                vertex_ids=original_vertex_ids,
+            )
+        )
+
     pairwise_geo_dist = np.full((n_original, n_bootstrap), np.nan)
 
     for i, src_loop in enumerate(original_loop_classes):
@@ -171,6 +192,7 @@ def run_single_bootstrap(
         src_coords = src_loop.coordinates_vertices_representatives
         if src_coords is None:
             continue
+        cocycle_edge_mask = cocycle_edge_masks[i]
 
         for j, tgt_loop in enumerate(bootstrap_loop_classes):
             if tgt_loop is None or tgt_loop.representatives is None:
@@ -224,6 +246,7 @@ def run_single_bootstrap(
                 boundary_matrix_d1=original_boundary_matrix_d1,
                 n_pairs_check=n_pairs_check_equivalence,
                 max_column_diameter=max_column_diameter,
+                cocycle_edge_mask=cocycle_edge_mask,
             )
 
             if is_equivalent:
