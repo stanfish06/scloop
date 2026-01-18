@@ -12,7 +12,10 @@ from tqdm_joblib import tqdm_joblib
 
 
 def random_feats(
-    X: np.ndarray, gamma: Union[int, float] = 1, frequency_seed: int = None
+    X: np.ndarray,
+    gamma: Union[int, float] = 1,
+    frequency_seed: int = None,
+    n_features: int = 1000,
 ):
     """Computes random Fourier frequency features: https://papers.nips.cc/paper/2007/hash/013a006f03dbc5392effeb8f18fda755-Abstract.html
 
@@ -30,13 +33,15 @@ def random_feats(
         random Fourier frequency features (dimensions = cells x 2000)
     ----------
     """
+    if n_features <= 0:
+        raise ValueError("n_features must be > 0.")
     scale = 1 / gamma
 
     if frequency_seed is not None:
-        np.random.seed(frequency_seed)
-        W = np.random.normal(scale=scale, size=(X.shape[1], 1000))
+        rng = np.random.default_rng(int(frequency_seed))
+        W = rng.normal(scale=scale, size=(X.shape[1], n_features))
     else:
-        W = np.random.normal(scale=scale, size=(X.shape[1], 1000))
+        W = np.random.normal(scale=scale, size=(X.shape[1], n_features))
 
     XW = np.dot(X, W)
     sin_XW = np.sin(XW)
@@ -56,6 +61,7 @@ def _density_to_weights(density: np.ndarray) -> np.ndarray:
     weights = np.where(np.isfinite(weights), weights, 0.0)
     weights = weights / weights.sum()
     return weights
+
 
 @njit
 def kernel_herding(phi: np.ndarray, num_subsamples: int, weights: np.ndarray):
@@ -142,6 +148,7 @@ def kernel_herding_main(
     frequency_seed: int = None,
     num_subsamples: int = 500,
     density=None,
+    n_features: int = 1000,
 ):
     """Performs kernel herding subsampling on a single sample-set using random features
 
@@ -164,7 +171,9 @@ def kernel_herding_main(
     ----------
     """
     X = X[sample_set_ind, :]
-    phi = random_feats(X, gamma=gamma, frequency_seed=frequency_seed)
+    phi = random_feats(
+        X, gamma=gamma, frequency_seed=frequency_seed, n_features=n_features
+    )
     if density is None:
         weights = np.full(phi.shape[0], 1.0 / phi.shape[0], dtype=np.float64)
     else:

@@ -15,8 +15,15 @@ from ..data.ripser_lib import (  # type: ignore[import-not-found]
     get_boundary_matrix,
     ripser,
 )
-from ..data.types import Count_t, Diameter_t, IndexListDistMatrix, LoopDistMethod
+from ..data.types import (
+    Count_t,
+    Diameter_t,
+    IndexListDistMatrix,
+    LoopDistMethod,
+    Percent_t,
+)
 from ..data.utils import encode_triangles_and_edges
+from ..preprocessing.delve.kh import kernel_herding_main
 from ..preprocessing.downsample import (
     sample_farthest_points,
     sample_farthest_points_randomized,
@@ -37,9 +44,11 @@ def compute_sparse_pairwise_distance(
     noise_scale: float = 1e-3,
     thresh: Diameter_t | None = None,
     bootstrap_sampling: str = "resample",
-    bootstrap_fps_fraction: float = 2 / 3,
+    bootstrap_downsample_fraction: Percent_t = 2 / 3,
     bootstrap_fps_top_k: int = 5,
     bootstrap_fps_alpha: float = 1.0,
+    bootstrap_herding_n_features: int = 1000,
+    bootstrap_herding_seed: int | None = None,
     **nei_kwargs,
 ) -> tuple[csr_matrix, IndexListDistMatrix | None]:
     # important, default is binary graph
@@ -65,9 +74,9 @@ def compute_sparse_pairwise_distance(
                 scale=std_X * noise_scale, size=X.shape
             )
         elif bootstrap_sampling == "fps":
-            if not (0 < bootstrap_fps_fraction <= 1):
-                raise ValueError("bootstrap_fps_fraction must be in (0, 1].")
-            n_keep = max(2, int(round(len(selected_indices) * bootstrap_fps_fraction)))
+            n_keep = max(
+                2, int(round(len(selected_indices) * bootstrap_downsample_fraction))
+            )
             n_keep = min(n_keep, len(selected_indices))
             sample_idx = sample_farthest_points(X, n_keep)
             boot_idx = [selected_indices[int(i)] for i in sample_idx.tolist()]
@@ -76,13 +85,13 @@ def compute_sparse_pairwise_distance(
                 scale=std_X * noise_scale, size=(n_keep, X.shape[1])
             )
         elif bootstrap_sampling == "fps_random":
-            if not (0 < bootstrap_fps_fraction <= 1):
-                raise ValueError("bootstrap_fps_fraction must be in (0, 1].")
             if bootstrap_fps_top_k <= 0:
                 raise ValueError("bootstrap_fps_top_k must be > 0.")
             if bootstrap_fps_alpha < 0:
                 raise ValueError("bootstrap_fps_alpha must be >= 0.")
-            n_keep = max(2, int(round(len(selected_indices) * bootstrap_fps_fraction)))
+            n_keep = max(
+                2, int(round(len(selected_indices) * bootstrap_downsample_fraction))
+            )
             n_keep = min(n_keep, len(selected_indices))
             sample_idx = sample_farthest_points_randomized(
                 X, n_keep, top_k=bootstrap_fps_top_k, alpha=bootstrap_fps_alpha
@@ -92,9 +101,24 @@ def compute_sparse_pairwise_distance(
             X = X[sample_idx] + np.random.normal(
                 scale=std_X * noise_scale, size=(n_keep, X.shape[1])
             )
-        else:
-            raise ValueError(
-                f"Unknown bootstrap_sampling={bootstrap_sampling!r}. Expected 'resample', 'fps', or 'fps_random'."
+        elif bootstrap_sampling == "herding": # TODO: increase randomness of thsi approach
+            n_keep = max(
+                2, int(round(len(selected_indices) * bootstrap_downsample_fraction))
+            )
+            n_keep = min(n_keep, len(selected_indices))
+            if bootstrap_herding_seed is None:
+                bootstrap_herding_seed = int(np.random.randint(0, 1_000_000))
+            sample_idx = kernel_herding_main(
+                sample_set_ind=np.arange(len(selected_indices)),
+                X=X,
+                num_subsamples=n_keep,
+                frequency_seed=bootstrap_herding_seed,
+                n_features=int(bootstrap_herding_n_features),
+            )
+            boot_idx = [selected_indices[int(i)] for i in sample_idx.tolist()]
+            std_X = np.std(X, axis=0)
+            X = X[sample_idx] + np.random.normal(
+                scale=std_X * noise_scale, size=(n_keep, X.shape[1])
             )
     else:
         boot_idx = selected_indices
