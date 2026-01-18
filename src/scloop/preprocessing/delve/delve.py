@@ -26,6 +26,7 @@ def delve_fs(
     random_state: int = 0,
     n_random_state: int = 10,
     n_pcs=None,
+    density_weighted_sketch: bool = False,
     n_jobs: int = -1,
 ):
     """Performs DELVE feature selection
@@ -81,6 +82,7 @@ def delve_fs(
             random_state=random_state,
             n_random_state=n_random_state,
             n_pcs=n_pcs,
+            density_weighted_sketch=density_weighted_sketch,
             n_jobs=n_jobs,
         )
 
@@ -115,6 +117,7 @@ def seed_select(
     random_state: int = 0,
     n_random_state: int = 10,
     n_pcs=None,
+    density_weighted_sketch: bool = False,
     n_jobs: int = -1,
 ):
     """Identifies dynamic seed clusters
@@ -173,6 +176,7 @@ def seed_select(
         num_subsamples=num_subsamples,
         random_state=random_state,
         n_pcs=n_pcs,
+        density_weighted_sketch=density_weighted_sketch,
         n_jobs=n_jobs,
     )
 
@@ -297,6 +301,7 @@ def delta_exp(
     num_subsamples: int = 1000,
     random_state: int = 0,
     n_pcs=None,
+    density_weighted_sketch: bool = False,
     n_jobs: int = -1,
 ):
     """Estimates change in expression of features across representative cellular neighborhoods
@@ -328,7 +333,13 @@ def delta_exp(
     ----------
     """
     # construct between cell affinity kNN graph according to all profiled features
-    W = construct_affinity(X=X, k=k, n_pcs=n_pcs, n_jobs=-1)
+    if density_weighted_sketch:
+        W, density = construct_affinity(
+            X=X, k=k, n_pcs=n_pcs, n_jobs=-1, return_density=True
+        )
+    else:
+        W = construct_affinity(X=X, k=k, n_pcs=n_pcs, n_jobs=-1)
+        density = None
 
     # compute neighborhood means
     n_bool = W.astype(bool)
@@ -340,6 +351,7 @@ def delta_exp(
         anndata.AnnData(n_mean),
         num_subsamples=num_subsamples,
         frequency_seed=random_state,
+        density=density,
         n_jobs=n_jobs,
     )
 
@@ -424,7 +436,12 @@ def laplacian_score(X=None, W=None):
 
 
 def construct_affinity(
-    X=None, k: int = 10, radius: int = 3, n_pcs=None, n_jobs: int = -1
+    X=None,
+    k: int = 10,
+    radius: int = 3,
+    n_pcs=None,
+    n_jobs: int = -1,
+    return_density: bool = False,
 ):
     """Computes between cell affinity knn graph using heat kernel
     Parameters
@@ -459,6 +476,7 @@ def construct_affinity(
 
     # transform distances using heat kernel
     s = heat_kernel(dist, radius=radius)  # -||x_i - x_j||^2 / 2*sigma_i**2
+    density = np.sum(s, axis=1)
     rows = np.repeat(np.arange(X.shape[0]), k)
     cols = nn.reshape(-1)
     W = scipy.sparse.csr_matrix(
@@ -469,6 +487,8 @@ def construct_affinity(
     bigger = W.transpose() > W
     W = W - W.multiply(bigger) + W.transpose().multiply(bigger)
 
+    if return_density:
+        return W, density
     return W
 
 

@@ -46,8 +46,19 @@ def random_feats(
     return phi
 
 
+def _density_to_weights(density: np.ndarray) -> np.ndarray:
+    density = np.asarray(density, dtype=np.float64)
+    density = np.where(np.isfinite(density), density, 0.0)
+    scale = np.mean(density)
+    eps = scale * 1e-6
+    density = np.maximum(density, eps)
+    weights = 1.0 / density
+    weights = np.where(np.isfinite(weights), weights, 0.0)
+    weights = weights / weights.sum()
+    return weights
+
 @njit
-def kernel_herding(phi: np.ndarray, num_subsamples: int):
+def kernel_herding(phi: np.ndarray, num_subsamples: int, weights: np.ndarray):
     """Performs kernel herding subsampling: https://arxiv.org/abs/1203.3472 using numba
 
     Parameters
@@ -70,8 +81,8 @@ def kernel_herding(phi: np.ndarray, num_subsamples: int):
     for i in range(num_features):
         total = 0.0
         for j in range(num_cells):
-            total += phi[j, i]
-        w_t[i] = total / num_cells
+            total += phi[j, i] * weights[j]
+        w_t[i] = total
 
     w_0 = np.copy(w_t)
     for subsample_idx in range(num_subsamples):  # find argmax
@@ -130,6 +141,7 @@ def kernel_herding_main(
     gamma: Union[int, float] = 1,
     frequency_seed: int = None,
     num_subsamples: int = 500,
+    density=None,
 ):
     """Performs kernel herding subsampling on a single sample-set using random features
 
@@ -153,7 +165,15 @@ def kernel_herding_main(
     """
     X = X[sample_set_ind, :]
     phi = random_feats(X, gamma=gamma, frequency_seed=frequency_seed)
-    kh_indices = kernel_herding(phi, num_subsamples)
+    if density is None:
+        weights = np.full(phi.shape[0], 1.0 / phi.shape[0], dtype=np.float64)
+    else:
+        density_arr = np.asarray(density, dtype=np.float64)
+        if density_arr.shape[0] != phi.shape[0]:
+            weights = np.full(phi.shape[0], 1.0 / phi.shape[0], dtype=np.float64)
+        else:
+            weights = _density_to_weights(density_arr)
+    kh_indices = kernel_herding(phi, num_subsamples, weights)
 
     return kh_indices
 
@@ -165,6 +185,7 @@ def sketch(
     gamma: Union[int, float] = 1,
     frequency_seed: int = None,
     num_subsamples: int = 500,
+    density=None,
     n_jobs: int = -1,
 ):
     """constructs a sketch using kernel herding and random Fourier frequency features
@@ -219,14 +240,23 @@ def sketch(
 
     n_sample_sets = len(sample_set_inds)
     X = _parse_input(adata)
+    density_arr = None
+    if density is not None:
+        density_arr = np.asarray(density, dtype=np.float64)
+        if density_arr.shape[0] != X.shape[0]:
+            density_arr = None
 
     def process_set(i, inds):
+        density_subset = None
+        if density_arr is not None:
+            density_subset = density_arr[inds]
         return kernel_herding_main(
             sample_set_ind=inds,
             X=X,
             gamma=gamma,
             frequency_seed=frequency_seed,
             num_subsamples=num_subsamples,
+            density=density_subset,
         )
 
     with tqdm_joblib(tqdm(desc="Performing subsampling", total=n_sample_sets)):
