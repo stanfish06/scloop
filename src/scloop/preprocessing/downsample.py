@@ -231,6 +231,7 @@ def sample(
     random_state: int = 0,
     percent_removal_density: float = 0.025,
     n_neighbors_density: int = 50,
+    density_exempt_groups: list[str] | None = None,
 ) -> IndexListDownSample:
     """
     Topology-preserving downsampling using greedy farthest-point sampling.
@@ -272,6 +273,9 @@ def sample(
             current_percentile *= 2
 
         valid_mask = density >= threshold
+        if density_exempt_groups is not None and groupby is not None:
+            exempt_mask = adata.obs[groupby].isin(density_exempt_groups).to_numpy()
+            valid_mask = np.logical_or(valid_mask, exempt_mask)
         local_indices = np.where(valid_mask)[0]
         downsample_embedding_local = downsample_embedding[local_indices]
     else:

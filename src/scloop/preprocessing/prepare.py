@@ -172,6 +172,7 @@ def prepare_adata(
         "n_neighbors_removal_density", 50
     )
     embedding_downsample = kwargs_downsample.get("embedding_downsample", None)
+    density_exempt_groups = kwargs_downsample.get("density_exempt_groups", None)
 
     use_log_display = verbose and max_log_messages is not None
     log_display_ctx: LogDisplay | None = None
@@ -246,7 +247,7 @@ def prepare_adata(
             adata,
             n_comps=n_diffusion_comps,
             n_neighbors=n_neighbors,
-            use_rep=embedding_method if embedding_neighbors != "pca" else None,
+            use_rep=embedding_neighbors if embedding_neighbors != "pca" else None,
             key_added_neighbors=SCLOOP_NEIGHBORS_KEY,
             random_state=random_state,
         )
@@ -292,6 +293,7 @@ def prepare_adata(
             random_state=random_state,
             percent_removal_density=percent_removal_density,
             n_neighbors_density=n_neighbors_removal_density,
+            density_exempt_groups=density_exempt_groups,
         )
         if verbose:
             logger.info(f"Selected {len(indices_downsample)} cells for analysis")
@@ -306,6 +308,7 @@ def prepare_adata(
         "random_state": random_state,
         "percent_removal_density": percent_removal_density,
         "n_neighbors_density": n_neighbors_removal_density,
+        "density_exempt_groups": density_exempt_groups,
     }
 
     preprocess_meta = PreprocessMeta(
