@@ -201,7 +201,7 @@ class CrossLoopMatchResult:
         try:
             cols = ["track_id"] + [f"dataset_{i}" for i in sorted_dataset_indices]
             tracks_df = tracks_df[cols]
-        except ValueError:
+        except KeyError:
             tracks_df = None
 
         match_rows = []

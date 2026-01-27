@@ -35,7 +35,7 @@ class NeuralODEregressor(pl.LightningModule):
         t_span: torch.Tensor,
         n_hidden=64,
         n_layers=1,
-        solver="rk4",
+        solver="dopri5", # use same solver and solver_adjoint is more robust
         solver_adjoint="dopri5",
         atol_adjoint=1e-4,
         rtol_adjoint=1e-4,
