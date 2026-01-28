@@ -1,20 +1,19 @@
 import logging
+import multiprocessing as mp
 
 import anndata
 import numpy as np
 import pandas as pd
 import scipy
 from numba import jit
-
-logging.basicConfig(level=logging.INFO)
-import multiprocessing as mp
-
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.neighbors import NearestNeighbors
 from tqdm import tqdm
 
-from .kh import *
+from .kh import sketch
+
+logging.basicConfig(level=logging.INFO)
 
 
 def delve_fs(
@@ -185,7 +184,6 @@ def seed_select(
     pval_df = pd.DataFrame(index=feature_names)
     dyn_feats = []
     random_state_idx = []
-    results_collected = []
 
     logging.info(f"Running {n_random_state} clustering iterations sequentially")
     for state in tqdm(random_state_arr, desc="clustering and permutation testing"):
@@ -280,7 +278,7 @@ def feature_select(
         dataframe containing ranked features and Laplacian scores for feature selection (dimensions = features x 1)
     ----------
     """
-    f_idx = np.where(np.isin(feature_names, dyn_feats) == True)[
+    f_idx = np.where(np.isin(feature_names, dyn_feats))[
         0
     ]  # index of feature names to construct seed graph
     W = construct_affinity(

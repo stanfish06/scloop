@@ -8,7 +8,7 @@ from scipy.sparse import csr_matrix
 __all__ = ["scatter_loop_edge_field_to_global", "compute_divergence_from_edge_field"]
 
 
-@jit(nopython=True)
+@jit(nopython=True, cache=True)
 def _scatter_single_rep(
     edge_vals: np.ndarray,
     mask: np.ndarray,

@@ -432,6 +432,9 @@ class LoopClassAnalysis(LoopClass):
     edge_involvement_smooth: list[np.ndarray] | None = None
     valid_edge_indices_per_rep: list[list[int]] = Field(default_factory=list)
     edge_signs_per_rep: list[np.ndarray] = Field(default_factory=list)
+    vertex_divergence_raw: np.ndarray | None = None
+    vertex_divergence_smooth: np.ndarray | None = None
+    vertex_ids_divergence: list[int] | None = None
 
     def _concat_property(
         self, attr_name: str, apply_filter: bool = False
@@ -877,3 +880,76 @@ class HodgeAnalysis(BaseModel):
             bandwidth_scale=bandwidth_scale,
             verbose=verbose,
         )
+
+    def _compute_divergence(
+        self,
+        boundary_matrix_d0,
+        *,
+        edge_field_source: str = "edge_embedding_smooth",
+        negate_for_source_positive: bool = True,
+        smooth_half_window: int = DEFAULT_HALF_WINDOW,
+    ) -> None:
+        from scipy.sparse import csr_matrix
+
+        from ..computing.divergence import (
+            compute_divergence_from_edge_field,
+            scatter_loop_edge_field_to_global,
+        )
+
+        rows, cols, vals = boundary_matrix_d0.data
+        bd0 = csr_matrix((vals, (rows, cols)), shape=boundary_matrix_d0.shape)
+
+        vertex_id_by_row = boundary_matrix_d0.row_simplex_ids
+        vertex_row_lookup = {v: i for i, v in enumerate(vertex_id_by_row)}
+
+        for loop_idx, loop in enumerate(self.selected_loop_classes):
+            if loop.representatives is None or len(loop.representatives) == 0:
+                continue
+
+            if edge_field_source == "edge_gradient_raw":
+                edge_values_per_rep = []
+                for rep_idx, grad in enumerate(loop.edge_gradient_raw or []):
+                    valid_idx = loop.valid_edge_indices_per_rep[rep_idx]
+                    if valid_idx:
+                        edge_values_per_rep.append(grad[valid_idx].flatten())
+                    else:
+                        edge_values_per_rep.append(np.array([]))
+            else:
+                edge_values_per_rep = getattr(loop, edge_field_source) or []
+
+            if not edge_values_per_rep:
+                continue
+
+            edge_field_global = scatter_loop_edge_field_to_global(
+                edge_values_per_rep=edge_values_per_rep,
+                edge_masks_per_rep=self.edges_masks_loop_classes[loop_idx],
+                edge_signs_per_rep=loop.edge_signs_per_rep,
+                n_global_edges=boundary_matrix_d0.shape[1],
+            )
+
+            div_global = compute_divergence_from_edge_field(
+                bd0, edge_field_global, negate_for_source_positive
+            )
+
+            rep_vertices = list(loop.representatives[0])
+            if len(rep_vertices) > 1 and rep_vertices[0] == rep_vertices[-1]:
+                rep_vertices = rep_vertices[:-1]
+
+            div_loop = np.array(
+                [
+                    div_global[vertex_row_lookup[v]]
+                    for v in rep_vertices
+                    if v in vertex_row_lookup
+                ]
+            )
+
+            if smooth_half_window > 0 and len(div_loop) > 0:
+                div_smooth = smooth_along_loop_1d(
+                    div_loop.astype(np.float64), smooth_half_window
+                )
+            else:
+                div_smooth = div_loop.copy()
+
+            loop.vertex_ids_divergence = rep_vertices
+            loop.vertex_divergence_raw = div_loop
+            loop.vertex_divergence_smooth = div_smooth
