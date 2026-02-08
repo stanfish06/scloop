@@ -5,7 +5,7 @@
 [![Test Build](https://github.com/stanfish06/scLoop/actions/workflows/test-build.yml/badge.svg)](https://github.com/stanfish06/scLoop/actions/workflows/test-build.yml)
 [![PyPI](https://img.shields.io/pypi/v/scloop)](https://pypi.org/project/scloop)
 
-**Note: this package is in early stages of development.**
+**Note: this package is in early stages of development. (manuscirpt in prep)**
 
 scLoop is a library to identify statistically significant loops in single-cell RNA-seq data.
 
