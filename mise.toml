@@ -20,8 +20,8 @@ run = [
 
 [tasks.sync_full]
 run = [
-    "uv cache clean",
-    "uv cache prune",
+    "uv cache clean --force",
+    "uv cache prune --force",
     "rm -rf .venv",
     "rm -rf dist",
     "rm -rf ./src/scloop.egg-info",
