@@ -8,6 +8,7 @@ import igraph as ig
 import numpy as np
 from loguru import logger
 from numba import jit
+from pydantic import PositiveFloat
 from scipy.sparse import csr_matrix, triu
 
 from ..data.base_components import LoopClass
@@ -18,8 +19,9 @@ from ..data.constants import (
     DEFAULT_N_COCYCLES_USED,
     DEFAULT_N_FORCE_DEVIATE,
     DEFAULT_N_REPS_PER_LOOP,
+    NUMERIC_EPSILON,
 )
-from ..data.types import Percent_t
+from ..data.types import Count_t, Percent_t
 from ..data.utils import extract_edges_from_coo, loops_to_coords
 
 
@@ -241,20 +243,25 @@ def reconstruct_n_loop_representatives(
     cocycles_dim1: List,
     edges: np.ndarray,
     edge_diameters: np.ndarray,
-    loop_birth: float,
-    loop_death: float,
-    n: int,
-    life_pct: float = DEFAULT_LIFE_PCT,
-    n_force_deviate: int = DEFAULT_N_FORCE_DEVIATE,
-    k_yen: int = DEFAULT_K_YEN,
+    loop_birth: PositiveFloat,
+    loop_death: PositiveFloat,
+    n: Count_t,
+    life_pct: Percent_t = DEFAULT_LIFE_PCT,
+    n_force_deviate: Count_t = DEFAULT_N_FORCE_DEVIATE,
+    k_yen: Count_t = DEFAULT_K_YEN,
     loop_lower_pct: float = 5,
     loop_upper_pct: float = 95,
-    n_cocycles_used: int = DEFAULT_N_COCYCLES_USED,
+    n_cocycles_used: Count_t = DEFAULT_N_COCYCLES_USED,
+    do_random_walk: bool = False,
+    n_random_graphs: Count_t = 10,
+    decay_random_walk: PositiveFloat = 1.0,
+    noise_random_walk: PositiveFloat = 1.0,
+    seed_random_walk: int = 1,
     *,
     do_clean_cocycle_region: bool = False,
-) -> Tuple[List[List[int]], List[float]]:
+) -> Tuple[List[List[int]], List[float]] | None:
     """
-    Reconstruct diverse loop representatives
+    Reconstruct diverse loop representatives using shortest paths or random walks
     """
     if n <= 0 or len(edges) == 0:
         return [], []
@@ -308,16 +315,31 @@ def reconstruct_n_loop_representatives(
     cycles_pool: list[list[int]] = []
     cycles_dist: list[float] = []
 
-    for _ in range(n_force_deviate):
-        edge_list = list(edge_weight_dict.keys())
+    _n_trials: Count_t = n_random_graphs if do_random_walk else n_force_deviate
+
+    edge_list = list(edge_weight_dict.keys())
+    n_vertices = max(max(e) for e in edge_list) + 1
+    if not edge_list:
+        return None
+    g = ig.Graph(n=n_vertices, edges=edge_list, directed=False)
+    base_weight_list = [edge_weight_dict[e] for e in edge_list]
+    g.es["base_weight"] = base_weight_list
+    if do_random_walk:
+        rng = np.random.default_rng(seed_random_walk)
+    for _ in range(_n_trials):
         weight_list = [edge_weight_dict[e] for e in edge_list]
 
-        if not edge_list:
-            break
-
-        n_vertices = max(max(e) for e in edge_list) + 1
-        g = ig.Graph(n=n_vertices, edges=edge_list, directed=False)
-        g.es["weight"] = weight_list
+        if do_random_walk:
+            weight_list_perturbed = decay_random_walk * np.array(
+                weight_list
+            ) - noise_random_walk * rng.gumbel(
+                loc=0.0, scale=1.0, size=len(weight_list)
+            )
+            weight_list_perturbed -= np.min(weight_list_perturbed)
+            weight_list_perturbed += NUMERIC_EPSILON
+            g.es["weight"] = list(weight_list_perturbed)
+        else:
+            g.es["weight"] = weight_list
 
         paths_this_round: list[list[int]] = []
         for i, j in cocycle_edges_for_paths:
@@ -331,10 +353,11 @@ def reconstruct_n_loop_representatives(
                     paths_this_round.append(path)
                     cycles_dist.append(dist)
 
-        for path in paths_this_round:
-            for u, v in zip(path[:-1], path[1:]):
-                key = (min(u, v), max(u, v))
-                edge_weight_dict[key] = math.inf
+        if not do_random_walk:
+            for path in paths_this_round:
+                for u, v in zip(path[:-1], path[1:]):
+                    key = (min(u, v), max(u, v))
+                    edge_weight_dict[key] = math.inf
 
     return _select_diverse_loops(
         cycles=cycles_pool,
@@ -365,7 +388,7 @@ def _path_weight(g: ig.Graph, path: Sequence[int]) -> float:
             eid = g.get_eid(u, v, directed=False)
         except ig._igraph.InternalError:
             return math.inf
-        w = g.es[eid]["weight"]
+        w = g.es[eid]["base_weight"]
         if not math.isfinite(w):
             return math.inf
         weight += float(w)

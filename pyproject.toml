@@ -62,6 +62,7 @@ urls.Repository = "https://github.com/stanfish06/scloop.git"
 [dependency-groups]
 dev = [
   "pyright==1.1.406",
+  "ruff>=0.15.5",
   "ty>=0.0.1a34",
 ]
 

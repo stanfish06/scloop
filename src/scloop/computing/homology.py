@@ -101,7 +101,9 @@ def compute_sparse_pairwise_distance(
             X = X[sample_idx] + np.random.normal(
                 scale=std_X * noise_scale, size=(n_keep, X.shape[1])
             )
-        elif bootstrap_sampling == "herding": # TODO: increase randomness of thsi approach
+        elif (
+            bootstrap_sampling == "herding"
+        ):  # TODO: increase randomness of thsi approach
             n_keep = max(
                 2, int(round(len(selected_indices) * bootstrap_downsample_fraction))
             )
