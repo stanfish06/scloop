@@ -73,6 +73,7 @@ def find_loops(
     max_log_messages: int | None = None,
     kwargs_bootstrap: dict[str, Any] | None = None,
     kwargs_loop_test: dict[str, Any] | None = None,
+    kwargs_loop_representatives: dict[str, Any] | None = None,
 ) -> None:
     use_log_display = verbose and max_log_messages is not None
     log_display_ctx = None
@@ -154,12 +155,14 @@ def find_loops(
 
         assert meta.preprocess.embedding_method is not None
 
+        kwargs_loop_representatives = kwargs_loop_representatives or {}
         embedding = np.array(adata.obsm[f"X_{meta.preprocess.embedding_method}"])
         hd._compute_loop_representatives(
             embedding=embedding,
             pairwise_distance_matrix=sparse_dist_mat,
             top_k=n_candidates,
             life_pct=tightness_loops,
+            **kwargs_loop_representatives,
         )
         """
         ========= bootstrap =========

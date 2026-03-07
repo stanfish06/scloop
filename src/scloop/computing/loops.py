@@ -115,7 +115,7 @@ def compute_loop_representatives(
     cocycles: list,
     boundary_matrix_d1: BoundaryMatrixD1,
     vertex_ids: list[int],
-    top_k: int | None = None,
+    top_k: Count_t | None = None,
     n_reps_per_loop: int = DEFAULT_N_REPS_PER_LOOP,
     life_pct: Percent_t = DEFAULT_LIFE_PCT,
     n_cocycles_used: int = DEFAULT_N_COCYCLES_USED,
@@ -123,6 +123,11 @@ def compute_loop_representatives(
     k_yen: int = DEFAULT_K_YEN,
     loop_lower_t_pct: float = 2.5,
     loop_upper_t_pct: float = 97.5,
+    do_random_walk: bool = False,
+    n_random_graphs: Count_t = 10,
+    decay_random_walk: PositiveFloat = 1.0,
+    noise_random_walk: PositiveFloat = 1.0,
+    seed_random_walk: int = 1,
     bootstrap: bool = False,
     rank_offset: int = 0,
     do_clean_cocycle_region: bool = False,
@@ -221,6 +226,11 @@ def compute_loop_representatives(
             loop_lower_pct=loop_lower_t_pct,
             loop_upper_pct=loop_upper_t_pct,
             n_cocycles_used=n_cocycles_used,
+            do_random_walk=do_random_walk,
+            n_random_graphs=n_random_graphs,
+            decay_random_walk=decay_random_walk,
+            noise_random_walk=noise_random_walk,
+            seed_random_walk=seed_random_walk,
             do_clean_cocycle_region=do_clean_cocycle_region,
         )
 
@@ -259,7 +269,7 @@ def reconstruct_n_loop_representatives(
     seed_random_walk: int = 1,
     *,
     do_clean_cocycle_region: bool = False,
-) -> Tuple[List[List[int]], List[float]] | None:
+) -> Tuple[List[List[int]], List[float]]:
     """
     Reconstruct diverse loop representatives using shortest paths or random walks
     """
@@ -320,16 +330,16 @@ def reconstruct_n_loop_representatives(
     edge_list = list(edge_weight_dict.keys())
     n_vertices = max(max(e) for e in edge_list) + 1
     if not edge_list:
-        return None
+        return [], []
     g = ig.Graph(n=n_vertices, edges=edge_list, directed=False)
     base_weight_list = [edge_weight_dict[e] for e in edge_list]
     g.es["base_weight"] = base_weight_list
-    if do_random_walk:
-        rng = np.random.default_rng(seed_random_walk)
+    rng = np.random.default_rng(seed_random_walk)
     for _ in range(_n_trials):
         weight_list = [edge_weight_dict[e] for e in edge_list]
 
         if do_random_walk:
+            # Gumbel max trick to simulate/approximate random walk bridge
             weight_list_perturbed = decay_random_walk * np.array(
                 weight_list
             ) - noise_random_walk * rng.gumbel(
@@ -353,11 +363,10 @@ def reconstruct_n_loop_representatives(
                     paths_this_round.append(path)
                     cycles_dist.append(dist)
 
-        if not do_random_walk:
-            for path in paths_this_round:
-                for u, v in zip(path[:-1], path[1:]):
-                    key = (min(u, v), max(u, v))
-                    edge_weight_dict[key] = math.inf
+        for path in paths_this_round:
+            for u, v in zip(path[:-1], path[1:]):
+                key = (min(u, v), max(u, v))
+                edge_weight_dict[key] = math.inf
 
     return _select_diverse_loops(
         cycles=cycles_pool,
@@ -375,7 +384,7 @@ def _k_shortest_paths(g: ig.Graph, source: int, target: int, k: int) -> list[lis
         return g.get_k_shortest_paths(
             source, target, k=k, weights=g.es["weight"], mode="ALL"
         )
-    except ig._igraph.InternalError:
+    except ig.InternalError:
         return []
 
 
@@ -386,7 +395,7 @@ def _path_weight(g: ig.Graph, path: Sequence[int]) -> float:
     for u, v in zip(path[:-1], path[1:]):
         try:
             eid = g.get_eid(u, v, directed=False)
-        except ig._igraph.InternalError:
+        except ig.InternalError:
             return math.inf
         w = g.es[eid]["base_weight"]
         if not math.isfinite(w):
