@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import numpy as np
 import scanpy as sc
+from pydantic import BaseModel, ValidationInfo, field_validator
+from ..data.types import Count_t, Percent_t
 from anndata import AnnData
 
 
@@ -28,3 +30,21 @@ def compute_diffmap(
         neighbors_key=key_added_neighbors,
     )
     return np.array(adata.obsm["X_diffmap"])
+
+class DiffusionMap(BaseModel):
+    eigenvalues: list
+    eigenvectors: list
+    diffusion_t: Count_t
+    damp_t: Percent_t
+
+    def _compute_multi_step_transition():
+        pass
+
+    def _compute_multi_scale_eigenspace():
+        pass
+
+    def compute_diffmap():
+        pass
+
+    def project_query_data():
+        pass

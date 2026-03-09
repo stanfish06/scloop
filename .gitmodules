@@ -7,3 +7,6 @@
 [submodule "src/scloop/utils/linear_algebra_gf2/GF2toolkit"]
 	path = src/scloop/utils/linear_algebra_gf2/GF2toolkit
 	url = https://github.com/stanfish06/GF2toolkit.git
+[submodule "src/scloop/utils/denoise/Sanity"]
+	path = src/scloop/utils/denoise/Sanity
+	url = https://github.com/stanfish06/Sanity.git
