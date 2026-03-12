@@ -1,21 +1,6 @@
 [build-system]
 build-backend = "setuptools.build_meta"
-# [tool.setuptools]
-# package-dir = { "" = "src" }
-# ext-modules = [
-#   { name = "scloop.data.ripser_lib", sources = [
-#     "./src/scloop/data/ripser_lib.pyx",
-#     "./src/scloop/data/ripser.cpp",
-#   ], language = "c++", optional = false },
-#   { name = "scloop.utils.linear_algebra_gf2.m4ri_lib", sources = [
-#     "./src/scloop/utils/linear_algebra_gf2/m4ri_lib.pyx",
-#   ], language = "c", optional = false, libraries = ["m4ri"], extra-objects = [
-#     "./src/scloop/utils/linear_algebra_gf2/libm4ri.a",
-#   ], include-dirs = [
-#     "./src/scloop/utils/linear_algebra_gf2/include",
-#   ] },
-# ]
-requires = [ "cython>=3.0.12", "setuptools>=74.1" ]
+requires = [ "cython>=3.0.12", "setuptools" ]
 
 [project]
 name = "scloop"
@@ -38,7 +23,7 @@ dependencies = [
   "loguru==0.7.3",
   "numba>=0.62.1",
   "numpy<2",
-  "pandas",
+  "pandas<2",
   "pip>=25.2",
   "pydantic>=2.11.4",
   "pygam>=0.12",
@@ -61,8 +46,12 @@ urls.Repository = "https://github.com/stanfish06/scloop.git"
 
 [dependency-groups]
 dev = [
+  "fa2-modified>=0.4",
+  "magic-impute>=3",
+  "phate>=2",
   "pyright==1.1.406",
   "ruff>=0.15.5",
+  "scvi-tools>=1.4.1",
   "ty>=0.0.1a34",
 ]
 
@@ -71,6 +60,7 @@ package = true
 
 [tool.uv.extra-build-dependencies]
 scloop = [ "Cython" ]
+pandas = [ "setuptools<81" ] # specify this if need to build <2.0.0 pandas (torch.load needs old pandas)
 
 [tool.uv.sources]
 torch = [
@@ -124,3 +114,19 @@ venv = ".venv"
 
 [tool.ty]
 src = { include = [ "src" ] }
+
+# [tool.setuptools]
+# package-dir = { "" = "src" }
+# ext-modules = [
+#   { name = "scloop.data.ripser_lib", sources = [
+#     "./src/scloop/data/ripser_lib.pyx",
+#     "./src/scloop/data/ripser.cpp",
+#   ], language = "c++", optional = false },
+#   { name = "scloop.utils.linear_algebra_gf2.m4ri_lib", sources = [
+#     "./src/scloop/utils/linear_algebra_gf2/m4ri_lib.pyx",
+#   ], language = "c", optional = false, libraries = ["m4ri"], extra-objects = [
+#     "./src/scloop/utils/linear_algebra_gf2/libm4ri.a",
+#   ], include-dirs = [
+#     "./src/scloop/utils/linear_algebra_gf2/include",
+#   ] },
+# ]

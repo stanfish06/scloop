@@ -175,6 +175,18 @@ def compute_hodge_analysis(
 
     try:
         if progress is not None and task_step is not None:
+            progress.update(task_step, description="Computing divergence...")
+        track.hodge_analysis._compute_divergence(
+            boundary_matrix_d0=boundary_matrix_d0,
+            edge_field_source="edge_embedding_smooth",
+            negate_for_source_positive=True,
+            smooth_half_window=half_window,
+        )
+    except Exception as e:
+        logger.warning(f"Divergence computation failed: {e}")
+
+    try:
+        if progress is not None and task_step is not None:
             progress.update(task_step, description="Identify trajectories...")
         kwargs_trajectory = kwargs_trajectory or {}
         if coordinates_vertices is None:

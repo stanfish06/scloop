@@ -1,6 +1,8 @@
 # Copyright 2025 Zhiyuan Yu (Heemskerk's lab, University of Michigan)
 from __future__ import annotations
 
+from typing import NamedTuple, TypeAlias
+
 import glasbey
 import numpy as np
 from anndata import AnnData
@@ -357,17 +359,47 @@ def persistence_diagram(
     return None
 
 
+IdxTrack: TypeAlias = Index_t
+IdxLoopClassOrig: TypeAlias = Index_t
+
+
+class IdxLoopInTrack(NamedTuple):
+    idx_track: IdxTrack
+    idx_loop: Index_t
+
+
+class IdxClassInBootstrap(NamedTuple):
+    idx_bootstrap: Index_t
+    idx_loop_class: Index_t
+
+
+class IdxLoopInClassOrig(NamedTuple):
+    idx_loop_class: IdxLoopClassOrig
+    idx_loop: Index_t
+
+
+class IdxLoopInClassInBootstrap(NamedTuple):
+    idx_bootstrap: Index_t
+    idx_loop_class: Index_t
+    idx_loop: Index_t
+
+
 @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def loops(
     adata: AnnData,
     basis: str,
     key_homology: str = SCLOOP_UNS_KEY,
-    track_ids: list[Index_t] | None = None,
-    loop_ids: list[Index_t | tuple[Index_t, Index_t]] | None = None,
+    track_selectors: list[IdxTrack | IdxLoopInTrack] | None = None,
+    loop_selectors: list[
+        IdxLoopClassOrig
+        | IdxLoopInClassOrig
+        | IdxClassInBootstrap
+        | IdxLoopInClassInBootstrap
+    ]
+    | None = None,
     components: tuple[Index_t, Index_t] | list[Index_t] = (0, 1),
     ax: Axes | None = None,
     *,
-    show_bootstrap: bool = True,
     pointsize: PositiveFloat = 1,
     figsize: tuple[PositiveFloat, PositiveFloat] = DEFAULT_FIGSIZE,
     dpi: PositiveFloat = DEFAULT_DPI,
@@ -390,10 +422,12 @@ def loops(
         raise KeyError(f"Embedding {basis} not found in adata.obsm.")
     assert type(emb) is np.ndarray
 
-    if track_ids is not None and loop_ids is not None:
+    if track_selectors is not None and loop_selectors is not None:
         raise ValueError("Only one of track_ids or loop_ids can be provided.")
 
-    selectors = loop_ids if loop_ids is not None else track_ids or []
+    _is_loop_selectors = True if loop_selectors is not None else False
+    selectors = loop_selectors if _is_loop_selectors else track_selectors or []
+    assert type(selectors) is list
 
     n_selectors = len(selectors)
     if n_selectors > 0:
@@ -429,22 +463,54 @@ def loops(
         **(kwargs_scatter or {}),
     )
 
-    include_bootstrap = show_bootstrap and data.bootstrap_data is not None
-
     def _loops_for_selector(
-        selector: Index_t | tuple[Index_t, Index_t],
+        selector: IdxTrack
+        | IdxLoopInTrack
+        | IdxLoopClassOrig
+        | IdxLoopInClassOrig
+        | IdxClassInBootstrap
+        | IdxLoopInClassInBootstrap,
     ) -> list[list[list[float]]]:
-        if isinstance(selector, tuple) and not include_bootstrap:
-            return []
-        if isinstance(selector, int):
-            if selector >= len(data.selected_loop_classes):
-                return []
         try:
-            return data._get_loop_embedding(
-                selector=selector,
-                embedding_alt=emb,
-                include_bootstrap=include_bootstrap,
-            )
+            match selector:
+                case int():
+                    if _is_loop_selectors:
+                        return data._get_loop_embedding(
+                            selector=selector,
+                            include_bootstrap=False,
+                            embedding_alt=emb,
+                        )
+                    else:
+                        return data._get_loop_embedding(
+                            selector=selector,
+                            include_bootstrap=True,
+                            embedding_alt=emb,
+                        )
+                case IdxLoopInTrack(idx_track, idx_loop):
+                    return data._get_loop_embedding(
+                        selector=idx_track,
+                        include_bootstrap=True,
+                        idx_loop=idx_loop,
+                        embedding_alt=emb,
+                    )
+                case IdxLoopInClassOrig(idx_loop_class, idx_loop):
+                    return data._get_loop_embedding(
+                        selector=idx_loop_class,
+                        include_bootstrap=False,
+                        idx_loop=idx_loop,
+                        embedding_alt=emb,
+                    )
+                case IdxClassInBootstrap(idx_bootstrap, idx_loop_class):
+                    return data._get_loop_embedding(
+                        selector=(idx_bootstrap, idx_loop_class),
+                        embedding_alt=emb,
+                    )
+                case IdxLoopInClassInBootstrap(idx_bootstrap, idx_loop_class, idx_loop):
+                    return data._get_loop_embedding(
+                        selector=(idx_bootstrap, idx_loop_class),
+                        idx_loop=idx_loop,
+                        embedding_alt=emb,
+                    )
         except AssertionError:
             return []
 
