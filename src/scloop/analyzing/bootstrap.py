@@ -43,7 +43,7 @@ from ..data.constants import (
     DEFAULT_NOISE_SCALE,
 )
 from ..data.metadata import ScloopMeta
-from ..data.types import LoopDistMethod
+from ..data.types import Count_t, LoopDistMethod, PositiveFloat
 from ..data.utils import nearest_neighbor_per_row
 
 
@@ -74,6 +74,11 @@ def run_single_bootstrap(
     k_yen: int = DEFAULT_K_YEN,
     loop_lower_t_pct: float = 2.5,
     loop_upper_t_pct: float = 97.5,
+    do_random_walk: bool = False,
+    n_random_graphs: Count_t = 10,
+    decay_random_walk: PositiveFloat = 1.0,
+    noise_random_walk: PositiveFloat = 1.0,
+    seed_random_walk: int = 1,
     k_neighbors_check_equivalence: int = DEFAULT_K_NEIGHBORS_CHECK_EQUIVALENCE,
     method_geometric_equivalence: LoopDistMethod = DEFAULT_LOOP_DIST_METHOD,
     n_pairs_check_equivalence: int = DEFAULT_N_PAIRS_CHECK_EQUIVALENCE,
@@ -129,6 +134,11 @@ def run_single_bootstrap(
             k_yen=k_yen,
             loop_lower_t_pct=loop_lower_t_pct,
             loop_upper_t_pct=loop_upper_t_pct,
+            do_random_walk=do_random_walk,
+            n_random_graphs=n_random_graphs,
+            decay_random_walk=decay_random_walk,
+            noise_random_walk=noise_random_walk,
+            seed_random_walk=seed_random_walk,
             bootstrap=False,
             do_clean_cocycle_region=True,
         )
@@ -148,6 +158,11 @@ def run_single_bootstrap(
             k_yen=k_yen,
             loop_lower_t_pct=loop_lower_t_pct,
             loop_upper_t_pct=loop_upper_t_pct,
+            do_random_walk=do_random_walk,
+            n_random_graphs=n_random_graphs,
+            decay_random_walk=decay_random_walk,
+            noise_random_walk=noise_random_walk,
+            seed_random_walk=seed_random_walk,
             bootstrap=True,
         )
 
