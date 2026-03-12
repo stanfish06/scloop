@@ -77,9 +77,8 @@ def compute_pairwise_adaptive_kernel_similarity(
         )
         kernel_vals = kernel_sim_raw[idx_i_nei_global]
         kernel_density[i] += np.sum(kernel_vals * np.sqrt(vars_local_i_nei))
-        for ni in range(len(idx_i_nei)):
-            kernel_density[idx_i_nei[ni]] += kernel_vals[ni] * np.sqrt(vars_local[i])
 
+    emitted = np.zeros(len(kernel_sim_raw), dtype=np.bool_)
     rows = np.empty(n * nn, dtype=np.int64)
     cols = np.empty(n * nn, dtype=np.int64)
     vals = np.empty(n * nn, dtype=np.float64)
@@ -89,9 +88,12 @@ def compute_pairwise_adaptive_kernel_similarity(
             j = idx_nei[i, ni]
             lo, hi = (i, j) if i < j else (j, i)
             k = n * lo + hi - ((lo + 2) * (lo + 1)) // 2
+            if emitted[k]:
+                continue
+            emitted[k] = True
             rows[count] = lo
             cols[count] = hi
-            vals[count] = kernel_sim_raw[k] / (kernel_density[i] * kernel_density[j])
+            vals[count] = kernel_sim_raw[k] / (kernel_density[lo] * kernel_density[hi])
             count += 1
 
     return rows[:count], cols[:count], vals[:count]
