@@ -46,51 +46,33 @@ def compute_pairwise_adaptive_kernel_similarity(
     ndarray
     1D kernel distance array for upper diag entries of matrix nxn: k = n * i + j - ((i + 2)(i + 1)) // 2
     """
-    vars_local = np.square(np.median(dist_nei, axis=1))
     n = idx_nei.shape[0]
     nn = idx_nei.shape[1]
+
+    vars_local = np.empty(n, dtype=np.float64)
+    for i in range(n):
+        vars_local[i] = np.square(np.median(dist_nei[i]))
+
     kernel_sim_raw = np.zeros(n * (n - 1) // 2)
     kernel_density = np.ones(n) * NUMERIC_EPSILON
 
-    idx_a = np.empty(nn, dtype=idx_nei.dtype)
-    idx_b = np.empty(nn, dtype=idx_nei.dtype)
     for i in range(n):
-        idx_i_nei = idx_nei[i]
-        dist_i_nei = dist_nei[i]
-        vars_local_i_nei = vars_local[idx_i_nei]
-        for ni in range(len(idx_i_nei)):
-            j = idx_i_nei[ni]
-            if i < j:
-                idx_a[ni] = i
-                idx_b[ni] = j
-            else:
-                idx_a[ni] = j
-                idx_b[ni] = i
-        idx_i_nei_global = n * idx_a + idx_b - ((idx_a + 2) * (idx_a + 1)) // 2
-        # average of vars between two neighbors
-        sum_vars_local = vars_local[i] + vars_local_i_nei
-        kernel_sim_raw[idx_i_nei_global] = np.maximum(
-            1
-            / np.sqrt(sum_vars_local * 0.5)
-            * np.exp(-np.square(dist_i_nei) / sum_vars_local),
-            kernel_sim_raw[idx_i_nei_global],
-        )
+        for ni in range(nn):
+            j = idx_nei[i, ni]
+            dist = dist_nei[i, ni]
+            lo, hi = (i, j) if i < j else (j, i)
+            k = n * lo + hi - ((lo + 2) * (lo + 1)) // 2
+            sum_var = vars_local[i] + vars_local[j]
+            new_val = (1.0 / np.sqrt(sum_var * 0.5)) * np.exp(-(dist**2) / sum_var)
+            if new_val > kernel_sim_raw[k]:
+                kernel_sim_raw[k] = new_val
 
     for i in range(n):
-        idx_i_nei = idx_nei[i]
-        vars_local_i_nei = vars_local[idx_i_nei]
-        for ni in range(len(idx_i_nei)):
-            j = idx_i_nei[ni]
-            if i < j:
-                idx_a[ni] = i
-                idx_b[ni] = j
-            else:
-                idx_a[ni] = j
-                idx_b[ni] = i
-        idx_i_nei_global = n * idx_a + idx_b - ((idx_a + 2) * (idx_a + 1)) // 2
-        kernel_density[i] += np.sum(
-            kernel_sim_raw[idx_i_nei_global] * np.sqrt(vars_local_i_nei)
-        )
+        for ni in range(nn):
+            j = idx_nei[i, ni]
+            lo, hi = (i, j) if i < j else (j, i)
+            k = n * lo + hi - ((lo + 2) * (lo + 1)) // 2
+            kernel_density[i] += kernel_sim_raw[k] * np.sqrt(vars_local[j])
 
     emitted = np.zeros(len(kernel_sim_raw), dtype=np.bool_)
     rows = np.empty(n * nn, dtype=np.int64)
