@@ -50,8 +50,8 @@ dev = [
   "magic-impute>=3",
   "phate>=2",
   "pyright==1.1.406",
-  "scvi-tools>=1.4.1",
   "ruff>=0.15.5",
+  "scvi-tools>=1.4.1",
   "ty>=0.0.1a34",
 ]
 
