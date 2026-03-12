@@ -537,6 +537,7 @@ class HomologyData:
     def _get_loop_embedding(
         self,
         selector: Index_t | tuple[Index_t, Index_t],
+        idx_loop: Index_t | None = None,
         embedding_alt: np.ndarray | None = None,
         include_bootstrap: bool = True,
     ) -> list[list[list[float]]]:
@@ -552,17 +553,41 @@ class HomologyData:
                 if loop_class is not None:
                     if embedding_alt is None:
                         if loop_class.coordinates_vertices_representatives is not None:
-                            loops.extend(
-                                loop_class.coordinates_vertices_representatives
-                            )
+                            if (
+                                idx_loop is None or include_bootstrap
+                            ):  # if include bootstrap, then idx_loop means loop index among all loops in a track
+                                loops.extend(
+                                    loop_class.coordinates_vertices_representatives
+                                )
+                            else:
+                                assert idx_loop < len(
+                                    loop_class.coordinates_vertices_representatives
+                                )
+                                loops.append(
+                                    loop_class.coordinates_vertices_representatives[
+                                        idx_loop
+                                    ]
+                                )
                     else:
                         if loop_class.representatives is not None:
-                            loops.extend(
-                                loops_to_coords(
-                                    embedding=embedding_alt,
-                                    loops_vertices=loop_class.representatives,
+                            if idx_loop is None or include_bootstrap:
+                                loops.extend(
+                                    loops_to_coords(
+                                        embedding=embedding_alt,
+                                        loops_vertices=loop_class.representatives,
+                                    )
                                 )
-                            )
+                            else:
+                                assert idx_loop < len(loop_class.representatives)
+                                loops.extend(
+                                    loops_to_coords(
+                                        embedding=embedding_alt,
+                                        loops_vertices=[
+                                            loop_class.representatives[idx_loop]
+                                        ],
+                                    )
+                                )
+
                 if include_bootstrap:
                     assert self.bootstrap_data is not None
                     if selector in self.bootstrap_data.loop_tracks:
@@ -576,6 +601,9 @@ class HomologyData:
                             f"No bootstrap track found for loop {selector}. "
                             "Only original loop embedding will be used."
                         )
+                    if idx_loop is not None:
+                        assert idx_loop < len(loops)
+                        loops = [loops[idx_loop]]
             case tuple():
                 assert self.bootstrap_data is not None
                 assert selector[0] < len(self.bootstrap_data.selected_loop_classes)
@@ -585,7 +613,8 @@ class HomologyData:
                 loops.extend(
                     self.bootstrap_data._get_loop_embedding(
                         idx_bootstrap=selector[0],
-                        idx_loop=selector[1],
+                        idx_loop_class=selector[1],
+                        idx_loop=idx_loop,
                         embedding_alt=embedding_alt,
                     )
                 )

@@ -178,23 +178,42 @@ class BootstrapAnalysis:
     def _get_loop_embedding(
         self,
         idx_bootstrap: Index_t,
-        idx_loop: Index_t,
+        idx_loop_class: Index_t,
+        idx_loop: Index_t | None = None,
         embedding_alt: np.ndarray | None = None,
     ) -> list[list[list[float]]]:
-        if idx_bootstrap < len(self.selected_loop_classes) and idx_loop < len(
+        if idx_bootstrap < len(self.selected_loop_classes) and idx_loop_class < len(
             self.selected_loop_classes[idx_bootstrap]
         ):
-            loop_class = self.selected_loop_classes[idx_bootstrap][idx_loop]
+            loop_class = self.selected_loop_classes[idx_bootstrap][idx_loop_class]
             if loop_class is not None:
                 if embedding_alt is None:
                     if loop_class.coordinates_vertices_representatives is not None:
-                        return loop_class.coordinates_vertices_representatives
+                        if idx_loop is None:
+                            return loop_class.coordinates_vertices_representatives
+                        else:
+                            assert idx_loop < len(
+                                loop_class.coordinates_vertices_representatives
+                            )
+                            return [
+                                loop_class.coordinates_vertices_representatives[
+                                    idx_loop
+                                ]
+                            ]
                 else:
                     if loop_class.representatives is not None:
-                        return loops_to_coords(
-                            embedding=embedding_alt,
-                            loops_vertices=loop_class.representatives,
-                        )
+                        if idx_loop is None:
+                            return loops_to_coords(
+                                embedding=embedding_alt,
+                                loops_vertices=loop_class.representatives,
+                            )
+                        else:
+                            assert idx_loop < len(loop_class.representatives)
+                            return loops_to_coords(
+                                embedding=embedding_alt,
+                                loops_vertices=[loop_class.representatives[idx_loop]],
+                            )
+
         return []
 
     def _analyze_track_loop_classes(

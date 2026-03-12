@@ -2688,7 +2688,7 @@ wheels = [
 
 [[package]]
 name = "scanpy"
-version = "1.11.3"
+version = "1.11.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anndata" },
@@ -2713,9 +2713,9 @@ dependencies = [
     { name = "typing-extensions", marker = "python_full_version < '3.13'" },
     { name = "umap-learn" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2f/be/e5d84f12a33ef7dbf856f28522c4f40d016df007f022922721a527a5ec19/scanpy-1.11.3.tar.gz", hash = "sha256:ead448f112bb07351897531c24e05627f4b3e0bee0c02f50adf378f4e08e338b", size = 14089431, upload-time = "2025-07-01T11:17:02.891Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fc/a9/4f619c500e75267897d5d65ee8c864355a1693d22da03af09d90f43dc717/scanpy-1.11.2.tar.gz", hash = "sha256:cde3a142aa12bd3a6894756d50c245cd6ec7776bba4b244c5099b0666f7455bd", size = 14087080, upload-time = "2025-05-28T12:41:21.216Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/34/cd/50e2af91c8d64722958cc53ca59f3e2bdc05ae4a5b82d78672cfd2ec7b3c/scanpy-1.11.3-py3-none-any.whl", hash = "sha256:b64e725f4b746bb0b4e4be1ea5b05a8628a82a5f8ee898101285e31ee6e53150", size = 2102177, upload-time = "2025-07-01T11:17:00.484Z" },
+    { url = "https://files.pythonhosted.org/packages/f5/7b/f58f238bc3062aa7cd17a1c26bbe539233c3776bd6acd819545c269731ad/scanpy-1.11.2-py3-none-any.whl", hash = "sha256:a97d5b74c1ae2d60caf504fd530a83f2e61e46d889f8d19f797a2bbc2d64dff3", size = 2100108, upload-time = "2025-05-28T12:41:19.267Z" },
 ]
 
 [package.optional-dependencies]
