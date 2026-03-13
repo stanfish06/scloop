@@ -7,6 +7,7 @@ from anndata import AnnData
 from numba import jit
 from pydantic.dataclasses import dataclass
 from pynndescent import NNDescent
+from scipy.sparse import csr_matrix
 
 from ..data.constants import NUMERIC_EPSILON
 from ..data.types import Count_t, Percent_t
@@ -91,7 +92,6 @@ def compute_pairwise_adaptive_kernel_similarity(
             cols[count] = hi
             vals[count] = kernel_sim_raw[k] / (kernel_density[lo] * kernel_density[hi])
             count += 1
-
     return rows[:count], cols[:count], vals[:count]
 
 
@@ -105,16 +105,32 @@ class DiffusionMap:
     damp_t: Percent_t
     _knn_index_cache: NNDescent | None = None
 
-    def _compute_multi_step_transition():
-        pass
-
-    def _compute_multi_scale_eigenspace():
-        pass
-
-    def _compute_knn_index(self, emb: np.ndarray, cache: bool = False, **nn_kwargs):
-        index = NNDescent(emb, n_neighbors=self.n_neighbors, **nn_kwargs)
+    def _compute_knn_index(self, emb: np.ndarray, cache: bool = False, query: bool = False, **nn_kwargs):
+        # need to use n_neighbors + 1 because neighbor graph contains self edges
+        index = NNDescent(emb, n_neighbors=self.n_neighbors + 1, **nn_kwargs)
+        if query:
+            # this makes new data query faster, but not needed for getting nn for training data
+            index.prepare()
         if cache:
             self._knn_index_cache = index
+        return index
+
+    def _compute_one_step_transition(self, emb: np.ndarray, **nn_kwargs) -> csr_matrix:
+        n = emb.shape[0]
+        knn_index = self._compute_knn_index(emb=emb, cache=False, query=False, **nn_kwargs)
+        _rows, _cols, _vals = compute_pairwise_adaptive_kernel_similarity(
+            idx_nei=knn_index.neighbor_graph[0][:,1:],
+            dist_nei=knn_index.neighbor_graph[1][:,1:]
+        )
+        A = csr_matrix((_vals, (_rows, _cols)), shape=(n, n))
+        A = A + A.T
+        D = A.sum(axis=1)
+        D[D == 0] = 1.0
+        A = A.multiply(1.0 / D)
+        return A
+
+    def _compute_multi_step_eigenspace(self, ndim_eigenspace: Count_t | None = None):
+        pass
 
     def compute_diffmap():
         pass
