@@ -1,14 +1,15 @@
 # Copyright 2025 Zhiyuan Yu (Heemskerk's lab, University of Michigan)
 from __future__ import annotations
 
+from typing import Literal
+
 import numpy as np
 import scanpy as sc
 from anndata import AnnData
 from numba import jit
-from typing import Literal
 from pydantic.dataclasses import dataclass
 from pynndescent import NNDescent
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_matrix, diags
 
 from ..data.constants import NUMERIC_EPSILON
 from ..data.types import Count_t, Percent_t
@@ -25,7 +26,7 @@ def compute_diffmap(
     random_state: int = 0,
     *,
     damp_multistep_diffusion: Percent_t = 1.0,
-    use_multistep_eigenvalues: bool = True
+    use_multistep_eigenvalues: bool = True,
 ) -> np.ndarray:
     match flavor:
         case "scanpy":
@@ -43,18 +44,24 @@ def compute_diffmap(
                 neighbors_key=key_added_neighbors,
             )
         case "custom":
-            diffmap = DiffusionMap(n_neighbors=n_neighbors, damp_multistep=damp_multistep_diffusion)
+            diffmap = DiffusionMap(
+                n_neighbors=n_neighbors, damp_multistep=damp_multistep_diffusion
+            )
             # TODO: better input handling
-            emb = adata.obsm[use_rep] if use_rep != None else adata.X
+            emb = adata.obsm[use_rep] if use_rep is not None else adata.X
             assert emb is not None and type(emb) is np.ndarray
             diffmap.compute_multi_step_eigenspace(emb=emb, ndim_eigenspace=n_comps)
-            eigvals = diffmap.eigenvalues_multistep if use_multistep_eigenvalues else diffmap.eigenvalues
+            eigvals = (
+                diffmap.eigenvalues_multistep
+                if use_multistep_eigenvalues
+                else diffmap.eigenvalues
+            )
             assert eigvals is not None
             eigvals[eigvals < 0] = NUMERIC_EPSILON
             eigvals /= eigvals.max()
             eigvecs = diffmap.eigenvectors
             assert eigvecs is not None
-            adata.obsm["X_diffmap"] = np.dot(eigvecs, eigvals)
+            adata.obsm["X_diffmap"] = eigvecs * eigvals
 
     return np.array(adata.obsm["X_diffmap"])
 
@@ -125,8 +132,11 @@ class DiffusionMap:
     eigenvalues_multistep: np.ndarray | None = None
     eigenvectors: np.ndarray | None = None
     _knn_index_cache: NNDescent | None = None
+    _d_inv_sqrt: np.ndarray | None = None
 
-    def _compute_knn_index(self, emb: np.ndarray, cache: bool = False, query: bool = False, **nn_kwargs):
+    def _compute_knn_index(
+        self, emb: np.ndarray, cache: bool = False, query: bool = False, **nn_kwargs
+    ):
         # need to use n_neighbors + 1 because neighbor graph contains self edges
         index = NNDescent(emb, n_neighbors=self.n_neighbors + 1, **nn_kwargs)
         if query:
@@ -138,31 +148,35 @@ class DiffusionMap:
 
     def _compute_one_step_transition(self, emb: np.ndarray, **nn_kwargs) -> csr_matrix:
         n = emb.shape[0]
-        knn_index = self._compute_knn_index(emb=emb, cache=False, query=False, **nn_kwargs)
-        _rows, _cols, _vals = compute_pairwise_adaptive_kernel_similarity(
-            idx_nei=knn_index.neighbor_graph[0][:,1:],
-            dist_nei=knn_index.neighbor_graph[1][:,1:]
+        knn_index = self._compute_knn_index(
+            emb=emb, cache=False, query=False, **nn_kwargs
         )
-        A = csr_matrix((_vals, (_rows, _cols)), shape=(n, n))
-        A = A + A.T
-        D = A.sum(axis=1)
+        _rows, _cols, _vals = compute_pairwise_adaptive_kernel_similarity(
+            idx_nei=knn_index.neighbor_graph[0][:, 1:],
+            dist_nei=knn_index.neighbor_graph[1][:, 1:],
+        )
+        K = csr_matrix((_vals, (_rows, _cols)), shape=(n, n))
+        K = K + K.T
+        D = np.asarray(K.sum(axis=1)).flatten()
         D[D == 0] = 1.0
-        A = A.multiply(1.0 / D)
-        return A
+        D_inv_sqrt = 1.0 / np.sqrt(D)
+        self._d_inv_sqrt = D_inv_sqrt
+        D_inv_sqrt_diag = diags(D_inv_sqrt)
+        return D_inv_sqrt_diag @ K @ D_inv_sqrt_diag
 
-    def compute_multi_step_eigenspace(self, emb: np.ndarray, ndim_eigenspace: Count_t, **nn_kwargs):
+    def compute_multi_step_eigenspace(
+        self, emb: np.ndarray, ndim_eigenspace: Count_t, **nn_kwargs
+    ):
         _A = self._compute_one_step_transition(emb=emb, **nn_kwargs)
         res = compute_sparse_eigendecomposition(
-            matrix=_A,
-            which='LM',
-            n_components=ndim_eigenspace
+            matrix=_A, which="LM", n_components=ndim_eigenspace
         )
         assert res is not None
         eigvals, eigvecs = res
-        self.eigenvectors = eigvecs
+        self.eigenvectors = self._d_inv_sqrt[:, np.newaxis] * eigvecs
         self.eigenvalues = eigvals
         if self.damp_multistep < 1.0:
-            self.eigenvalues_multistep = eigvals  / (1 - self.damp_multistep)
+            self.eigenvalues_multistep = eigvals / (1 - self.damp_multistep * eigvals)
         else:
             self.eigenvalues_multistep = eigvals
 

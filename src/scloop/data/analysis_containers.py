@@ -678,7 +678,7 @@ class HodgeAnalysis(BaseModel):
                 if not valid_idx:
                     continue
 
-                # ISSUE: this looks inefficient, you can directly extract neighbor graph from NNDescent 
+                # ISSUE: this looks inefficient, you can directly extract neighbor graph from NNDescent
                 # also here it does not remove self match
                 coords = coords_raw[valid_idx]
                 nn_indices, nn_distances = search_index.query(

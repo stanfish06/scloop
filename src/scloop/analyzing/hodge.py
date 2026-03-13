@@ -10,8 +10,8 @@ from rich.progress import Progress
 from scipy.sparse import csr_matrix
 
 from ..computing.hodge_decomposition import compute_hodge_matrix
-from ..computing.utils import compute_sparse_eigendecomposition
 from ..computing.matching import loops_to_edge_mask
+from ..computing.utils import compute_sparse_eigendecomposition
 from ..data.analysis_containers import BootstrapAnalysis, HodgeAnalysis
 from ..data.base_components import LoopClass
 from ..data.boundary import BoundaryMatrixD0, BoundaryMatrixD1
@@ -105,7 +105,7 @@ def compute_hodge_analysis(
 
     result = compute_sparse_eigendecomposition(
         matrix=hodge_matrix_d1,
-        which='SA',
+        which="SA",
         timeout=timeout_eigendecomposition,
         n_components=n_hodge_components,
         maxiter=maxiter_eigendecomposition,

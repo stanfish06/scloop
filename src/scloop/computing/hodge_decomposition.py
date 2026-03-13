@@ -11,6 +11,7 @@ from ..data.constants import (
 )
 from ..data.types import Diameter_t
 
+
 def compute_hodge_matrix(
     boundary_matrix_d0: csr_matrix,
     boundary_matrix_d1: csr_matrix,
@@ -51,6 +52,7 @@ def compute_hodge_matrix(
         hodge_matrix_d1 = csr_matrix(bd1.transpose() @ bd1 + bd2 @ bd2.transpose())
 
     return hodge_matrix_d1
+
 
 @jit(nopython=True)
 def compute_weighted_hodge_embedding(

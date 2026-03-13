@@ -31,8 +31,6 @@ from ..computing.boundary import (
 from ..computing.hodge_decomposition import (
     compute_hodge_matrix,
 )
-from ..computing.utils import compute_sparse_eigendecomposition
-
 from ..computing.homology import (
     compute_persistence_diagram_and_cocycles,
 )
@@ -43,6 +41,7 @@ from ..computing.matching import (
     compute_geometric_distance,
     loops_to_edge_mask,
 )
+from ..computing.utils import compute_sparse_eigendecomposition
 from .analysis_containers import (
     BootstrapAnalysis,
     LoopMatch,
@@ -397,7 +396,7 @@ class HomologyData:
     ) -> tuple[np.ndarray, np.ndarray] | None:
         return compute_sparse_eigendecomposition(
             matrix=hodge_matrix,
-            which='SA',
+            which="SA",
             n_components=n_components,
             timeout=timeout,
             maxiter=maxiter,
