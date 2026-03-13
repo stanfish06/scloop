@@ -5,12 +5,14 @@ import numpy as np
 import scanpy as sc
 from anndata import AnnData
 from numba import jit
+from typing import Literal
 from pydantic.dataclasses import dataclass
 from pynndescent import NNDescent
 from scipy.sparse import csr_matrix
 
 from ..data.constants import NUMERIC_EPSILON
 from ..data.types import Count_t, Percent_t
+from .utils import compute_sparse_eigendecomposition
 
 
 def compute_diffmap(
@@ -19,21 +21,41 @@ def compute_diffmap(
     n_neighbors: int = 15,
     use_rep: str | None = None,
     key_added_neighbors: str = "neighbors_diffmap",
+    flavor: Literal["scanpy", "custom"] = "custom",
     random_state: int = 0,
+    *,
+    damp_multistep_diffusion: Percent_t = 1.0,
+    use_multistep_eigenvalues: bool = True
 ) -> np.ndarray:
-    sc.pp.neighbors(
-        adata,
-        n_neighbors=n_neighbors,
-        use_rep=use_rep,
-        method="gauss",
-        random_state=random_state,
-        key_added=key_added_neighbors,
-    )
-    sc.tl.diffmap(
-        adata,
-        n_comps=n_comps,
-        neighbors_key=key_added_neighbors,
-    )
+    match flavor:
+        case "scanpy":
+            sc.pp.neighbors(
+                adata,
+                n_neighbors=n_neighbors,
+                use_rep=use_rep,
+                method="gauss",
+                random_state=random_state,
+                key_added=key_added_neighbors,
+            )
+            sc.tl.diffmap(
+                adata,
+                n_comps=n_comps,
+                neighbors_key=key_added_neighbors,
+            )
+        case "custom":
+            diffmap = DiffusionMap(n_neighbors=n_neighbors, damp_multistep=damp_multistep_diffusion)
+            # TODO: better input handling
+            emb = adata.obsm[use_rep] if use_rep != None else adata.X
+            assert emb is not None and type(emb) is np.ndarray
+            diffmap.compute_multi_step_eigenspace(emb=emb, ndim_eigenspace=n_comps)
+            eigvals = diffmap.eigenvalues_multistep if use_multistep_eigenvalues else diffmap.eigenvalues
+            assert eigvals is not None
+            eigvals[eigvals < 0] = NUMERIC_EPSILON
+            eigvals /= eigvals.max()
+            eigvecs = diffmap.eigenvectors
+            assert eigvecs is not None
+            adata.obsm["X_diffmap"] = np.dot(eigvecs, eigvals)
+
     return np.array(adata.obsm["X_diffmap"])
 
 
@@ -97,12 +119,11 @@ def compute_pairwise_adaptive_kernel_similarity(
 
 @dataclass
 class DiffusionMap:
-    eigenvalues: np.ndarray
-    eigenvectors: np.ndarray
     n_neighbors: Count_t
-
-    diffusion_t: Count_t
-    damp_t: Percent_t
+    damp_multistep: Percent_t = 1.0
+    eigenvalues: np.ndarray | None = None
+    eigenvalues_multistep: np.ndarray | None = None
+    eigenvectors: np.ndarray | None = None
     _knn_index_cache: NNDescent | None = None
 
     def _compute_knn_index(self, emb: np.ndarray, cache: bool = False, query: bool = False, **nn_kwargs):
@@ -129,11 +150,21 @@ class DiffusionMap:
         A = A.multiply(1.0 / D)
         return A
 
-    def _compute_multi_step_eigenspace(self, ndim_eigenspace: Count_t | None = None):
-        pass
-
-    def compute_diffmap():
-        pass
+    def compute_multi_step_eigenspace(self, emb: np.ndarray, ndim_eigenspace: Count_t, **nn_kwargs):
+        _A = self._compute_one_step_transition(emb=emb, **nn_kwargs)
+        res = compute_sparse_eigendecomposition(
+            matrix=_A,
+            which='LM',
+            n_components=ndim_eigenspace
+        )
+        assert res is not None
+        eigvals, eigvecs = res
+        self.eigenvectors = eigvecs
+        self.eigenvalues = eigvals
+        if self.damp_multistep < 1.0:
+            self.eigenvalues_multistep = eigvals  / (1 - self.damp_multistep)
+        else:
+            self.eigenvalues_multistep = eigvals
 
     def project_query_data():
         pass

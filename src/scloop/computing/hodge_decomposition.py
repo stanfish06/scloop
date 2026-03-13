@@ -1,38 +1,15 @@
 # Copyright 2025 Zhiyuan Yu (Heemskerk's lab, University of Michigan)
 from __future__ import annotations
 
-import multiprocessing
-import queue
-
 import numpy as np
 from loguru import logger
 from numba import jit
 from scipy.sparse import csr_matrix
 
 from ..data.constants import (
-    DEFAULT_MAXITER_EIGENDECOMPOSITION,
-    DEFAULT_N_HODGE_COMPONENTS,
-    DEFAULT_TIMEOUT_EIGENDECOMPOSITION,
     NUMERIC_EPSILON,
 )
 from ..data.types import Diameter_t
-
-
-def run_eigsh_worker(
-    q: multiprocessing.Queue,
-    hodge_matrix: csr_matrix,
-    k: int,
-    tol: float,
-    maxiter: int | None,
-) -> None:
-    try:
-        from scipy.sparse.linalg import eigsh
-
-        vals, vecs = eigsh(hodge_matrix, k=k, which="SA", tol=tol, maxiter=maxiter)  # type: ignore[arg-type]
-        q.put(("success", (vals, vecs)))
-    except Exception as e:
-        q.put(("error", e))
-
 
 def compute_hodge_matrix(
     boundary_matrix_d0: csr_matrix,
@@ -74,65 +51,6 @@ def compute_hodge_matrix(
         hodge_matrix_d1 = csr_matrix(bd1.transpose() @ bd1 + bd2 @ bd2.transpose())
 
     return hodge_matrix_d1
-
-
-def compute_hodge_eigendecomposition(
-    hodge_matrix: csr_matrix,
-    n_components: int = DEFAULT_N_HODGE_COMPONENTS,
-    timeout: float = DEFAULT_TIMEOUT_EIGENDECOMPOSITION,
-    maxiter: int | None = DEFAULT_MAXITER_EIGENDECOMPOSITION,
-) -> tuple[np.ndarray, np.ndarray] | None:
-    if hodge_matrix.shape[0] < 2:  # type: ignore[index]
-        logger.warning("hodge_matrix too small for eigendecomposition (shape < 2).")
-        return None
-
-    k = min(n_components, hodge_matrix.shape[0] - 2)  # type: ignore[index]
-    if k <= 0:
-        logger.warning(f"Not enough dimensions for eigendecomposition (k={k}).")
-        return None
-
-    tolerances = [1e-6, 1e-5, 1e-4, 1e-3]
-
-    for tol in tolerances:
-        q = multiprocessing.Queue()
-        p = multiprocessing.Process(
-            target=run_eigsh_worker,
-            args=(q, hodge_matrix, k, tol, maxiter),
-        )
-        p.start()
-
-        try:
-            status, result = q.get(timeout=timeout)
-            p.join()
-            if status == "success":
-                eigenvalues, eigenvectors = result
-                sort_idx = np.argsort(eigenvalues)
-                return eigenvalues[sort_idx], eigenvectors[:, sort_idx]
-            else:
-                logger.warning(
-                    f"Eigendecomposition failed with tol={tol}: {result}. Retrying..."
-                )
-                continue
-        except queue.Empty:
-            logger.warning(
-                f"Eigendecomposition timed out ({timeout}s) with tol={tol}. "
-                "Retrying with looser tolerance."
-            )
-            p.terminate()
-            p.join()
-            continue
-        except Exception as e:
-            logger.warning(
-                f"Eigendecomposition failed with tol={tol}: {e}. Retrying..."
-            )
-            if p.is_alive():
-                p.terminate()
-                p.join()
-            continue
-
-    logger.error("Eigendecomposition failed after all retries.")
-    return None
-
 
 @jit(nopython=True)
 def compute_weighted_hodge_embedding(

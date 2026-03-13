@@ -9,10 +9,8 @@ from loguru import logger
 from rich.progress import Progress
 from scipy.sparse import csr_matrix
 
-from ..computing.hodge_decomposition import (
-    compute_hodge_eigendecomposition,
-    compute_hodge_matrix,
-)
+from ..computing.hodge_decomposition import compute_hodge_matrix
+from ..computing.utils import compute_sparse_eigendecomposition
 from ..computing.matching import loops_to_edge_mask
 from ..data.analysis_containers import BootstrapAnalysis, HodgeAnalysis
 from ..data.base_components import LoopClass
@@ -105,8 +103,9 @@ def compute_hodge_analysis(
     if verbose:
         logger.info("Computing Hodge eigendecomposition")
 
-    result = compute_hodge_eigendecomposition(
-        hodge_matrix=hodge_matrix_d1,
+    result = compute_sparse_eigendecomposition(
+        matrix=hodge_matrix_d1,
+        which='SA',
         timeout=timeout_eigendecomposition,
         n_components=n_hodge_components,
         maxiter=maxiter_eigendecomposition,

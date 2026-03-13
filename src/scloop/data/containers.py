@@ -29,9 +29,10 @@ from ..computing.boundary import (
     compute_boundary_matrix_d1,
 )
 from ..computing.hodge_decomposition import (
-    compute_hodge_eigendecomposition,
     compute_hodge_matrix,
 )
+from ..computing.utils import compute_sparse_eigendecomposition
+
 from ..computing.homology import (
     compute_persistence_diagram_and_cocycles,
 )
@@ -386,6 +387,7 @@ class HomologyData:
             normalized=normalized,
         )
 
+    # Why this even exist?
     def _compute_hodge_eigendecomposition(
         self,
         hodge_matrix: csr_matrix,
@@ -393,8 +395,9 @@ class HomologyData:
         n_components: int = DEFAULT_N_HODGE_COMPONENTS,
         maxiter: int | None = DEFAULT_MAXITER_EIGENDECOMPOSITION,
     ) -> tuple[np.ndarray, np.ndarray] | None:
-        return compute_hodge_eigendecomposition(
-            hodge_matrix=hodge_matrix,
+        return compute_sparse_eigendecomposition(
+            matrix=hodge_matrix,
+            which='SA',
             n_components=n_components,
             timeout=timeout,
             maxiter=maxiter,
