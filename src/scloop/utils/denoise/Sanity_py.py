@@ -64,6 +64,8 @@ def sample_posterior_predictive_counts(
     X = np.log(X / N_c[:, np.newaxis] + NUMERIC_EPSILON)
     if scale_before_pca:
         X = (X - adata.var["mean"].values) / adata.var["std"].values
+    elif not scale_before_pca and n_pca_comps is not None:
+        X = X - adata.uns["pca"]["params"]["mean"]
     if n_pca_comps is not None:
         X = X @ adata.varm["PCs"]
     return X

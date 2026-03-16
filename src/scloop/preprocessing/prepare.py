@@ -228,6 +228,8 @@ def prepare_adata(
     ======================================
     """
     if run_sanity:
+        if "counts" not in adata.layers:
+            raise ValueError("counts layer is required for Sanity noise model")
         if verbose:
             logger.info("Step 2/5: Computing Sanity noise model")
         compute_posterior_gene_noise_model(
@@ -242,7 +244,7 @@ def prepare_adata(
         if scale_before_pca:
             if verbose:
                 logger.info("Scaling data before PCA")
-            sc.pp.scale(adata)
+            sc.pp.scale(adata, layer="sanity_log_mean" if run_sanity else None)
         if verbose:
             logger.info(f"Computing PCA with {n_pca_comps} components")
 
