@@ -68,11 +68,14 @@ src/scloop/
 │   └── __init__.py
 ├── computing
 │   ├── boundary.py
+│   ├── divergence.py
+│   ├── embedding.py
 │   ├── hodge_decomposition.py
 │   ├── homology.py
 │   ├── __init__.py
 │   ├── loops.py
-│   └── matching.py
+│   ├── matching.py
+│   └── utils.py
 ├── data
 │   ├── analysis_containers.py
 │   ├── base_components.py
@@ -118,6 +121,11 @@ src/scloop/
 │   ├── __init__.py
 │   └── _loops.py
 └── utils
+    ├── denoise
+    │   ├── Sanity
+    │   ├── Sanity.cpp
+    │   ├── Sanity_py.py
+    │   └── Sanity.pyx
     ├── distance_metrics
     │   ├── discrete-frechet-distance
     │   ├── frechet.cpp
@@ -126,7 +134,11 @@ src/scloop/
     │   └── __init__.py
     ├── __init__.py
     ├── linear_algebra_gf2
-    │   ├── gf2_toolkit_lib.pyx
+    │   ├── GF2toolkit
+    │   ├── gf2toolkit_lib.cpp
+    │   ├── gf2toolkit_lib.pyx
+    │   ├── gf2toolkit_wrapper.cpp
+    │   ├── gf2toolkit_wrapper.hpp
     │   ├── __init__.py
     │   ├── m4ri_lib.c
     │   └── m4ri_lib.pyx
