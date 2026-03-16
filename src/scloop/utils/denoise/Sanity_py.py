@@ -4,6 +4,7 @@ from anndata import AnnData
 from numba import jit
 from scipy.sparse import issparse
 
+from ...data.constants import NUMERIC_EPSILON
 from .Sanity import run_sanity
 
 
@@ -49,9 +50,6 @@ def _sample_posterior_predictive_counts(
 def sample_posterior_predictive_counts(
     adata: AnnData,
     cell_idx: np.ndarray,
-    library_normalization: bool = True,
-    target_sum: float = 1e4,
-    feature_selection_method: str = "hvg",
     scale_before_pca: bool = False,
     n_pca_comps: int | None = None,
 ) -> np.ndarray:
@@ -61,17 +59,11 @@ def sample_posterior_predictive_counts(
         adata.layers["counts"].sum(axis=1), dtype=np.float64
     ).ravel()
     X = _sample_posterior_predictive_counts(log_mean, log_var, library_size, cell_idx)
-    # TODO: this part need to be sync with prepare, probably create a shared helper later
-    if library_normalization:
-        X = X / X.sum(axis=1, keepdims=True) * target_sum
-        np.log1p(X, out=X)
-    use_hvg = feature_selection_method != "none"
-    if use_hvg:
-        hvg_mask = adata.var["highly_variable"].values
-        X = X[:, hvg_mask]
+    # map back to Sanity's log-fraction scale
+    N_c = library_size[cell_idx]
+    X = np.log(X / N_c[:, np.newaxis] + NUMERIC_EPSILON)
     if scale_before_pca:
-        var_slice = adata.var[hvg_mask] if use_hvg else adata.var
-        X = (X - var_slice["mean"].values) / var_slice["std"].values
+        X = (X - adata.var["mean"].values) / adata.var["std"].values
     if n_pca_comps is not None:
         X = X @ adata.varm["PCs"]
     return X

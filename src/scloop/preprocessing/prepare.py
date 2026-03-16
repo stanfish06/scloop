@@ -21,6 +21,7 @@ from ..data.types import (
     EmbeddingNeighbors,
     FeatureSelectionMethod,
 )
+from ..utils.denoise import compute_posterior_gene_noise_model
 from ..utils.logging import LogDisplay
 from .downsample import sample
 
@@ -130,6 +131,7 @@ def prepare_adata(
     n_top_genes: int = 2000,
     embedding_method: EmbeddingMethod = "diffmap",
     embedding_neighbors: EmbeddingNeighbors = "pca",
+    run_sanity: bool = True,
     n_pca_comps: int = 100,
     n_neighbors: int = 25,
     n_diffusion_comps: int = 25,
@@ -144,6 +146,7 @@ def prepare_adata(
     kwargs_pca: dict[str, Any] | None = None,
     kwargs_diffmap: dict[str, Any] | None = None,
     kwargs_downsample: dict[str, Any] | None = None,
+    kwargs_sanity: dict[str, Any] | None = None,
 ):
     """
     prepare_adata(adata, n_comps, n_neighbors, use_highly_variable, compute_diffmap, n_dcs)
@@ -167,6 +170,7 @@ def prepare_adata(
     kwargs_pca = kwargs_pca or {}
     kwargs_diffmap = kwargs_diffmap or {}
     kwargs_downsample = kwargs_downsample or {}
+    kwargs_sanity = kwargs_sanity or {}
 
     scale_before_pca = kwargs_pca.get("scale_before_pca", False)
     percent_removal_density = kwargs_downsample.get("percent_removal_density", 0)
@@ -206,7 +210,7 @@ def prepare_adata(
     needs_scvi = embedding_method == "scvi" or embedding_neighbors == "scvi"
 
     if verbose and (library_normalization or needs_hvg):
-        logger.info("Step 1/4: Normalization and feature selection")
+        logger.info("Step 1/5: Normalization and feature selection")
     _normalize_and_select_hvg(
         adata,
         library_normalization,
@@ -214,13 +218,27 @@ def prepare_adata(
         target_sum,
         n_top_genes,
         batch_key,
-        subset=False,
+        subset=True,
         verbose=verbose,
     )
 
+    """
+    =============== sanity ===============
+    - estimate noise model for each gene
+    ======================================
+    """
+    if run_sanity:
+        if verbose:
+            logger.info("Step 2/5: Computing Sanity noise model")
+        compute_posterior_gene_noise_model(
+            adata=adata, use_layer="counts", **kwargs_sanity
+        )
+    elif verbose:
+        logger.info("Step 2/5: Sanity noise model skipped")
+
     if needs_pca:
         if verbose:
-            logger.info("Step 2/4: Computing PCA")
+            logger.info("Step 3/5: Computing PCA")
         if scale_before_pca:
             if verbose:
                 logger.info("Scaling data before PCA")
@@ -231,18 +249,21 @@ def prepare_adata(
         pca_kwargs = {k: v for k, v in kwargs_pca.items() if k != "scale_before_pca"}
         pca_kwargs.setdefault("random_state", random_state)
         sc.pp.pca(
-            adata, n_comps=n_pca_comps, use_highly_variable=needs_hvg, **pca_kwargs
+            adata,
+            layer="sanity_log_mean" if run_sanity else None,
+            n_comps=n_pca_comps,
+            **pca_kwargs,
         )
     elif "X_pca" in adata.obsm:
         if verbose:
-            logger.info("Step 2/4: PCA already computed, skipping")
+            logger.info("Step 3/5: PCA already computed, skipping")
     else:
         if verbose:
-            logger.info("Step 2/4: PCA not needed, skipping")
+            logger.info("Step 3/5: PCA not needed, skipping")
 
     if needs_diffmap:
         if verbose:
-            logger.info("Step 3/4: Computing diffusion map")
+            logger.info("Step 4/5: Computing diffusion map")
             logger.info(f"Computing neighbors with n_neighbors={n_neighbors}")
 
         diffmap = compute_diffmap(
@@ -260,10 +281,10 @@ def prepare_adata(
         adata.obsm["X_diffmap"] = diffmap[:, 1:]
     elif "X_diffmap" in adata.obsm:
         if verbose:
-            logger.info("Step 3/4: Diffusion map already computed, skipping")
+            logger.info("Step 4/5: Diffusion map already computed, skipping")
     else:
         if verbose:
-            logger.info("Step 3/4: Diffusion map not needed, skipping")
+            logger.info("Step 4/5: Diffusion map not needed, skipping")
 
     if needs_scvi:
         if scvi_key not in adata.obsm:
@@ -278,7 +299,7 @@ def prepare_adata(
     ==============================
     """
     if verbose:
-        logger.info("Step 4/4: Downsampling")
+        logger.info("Step 5/5: Downsampling")
     if embedding_downsample is None:
         embedding_downsample = embedding_method
     if downsample:
