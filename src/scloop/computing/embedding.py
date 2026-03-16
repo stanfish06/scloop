@@ -61,28 +61,33 @@ def compute_diffmap(
             eigvals /= eigvals.max()
             eigvecs = diffmap.eigenvectors
             assert eigvecs is not None
-            adata.obsm["X_diffmap"] = eigvecs * eigvals
+            diffmap.diffmap_coords = eigvecs * eigvals
+            adata.obsm["X_diffmap"] = diffmap.diffmap_coords
 
     return np.array(adata.obsm["X_diffmap"])
 
 
 @jit(nopython=True, cache=True)
 def compute_knn_diffusion_projection(
-    idx_nei: np.ndarray, dist_nei: np.ndarray, emb_reference: np.ndarray
+    idx_nei: np.ndarray,
+    dist_nei: np.ndarray,
+    diffmap_coords_reference: np.ndarray,
+    vars_local_reference: np.ndarray,
 ) -> np.ndarray:
     n = idx_nei.shape[0]
     nn = idx_nei.shape[1]
-    p = emb_reference.shape[1]
-    emb_query = np.zeros([n, p])
+    p = diffmap_coords_reference.shape[1]
+    emb_query = np.zeros((n, p))
     for i in range(n):
-        dist_total = 0
+        weight_total = 0.0
         emb_i = np.zeros(p)
         for ni in range(nn):
             j = idx_nei[i, ni]
-            dist = dist_nei[i, ni]
-            dist_total += dist
-            emb_i += emb_reference[j] * dist
-        emb_query[i] = emb_i / dist_total
+            d2 = dist_nei[i, ni] ** 2
+            weight = np.exp(-d2 / (2.0 * vars_local_reference[j] + NUMERIC_EPSILON))
+            weight_total += weight
+            emb_i += diffmap_coords_reference[j] * weight
+        emb_query[i] = emb_i / (weight_total + NUMERIC_EPSILON)
     return emb_query
 
 
@@ -151,8 +156,10 @@ class DiffusionMap:
     eigenvalues: np.ndarray | None = None
     eigenvalues_multistep: np.ndarray | None = None
     eigenvectors: np.ndarray | None = None
+    diffmap_coords: np.ndarray | None = None
     _knn_index_cache: NNDescent | None = None
     _d_inv_sqrt: np.ndarray | None = None
+    _vars_local: np.ndarray | None = None
 
     def _compute_knn_index(
         self, emb: np.ndarray, cache: bool = False, query: bool = False, **nn_kwargs
@@ -171,9 +178,11 @@ class DiffusionMap:
         knn_index = self._compute_knn_index(
             emb=emb, cache=False, query=False, **nn_kwargs
         )
+        dist_nei = knn_index.neighbor_graph[1][:, 1:]
+        self._vars_local = np.array([np.median(dist_nei[i]) ** 2 for i in range(n)])
         _rows, _cols, _vals = compute_pairwise_adaptive_kernel_similarity(
             idx_nei=knn_index.neighbor_graph[0][:, 1:],
-            dist_nei=knn_index.neighbor_graph[1][:, 1:],
+            dist_nei=dist_nei,
         )
         K = csr_matrix((_vals, (_rows, _cols)), shape=(n, n))
         K = K + K.T
@@ -209,7 +218,7 @@ class DiffusionMap:
         assert emb_reference.shape[0] == self.eigenvectors.shape[0], (
             "mismatched dimensions between reference embedding and eigenspace"
         )
-        assert emb_query.shape[1] == self.emb_reference.shape[1], (
+        assert emb_query.shape[1] == emb_reference.shape[1], (
             "mismatched dimensions between reference and query embeddings"
         )
         if self._knn_index_cache is not None:
@@ -218,8 +227,9 @@ class DiffusionMap:
             knn_index = self._compute_knn_index(
                 emb_reference, cache=cache_knn_index, query=True
             )
-        # linear projection (nonlinear kernel distance?)
         nn_indices, nn_distances = knn_index.query(
             query_data=emb_query, k=self.n_neighbors
         )
-        return compute_knn_diffusion_projection(nn_indices, nn_distances, emb_reference)
+        return compute_knn_diffusion_projection(
+            nn_indices, nn_distances, self.diffmap_coords, self._vars_local
+        )
