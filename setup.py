@@ -7,6 +7,7 @@ from setuptools import Extension, setup
 project_root = os.path.dirname(os.path.abspath(__file__))
 gf2_dir = os.path.join(project_root, "src/scloop/utils/linear_algebra_gf2")
 gf2toolkit_srcs = os.path.join(gf2_dir, "GF2toolkit/srcs")
+sanity_dir = os.path.join(project_root, "src/scloop/utils/denoise")
 
 is_windows = sys.platform.startswith("win")
 if is_windows:
@@ -54,6 +55,15 @@ extensions = [
     #     extra_compile_args=["-std=c++11", "-O3", "-fopenmp"],
     #     extra_link_args=["-fopenmp"],
     # ),
+    Extension(
+        "scloop.utils.denoise.Sanity",
+        sources=["./src/scloop/utils/denoise/Sanity.pyx"],
+        include_dirs=[sanity_dir],
+        extra_objects=[os.path.join(sanity_dir, "libSanity.a")],
+        language="c++",
+        extra_compile_args=["-std=c++11", "-O3"] + openmp_compile,
+        extra_link_args=openmp_link,
+    ),
     Extension(
         "scloop.utils.distance_metrics.frechet",
         sources=[

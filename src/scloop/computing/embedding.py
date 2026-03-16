@@ -124,7 +124,7 @@ def compute_pairwise_adaptive_kernel_similarity(
     return rows[:count], cols[:count], vals[:count]
 
 
-@dataclass
+@dataclass(config=dict(arbitrary_types_allowed=True))
 class DiffusionMap:
     n_neighbors: Count_t
     damp_multistep: Percent_t = 1.0
