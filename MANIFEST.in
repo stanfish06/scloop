@@ -5,6 +5,9 @@ recursive-include src/scloop/utils/linear_algebra_gf2/GF2toolkit/srcs *.hh
 include src/scloop/utils/linear_algebra_gf2/*.pyx
 include src/scloop/utils/linear_algebra_gf2/*.cpp
 include src/scloop/utils/linear_algebra_gf2/*.hpp
+include src/scloop/utils/denoise/*.pyx
+include src/scloop/utils/denoise/libSanity.a
+recursive-include src/scloop/utils/denoise/Sanity/src *.h *.cpp *.cc
 include src/scloop/utils/distance_metrics/*.pyx
 include src/scloop/data/*.pyx
 include src/scloop/data/*.cpp
