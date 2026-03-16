@@ -142,6 +142,7 @@ def prepare_adata(
     copy: bool = False,
     max_log_messages: int | None = None,
     kwargs_pca: dict[str, Any] | None = None,
+    kwargs_diffmap: dict[str, Any] | None = None,
     kwargs_downsample: dict[str, Any] | None = None,
 ):
     """
@@ -164,6 +165,7 @@ def prepare_adata(
     adata = adata.copy() if copy else adata
 
     kwargs_pca = kwargs_pca or {}
+    kwargs_diffmap = kwargs_diffmap or {}
     kwargs_downsample = kwargs_downsample or {}
 
     scale_before_pca = kwargs_pca.get("scale_before_pca", False)
@@ -247,9 +249,10 @@ def prepare_adata(
             adata,
             n_comps=n_diffusion_comps,
             n_neighbors=n_neighbors,
-            use_rep=embedding_neighbors if embedding_neighbors != "pca" else None,
+            use_rep=embedding_neighbors,
             key_added_neighbors=SCLOOP_NEIGHBORS_KEY,
             random_state=random_state,
+            **kwargs_diffmap,
         )
 
         # first component of diffusion map represent local density

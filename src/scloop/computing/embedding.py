@@ -33,7 +33,7 @@ def compute_diffmap(
             sc.pp.neighbors(
                 adata,
                 n_neighbors=n_neighbors,
-                use_rep=use_rep,
+                use_rep=f"X_{use_rep}" if use_rep is not None else None,
                 method="gauss",
                 random_state=random_state,
                 key_added=key_added_neighbors,
@@ -48,7 +48,7 @@ def compute_diffmap(
                 n_neighbors=n_neighbors, damp_multistep=damp_multistep_diffusion
             )
             # TODO: better input handling
-            emb = adata.obsm[use_rep] if use_rep is not None else adata.X
+            emb = adata.obsm[f"X_{use_rep}"] if use_rep is not None else adata.X
             assert emb is not None and type(emb) is np.ndarray
             diffmap.compute_multi_step_eigenspace(emb=emb, ndim_eigenspace=n_comps)
             eigvals = (
@@ -64,6 +64,26 @@ def compute_diffmap(
             adata.obsm["X_diffmap"] = eigvecs * eigvals
 
     return np.array(adata.obsm["X_diffmap"])
+
+
+@jit(nopython=True, cache=True)
+def compute_knn_diffusion_projection(
+    idx_nei: np.ndarray, dist_nei: np.ndarray, emb_reference: np.ndarray
+) -> np.ndarray:
+    n = idx_nei.shape[0]
+    nn = idx_nei.shape[1]
+    p = emb_reference.shape[1]
+    emb_query = np.zeros([n, p])
+    for i in range(n):
+        dist_total = 0
+        emb_i = np.zeros(p)
+        for ni in range(nn):
+            j = idx_nei[i, ni]
+            dist = dist_nei[i, ni]
+            dist_total += dist
+            emb_i += emb_reference[j] * dist
+        emb_query[i] = emb_i / dist_total
+    return emb_query
 
 
 @jit(nopython=True)
@@ -180,5 +200,26 @@ class DiffusionMap:
         else:
             self.eigenvalues_multistep = eigvals
 
-    def project_query_data():
-        pass
+    def project_query_data(
+        self,
+        emb_reference: np.ndarray,
+        emb_query: np.ndarray,
+        cache_knn_index: bool = True,
+    ) -> np.ndarray:
+        assert emb_reference.shape[0] == self.eigenvectors.shape[0], (
+            "mismatched dimensions between reference embedding and eigenspace"
+        )
+        assert emb_query.shape[1] == self.emb_reference.shape[1], (
+            "mismatched dimensions between reference and query embeddings"
+        )
+        if self._knn_index_cache is not None:
+            knn_index = self._knn_index_cache
+        else:
+            knn_index = self._compute_knn_index(
+                emb_reference, cache=cache_knn_index, query=True
+            )
+        # linear projection (nonlinear kernel distance?)
+        nn_indices, nn_distances = knn_index.query(
+            query_data=emb_query, k=self.n_neighbors
+        )
+        return compute_knn_diffusion_projection(nn_indices, nn_distances, emb_reference)
