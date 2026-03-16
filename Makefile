@@ -1,4 +1,4 @@
-.PHONY: build build-m4ri sync clean
+.PHONY: build build-m4ri build-sanity sync clean
 
 PROJECT_ROOT := $(shell pwd)
 
@@ -7,6 +7,7 @@ M4RI_PREFIX := $(PROJECT_ROOT)/src/scloop/utils/linear_algebra_gf2
 DM_PREFIX := $(PROJECT_ROOT)/src/scloop/utils/distance_metrics
 GF2TOOLKIT_SRC := $(PROJECT_ROOT)/src/scloop/utils/linear_algebra_gf2/GF2toolkit
 GF2TOOLKIT_PREFIX := $(PROJECT_ROOT)/src/scloop/utils/linear_algebra_gf2
+SANITY_SRC := $(PROJECT_ROOT)/src/scloop/utils/denoise/Sanity/src
 
 build-gf2toolkit: build-m4ri
 	cd $(GF2TOOLKIT_SRC) && \
@@ -23,7 +24,12 @@ build-m4ri:
 		$(MAKE) && \
 		$(MAKE) install
 
-build: build-m4ri
+build-sanity:
+	cd $(SANITY_SRC) && \
+		$(MAKE) clean || true && \
+		$(MAKE) Sanity_lib
+
+build: build-m4ri build-sanity
 	CFLAGS="-I$(M4RI_PREFIX)/include" \
 	LDFLAGS="-L$(M4RI_PREFIX) -Wl,-rpath,$(M4RI_PREFIX)" \
 	CPLUS_INCLUDE_PATH=$(PROJECT_ROOT)/src/scloop/data:$(DM_PREFIX) \

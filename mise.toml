@@ -28,6 +28,7 @@ run = [
     "rm -f uv.lock",
     "find ./src -name '*.so'  -type f -delete",
     "make build-m4ri",
+    "make build-sanity",
     "uv sync"
 ]
 
@@ -47,8 +48,8 @@ run = [
 run = [
     "uv --version",
     "python --version",
-	"echo $CPLUS_INCLUDE_PATH",
-	"tree -L 3 -I '__pycache__|include|pkgconfig|#*#|*.a|*.la|*.pyc|*.so|archive|m4ri|*~' src/scloop/"
+    "echo $CPLUS_INCLUDE_PATH",
+    "tree -L 3 -I '__pycache__|include|pkgconfig|#*#|*.a|*.la|*.pyc|*.so|archive|m4ri|*~' src/scloop/"
 ]
 
 [tasks.bump]
