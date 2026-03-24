@@ -63,6 +63,7 @@ def compute_diffmap(
             assert eigvecs is not None
             diffmap.diffmap_coords = eigvecs * eigvals
             adata.obsm["X_diffmap"] = diffmap.diffmap_coords
+            adata.unx["diffmap_evals"] = eigvals
 
     return np.array(adata.obsm["X_diffmap"])
 
