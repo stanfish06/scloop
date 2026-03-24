@@ -546,6 +546,28 @@ class HomologyData:
             for i, loop_class in enumerate(loop_classes):
                 self.bootstrap_data.selected_loop_classes[idx_bootstrap][i] = loop_class
 
+    def _get_track_vertex_ids(
+        self,
+        idx_track: Index_t,
+        include_bootstrap: bool = True,
+    ) -> list[list[int]]:
+        result: list[list[int]] = []
+        if idx_track < len(self.selected_loop_classes):
+            lc = self.selected_loop_classes[idx_track]
+            if lc is not None and lc.representatives is not None:
+                result.extend(lc.representatives)
+
+        if include_bootstrap and self.bootstrap_data is not None:
+            if idx_track in self.bootstrap_data.loop_tracks:
+                for boot_id, loop_id in self.bootstrap_data.loop_tracks[idx_track].track_ipairs:
+                    if boot_id < len(self.bootstrap_data.selected_loop_classes) and loop_id < len(
+                        self.bootstrap_data.selected_loop_classes[boot_id]
+                    ):
+                        lc = self.bootstrap_data.selected_loop_classes[boot_id][loop_id]
+                        if lc is not None and lc.representatives is not None:
+                            result.extend(lc.representatives)
+        return result
+
     def _get_loop_embedding(
         self,
         selector: Index_t | tuple[Index_t, Index_t],
