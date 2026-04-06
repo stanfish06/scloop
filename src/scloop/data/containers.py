@@ -559,8 +559,12 @@ class HomologyData:
 
         if include_bootstrap and self.bootstrap_data is not None:
             if idx_track in self.bootstrap_data.loop_tracks:
-                for boot_id, loop_id in self.bootstrap_data.loop_tracks[idx_track].track_ipairs:
-                    if boot_id < len(self.bootstrap_data.selected_loop_classes) and loop_id < len(
+                for boot_id, loop_id in self.bootstrap_data.loop_tracks[
+                    idx_track
+                ].track_ipairs:
+                    if boot_id < len(
+                        self.bootstrap_data.selected_loop_classes
+                    ) and loop_id < len(
                         self.bootstrap_data.selected_loop_classes[boot_id]
                     ):
                         lc = self.bootstrap_data.selected_loop_classes[boot_id][loop_id]

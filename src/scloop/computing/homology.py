@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from anndata import AnnData
+from numba import jit
 from scipy.sparse import csr_matrix
 from scipy.spatial.distance import directed_hausdorff
 from sklearn.neighbors import radius_neighbors_graph
@@ -229,14 +230,37 @@ def compute_boundary_matrix_data(
     )
 
 
+@jit(nopython=True, cache=True)
+def find_incident_edges(
+    one_ridx_A: np.ndarray,
+    ncol_A: int,
+    b: np.ndarray,
+    n_hubs: int,
+):
+    columns_include = np.zeros(ncol_A, dtype=np.bool_)
+    rows_include = b.copy()
+    for _ in range(n_hubs):
+        for i in range(ncol_A):
+            if columns_include[i]:
+                continue
+            one_ridx_col_i = one_ridx_A[3 * i : 3 * (i + 1)]
+            if rows_include[one_ridx_col_i].any():
+                rows_include[one_ridx_col_i] = True
+                columns_include[i] = True
+    return rows_include ^ b
+
+
 def compute_loop_homological_equivalence(
     boundary_matrix_d1: "BoundaryMatrixD1",
     loop_mask_a: np.ndarray,
     loop_mask_b: np.ndarray,
     n_pairs_check: int = 3,
+    with_relaxation: bool = True,
+    n_hubs_relaxation: int = 2,
+    max_n_edges_relaxation: int = 50,
     max_column_diameter: float | None = None,
     cocycle_edge_mask: np.ndarray | None = None,
-) -> tuple[list, list]:
+) -> tuple[list, list, list | None, list | None]:
     """
     Parameters
     ---------
@@ -255,17 +279,17 @@ def compute_loop_homological_equivalence(
     loop_sums = loop_mask_a[:, None, :] ^ loop_mask_b[None, :, :]
     loop_sums = loop_sums.reshape(-1, loop_sums.shape[-1])
     if loop_sums.shape[0] == 0:
-        return [], []
+        return [], [], [], []
     # early stoping, if sum is not a boundary according to cocycle, then skip it
     if cocycle_edge_mask is not None:
         mask = cocycle_edge_mask.astype(bool)
         if mask.shape[0] != loop_sums.shape[1]:
-            return [], []
+            return [], [], [], []
         if mask.any():
             keep = (loop_sums[:, mask].sum(axis=1) % 2) == 0
             loop_sums = loop_sums[keep]
             if loop_sums.shape[0] == 0:
-                return [], []
+                return [], [], [], []
     n_pairs_check = min(n_pairs_check, loop_sums.shape[0])
 
     one_ridx_A = np.asarray(boundary_matrix_d1.data[0])
@@ -277,7 +301,7 @@ def compute_loop_homological_equivalence(
     if max_column_diameter is not None:
         cols_keep = np.flatnonzero(col_diams <= max_column_diameter)
         if cols_keep.size == 0:
-            return [], []
+            return [], [], [], []
         mask = np.isin(one_cidx_A, cols_keep)
         one_ridx_A = one_ridx_A[mask]
         one_cidx_A = one_cidx_A[mask]
@@ -312,8 +336,31 @@ def compute_loop_homological_equivalence(
         ncol_A=ncol_A,
         one_idx_b_list=one_idx_b_list,
     )
+    results_relax, solutions_relax = None, None
+    if with_relaxation:
+        max_n_edges_relaxation = min(max_n_edges_relaxation, ncol_A)
+        n_hubs_edges = np.where(np.logical_or.reduce([
+            find_incident_edges(
+                one_ridx_A=one_ridx_A,
+                ncol_A=ncol_A,
+                b=loop_sums[i],
+                n_hubs=n_hubs_relaxation,
+            )
+            for i in range(n_pairs_check)
+        ]))[0]
+        # replace last columns (already sorted by diameters) with identity columns
+        n_extra_edges = min(len(n_hubs_edges), max_n_edges_relaxation)
+        if n_extra_edges > 0:
+            one_ridx_A[len(one_cidx_A) - 3*n_extra_edges:] = np.repeat(n_hubs_edges[:n_extra_edges], 3)
+            results_relax, solutions_relax = solve_multiple_gf2_m4ri(
+                one_ridx_A=one_ridx_A.tolist(),
+                one_cidx_A=one_cidx_A.tolist(),
+                nrow_A=nrow_A,
+                ncol_A=ncol_A,
+                one_idx_b_list=one_idx_b_list,
+            )
 
-    return results, solutions
+    return results, solutions, results_relax, solutions_relax
 
 
 def compute_loop_geometric_distance(
