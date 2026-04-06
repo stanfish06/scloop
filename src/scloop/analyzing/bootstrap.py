@@ -35,12 +35,15 @@ from ..data.constants import (
     DEFAULT_K_YEN,
     DEFAULT_LIFE_PCT,
     DEFAULT_LOOP_DIST_METHOD,
+    DEFAULT_MAX_N_EDGES_RELAXATION_EQUIVALENCE,
     DEFAULT_N_COCYCLES_USED,
     DEFAULT_N_FORCE_DEVIATE,
+    DEFAULT_N_HUBS_RELAXATION_EQUIVALENCE,
     DEFAULT_N_MAX_WORKERS,
     DEFAULT_N_PAIRS_CHECK_EQUIVALENCE,
     DEFAULT_N_REPS_PER_LOOP,
     DEFAULT_NOISE_SCALE,
+    DEFAULT_WITH_RELAXATION_EQUIVALENCE,
 )
 from ..data.metadata import ScloopMeta
 from ..data.types import Count_t, LoopDistMethod, PositiveFloat
@@ -82,6 +85,9 @@ def run_single_bootstrap(
     k_neighbors_check_equivalence: int = DEFAULT_K_NEIGHBORS_CHECK_EQUIVALENCE,
     method_geometric_equivalence: LoopDistMethod = DEFAULT_LOOP_DIST_METHOD,
     n_pairs_check_equivalence: int = DEFAULT_N_PAIRS_CHECK_EQUIVALENCE,
+    with_relaxation_equivalence: bool = DEFAULT_WITH_RELAXATION_EQUIVALENCE,
+    n_hubs_relaxation_equivalence: int = DEFAULT_N_HUBS_RELAXATION_EQUIVALENCE,
+    max_n_edges_relaxation_equivalence: int = DEFAULT_MAX_N_EDGES_RELAXATION_EQUIVALENCE,
     extra_diameter_homology_equivalence: float = DEFAULT_EXTRA_DIAM_EQUIVALENCE,
     filter_column_homology_equivalence: bool = True,
     full_pairwise_distance_matrix: csr_matrix | None = None,
@@ -260,6 +266,9 @@ def run_single_bootstrap(
                 target_loops=tgt_loop.representatives,
                 boundary_matrix_d1=original_boundary_matrix_d1,
                 n_pairs_check=n_pairs_check_equivalence,
+                with_relaxation=with_relaxation_equivalence,
+                n_hubs_relaxation=n_hubs_relaxation_equivalence,
+                max_n_edges_relaxation=max_n_edges_relaxation_equivalence,
                 max_column_diameter=max_column_diameter,
                 cocycle_edge_mask=cocycle_edge_mask,
             )
@@ -297,6 +306,9 @@ def run_bootstrap_pipeline(
     progress: Progress | None = None,
     reconstruct_on_full_data: bool = False,
     thresh: float | None = None,
+    with_relaxation_equivalence: bool = DEFAULT_WITH_RELAXATION_EQUIVALENCE,
+    n_hubs_relaxation_equivalence: int = DEFAULT_N_HUBS_RELAXATION_EQUIVALENCE,
+    max_n_edges_relaxation_equivalence: int = DEFAULT_MAX_N_EDGES_RELAXATION_EQUIVALENCE,
     **kwargs,
 ) -> list[BootstrapResult]:
     results: list[BootstrapResult] = []
@@ -329,6 +341,9 @@ def run_bootstrap_pipeline(
                 full_vertex_ids=full_vertex_ids,
                 reconstruct_on_full_data=reconstruct_on_full_data,
                 thresh=thresh,
+                with_relaxation_equivalence=with_relaxation_equivalence,
+                n_hubs_relaxation_equivalence=n_hubs_relaxation_equivalence,
+                max_n_edges_relaxation_equivalence=max_n_edges_relaxation_equivalence,
                 **kwargs,
             )
             tasks[task] = i

@@ -8,7 +8,12 @@ from ..computing.homology import (
     compute_loop_homological_equivalence,
 )
 from ..data.boundary import BoundaryMatrixD1
-from ..data.constants import DEFAULT_N_PAIRS_CHECK
+from ..data.constants import (
+    DEFAULT_MAX_N_EDGES_RELAXATION_EQUIVALENCE,
+    DEFAULT_N_HUBS_RELAXATION_EQUIVALENCE,
+    DEFAULT_N_PAIRS_CHECK,
+    DEFAULT_WITH_RELAXATION_EQUIVALENCE,
+)
 from ..data.types import Count_t, LoopDistMethod, PositiveFloat
 from ..data.utils import loop_vertices_to_edge_ids_with_signs
 
@@ -118,6 +123,9 @@ def check_homological_equivalence(
     target_loops: list[list[int]],
     boundary_matrix_d1: BoundaryMatrixD1,
     n_pairs_check: int = DEFAULT_N_PAIRS_CHECK,
+    with_relaxation: bool = DEFAULT_WITH_RELAXATION_EQUIVALENCE,
+    n_hubs_relaxation: int = DEFAULT_N_HUBS_RELAXATION_EQUIVALENCE,
+    max_n_edges_relaxation: int = DEFAULT_MAX_N_EDGES_RELAXATION_EQUIVALENCE,
     max_column_diameter: PositiveFloat | None = None,
     cocycle_edge_mask: np.ndarray | None = None,
 ) -> bool:
@@ -130,12 +138,17 @@ def check_homological_equivalence(
     assert isinstance(mask_a, np.ndarray)
     assert isinstance(mask_b, np.ndarray)
 
-    results, _ = compute_loop_homological_equivalence(
+    results, _, results_relax, _ = compute_loop_homological_equivalence(
         boundary_matrix_d1=boundary_matrix_d1,
         loop_mask_a=mask_a,
         loop_mask_b=mask_b,
         n_pairs_check=n_pairs_check,
+        with_relaxation=with_relaxation,
+        n_hubs_relaxation=n_hubs_relaxation,
+        max_n_edges_relaxation=max_n_edges_relaxation,
         max_column_diameter=max_column_diameter,
         cocycle_edge_mask=cocycle_edge_mask,
     )
-    return any(r == 0 for r in results)
+    if any(r == 0 for r in results):
+        return True
+    return results_relax is not None and any(r == 0 for r in results_relax)

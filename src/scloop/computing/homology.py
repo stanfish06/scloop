@@ -312,10 +312,10 @@ def compute_loop_homological_equivalence(
         ncol_A = cols_keep.size
         col_diams = col_diams[cols_keep]
 
-    # still have redundant columns, drop large triangles
-    # this can be caused by 2D holes but they are too expensive to check
+    # still have redundant columns; keep the larger remaining triangles, since
+    # the smaller ones appear less stable under bootstrap perturbations
     if ncol_A > nrow_A:
-        cols_keep_sorted = np.argsort(col_diams)[:nrow_A]
+        cols_keep_sorted = np.argsort(col_diams)[-nrow_A:]
 
         mask = np.isin(one_cidx_A, cols_keep_sorted)
         one_ridx_A = one_ridx_A[mask]
@@ -325,6 +325,14 @@ def compute_loop_homological_equivalence(
         col_reindex[cols_keep_sorted] = np.arange(nrow_A, dtype=int)
         one_cidx_A = col_reindex[one_cidx_A]
         ncol_A = nrow_A
+
+    # order columns by increasing diameter
+    if ncol_A > 0:
+        col_order = np.argsort(col_diams[:ncol_A])
+        if not np.array_equal(col_order, np.arange(ncol_A)):
+            one_ridx_A = one_ridx_A.reshape(ncol_A, 3)[col_order].reshape(-1)
+            one_cidx_A = np.repeat(np.arange(ncol_A, dtype=int), 3)
+            col_diams = col_diams[col_order]
 
     one_idx_b_list = [
         np.flatnonzero(loop_sums[i]).astype(int).tolist() for i in range(n_pairs_check)
@@ -339,19 +347,25 @@ def compute_loop_homological_equivalence(
     results_relax, solutions_relax = None, None
     if with_relaxation:
         max_n_edges_relaxation = min(max_n_edges_relaxation, ncol_A)
-        n_hubs_edges = np.where(np.logical_or.reduce([
-            find_incident_edges(
-                one_ridx_A=one_ridx_A,
-                ncol_A=ncol_A,
-                b=loop_sums[i],
-                n_hubs=n_hubs_relaxation,
+        n_hubs_edges = np.where(
+            np.logical_or.reduce(
+                [
+                    find_incident_edges(
+                        one_ridx_A=one_ridx_A,
+                        ncol_A=ncol_A,
+                        b=loop_sums[i],
+                        n_hubs=n_hubs_relaxation,
+                    )
+                    for i in range(n_pairs_check)
+                ]
             )
-            for i in range(n_pairs_check)
-        ]))[0]
+        )[0]
         # replace last columns (already sorted by diameters) with identity columns
         n_extra_edges = min(len(n_hubs_edges), max_n_edges_relaxation)
         if n_extra_edges > 0:
-            one_ridx_A[len(one_cidx_A) - 3*n_extra_edges:] = np.repeat(n_hubs_edges[:n_extra_edges], 3)
+            one_ridx_A[: 3 * n_extra_edges :] = np.repeat(
+                n_hubs_edges[:n_extra_edges], 3
+            )
             results_relax, solutions_relax = solve_multiple_gf2_m4ri(
                 one_ridx_A=one_ridx_A.tolist(),
                 one_cidx_A=one_cidx_A.tolist(),
