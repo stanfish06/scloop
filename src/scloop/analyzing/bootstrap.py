@@ -82,6 +82,7 @@ def run_single_bootstrap(
     decay_random_walk: PositiveFloat = 1.0,
     noise_random_walk: PositiveFloat = 1.0,
     seed_random_walk: int = 1,
+    do_force_deviate_random_walk: bool = False,
     k_neighbors_check_equivalence: int = DEFAULT_K_NEIGHBORS_CHECK_EQUIVALENCE,
     method_geometric_equivalence: LoopDistMethod = DEFAULT_LOOP_DIST_METHOD,
     n_pairs_check_equivalence: int = DEFAULT_N_PAIRS_CHECK_EQUIVALENCE,
@@ -145,6 +146,7 @@ def run_single_bootstrap(
             decay_random_walk=decay_random_walk,
             noise_random_walk=noise_random_walk,
             seed_random_walk=seed_random_walk,
+            do_force_deviate_random_walk=do_force_deviate_random_walk,
             bootstrap=False,
             do_clean_cocycle_region=True,
         )
@@ -169,6 +171,7 @@ def run_single_bootstrap(
             decay_random_walk=decay_random_walk,
             noise_random_walk=noise_random_walk,
             seed_random_walk=seed_random_walk,
+            do_force_deviate_random_walk=do_force_deviate_random_walk,
             bootstrap=True,
         )
 
@@ -309,6 +312,7 @@ def run_bootstrap_pipeline(
     with_relaxation_equivalence: bool = DEFAULT_WITH_RELAXATION_EQUIVALENCE,
     n_hubs_relaxation_equivalence: int = DEFAULT_N_HUBS_RELAXATION_EQUIVALENCE,
     max_n_edges_relaxation_equivalence: int = DEFAULT_MAX_N_EDGES_RELAXATION_EQUIVALENCE,
+    do_force_deviate_random_walk: bool = False,
     **kwargs,
 ) -> list[BootstrapResult]:
     results: list[BootstrapResult] = []
@@ -344,6 +348,7 @@ def run_bootstrap_pipeline(
                 with_relaxation_equivalence=with_relaxation_equivalence,
                 n_hubs_relaxation_equivalence=n_hubs_relaxation_equivalence,
                 max_n_edges_relaxation_equivalence=max_n_edges_relaxation_equivalence,
+                do_force_deviate_random_walk=do_force_deviate_random_walk,
                 **kwargs,
             )
             tasks[task] = i

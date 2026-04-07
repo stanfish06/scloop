@@ -128,6 +128,7 @@ def compute_loop_representatives(
     decay_random_walk: PositiveFloat = 1.0,
     noise_random_walk: PositiveFloat = 1.0,
     seed_random_walk: int = 1,
+    do_force_deviate_random_walk: bool = False,
     bootstrap: bool = False,
     rank_offset: int = 0,
     do_clean_cocycle_region: bool = False,
@@ -231,6 +232,7 @@ def compute_loop_representatives(
             decay_random_walk=decay_random_walk,
             noise_random_walk=noise_random_walk,
             seed_random_walk=seed_random_walk,
+            do_force_deviate_random_walk=do_force_deviate_random_walk,
             do_clean_cocycle_region=do_clean_cocycle_region,
         )
 
@@ -262,11 +264,12 @@ def reconstruct_n_loop_representatives(
     loop_lower_pct: float = 5,
     loop_upper_pct: float = 95,
     n_cocycles_used: Count_t = DEFAULT_N_COCYCLES_USED,
-    do_random_walk: bool = False,
+    do_random_walk: bool = False,  # random walk works but still less robust than the force deviate branch
     n_random_graphs: Count_t = 10,
     decay_random_walk: PositiveFloat = 1.0,
     noise_random_walk: PositiveFloat = 1.0,
     seed_random_walk: int = 1,
+    do_force_deviate_random_walk: bool = False,
     *,
     do_clean_cocycle_region: bool = False,
 ) -> Tuple[List[List[int]], List[float]]:
@@ -363,10 +366,11 @@ def reconstruct_n_loop_representatives(
                     paths_this_round.append(path)
                     cycles_dist.append(dist)
 
-        for path in paths_this_round:
-            for u, v in zip(path[:-1], path[1:]):
-                key = (min(u, v), max(u, v))
-                edge_weight_dict[key] = math.inf
+        if (not do_random_walk) or do_force_deviate_random_walk:
+            for path in paths_this_round:
+                for u, v in zip(path[:-1], path[1:]):
+                    key = (min(u, v), max(u, v))
+                    edge_weight_dict[key] = math.inf
 
     return _select_diverse_loops(
         cycles=cycles_pool,

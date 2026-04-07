@@ -29,6 +29,7 @@ from ..preprocessing.downsample import (
     sample_farthest_points,
     sample_farthest_points_randomized,
 )
+from ..utils.denoise.Sanity_py import sample_posterior_predictive_counts
 from ..utils.distance_metrics.frechet_py import compute_pairwise_loop_frechet
 from ..utils.linear_algebra_gf2 import (  # type: ignore
     solve_multiple_gf2_m4ri,  # type: ignore[import-not-found]
@@ -38,11 +39,42 @@ if TYPE_CHECKING:
     from ..data.containers import BoundaryMatrixD1
 
 
+def _sample_bootstrap_embedding(
+    adata: AnnData,
+    meta: ScloopMeta,
+    selected_indices: list[int],
+    sample_idx: np.ndarray,
+    bootstrap_noise_model: str,
+    noise_scale: float,
+) -> tuple[np.ndarray, list[int]]:
+    assert meta.preprocess is not None
+    assert meta.preprocess.embedding_method is not None
+
+    boot_idx = [selected_indices[int(i)] for i in sample_idx.tolist()]
+    emb = np.asarray(adata.obsm[f"X_{meta.preprocess.embedding_method}"])
+
+    if bootstrap_noise_model == "sanity" and meta.preprocess.embedding_method == "pca":
+        X = sample_posterior_predictive_counts(
+            adata=adata,
+            cell_idx=np.asarray(boot_idx, dtype=np.int64),
+            scale_before_pca=meta.preprocess.scale_before_pca,
+            n_pca_comps=meta.preprocess.n_pca_comps,
+        )
+    else:
+        X_ref = emb[selected_indices]
+        X = emb[boot_idx]
+        std_X = np.std(X_ref, axis=0)
+        X = X + np.random.normal(scale=std_X * noise_scale, size=X.shape)
+
+    return X, boot_idx
+
+
 def compute_sparse_pairwise_distance(
     adata: AnnData,
     meta: ScloopMeta,
     bootstrap: bool = False,
     noise_scale: float = 1e-3,
+    bootstrap_noise_model: str = "gaussian",
     thresh: Diameter_t | None = None,
     bootstrap_sampling: str = "resample",
     bootstrap_downsample_fraction: Percent_t = 2 / 3,
@@ -68,11 +100,14 @@ def compute_sparse_pairwise_distance(
         if bootstrap_sampling == "resample":
             sample_idx = np.random.choice(
                 len(selected_indices), size=len(selected_indices), replace=True
-            ).tolist()
-            boot_idx = [selected_indices[i] for i in sample_idx]
-            std_X = np.std(X, axis=0)
-            X = X[sample_idx] + np.random.normal(
-                scale=std_X * noise_scale, size=X.shape
+            )
+            X, boot_idx = _sample_bootstrap_embedding(
+                adata=adata,
+                meta=meta,
+                selected_indices=selected_indices,
+                sample_idx=np.asarray(sample_idx, dtype=np.int64),
+                bootstrap_noise_model=bootstrap_noise_model,
+                noise_scale=noise_scale,
             )
         elif bootstrap_sampling == "fps":
             n_keep = max(
@@ -80,10 +115,13 @@ def compute_sparse_pairwise_distance(
             )
             n_keep = min(n_keep, len(selected_indices))
             sample_idx = sample_farthest_points(X, n_keep)
-            boot_idx = [selected_indices[int(i)] for i in sample_idx.tolist()]
-            std_X = np.std(X, axis=0)
-            X = X[sample_idx] + np.random.normal(
-                scale=std_X * noise_scale, size=(n_keep, X.shape[1])
+            X, boot_idx = _sample_bootstrap_embedding(
+                adata=adata,
+                meta=meta,
+                selected_indices=selected_indices,
+                sample_idx=np.asarray(sample_idx, dtype=np.int64),
+                bootstrap_noise_model=bootstrap_noise_model,
+                noise_scale=noise_scale,
             )
         elif bootstrap_sampling == "fps_random":
             if bootstrap_fps_top_k <= 0:
@@ -97,10 +135,13 @@ def compute_sparse_pairwise_distance(
             sample_idx = sample_farthest_points_randomized(
                 X, n_keep, top_k=bootstrap_fps_top_k, alpha=bootstrap_fps_alpha
             )
-            boot_idx = [selected_indices[int(i)] for i in sample_idx.tolist()]
-            std_X = np.std(X, axis=0)
-            X = X[sample_idx] + np.random.normal(
-                scale=std_X * noise_scale, size=(n_keep, X.shape[1])
+            X, boot_idx = _sample_bootstrap_embedding(
+                adata=adata,
+                meta=meta,
+                selected_indices=selected_indices,
+                sample_idx=np.asarray(sample_idx, dtype=np.int64),
+                bootstrap_noise_model=bootstrap_noise_model,
+                noise_scale=noise_scale,
             )
         elif (
             bootstrap_sampling == "herding"
@@ -118,10 +159,13 @@ def compute_sparse_pairwise_distance(
                 frequency_seed=bootstrap_herding_seed,
                 n_features=int(bootstrap_herding_n_features),
             )
-            boot_idx = [selected_indices[int(i)] for i in sample_idx.tolist()]
-            std_X = np.std(X, axis=0)
-            X = X[sample_idx] + np.random.normal(
-                scale=std_X * noise_scale, size=(n_keep, X.shape[1])
+            X, boot_idx = _sample_bootstrap_embedding(
+                adata=adata,
+                meta=meta,
+                selected_indices=selected_indices,
+                sample_idx=np.asarray(sample_idx, dtype=np.int64),
+                bootstrap_noise_model=bootstrap_noise_model,
+                noise_scale=noise_scale,
             )
     else:
         boot_idx = selected_indices

@@ -56,7 +56,7 @@ def find_loops(
     tightness_loops: Percent_t = 0,
     n_candidates: NonZeroCount_t = 1,
     n_bootstrap: Size_t = DEFAULT_N_BOOTSTRAP,
-    bootstrap_sampling: str = "fps",  # this does help quite a bit
+    bootstrap_sampling: str = "fps_random",
     bootstrap_downsample_fraction: Percent_t = 2 / 3,
     bootstrap_fps_top_k: int = 5,
     bootstrap_fps_alpha: float = 1.0,
@@ -67,8 +67,7 @@ def find_loops(
     auto_shrink_boundary_matrix: bool = True,
     auto_shrink_factor: Percent_t = 0.9,
     n_max_workers: NonZeroCount_t = DEFAULT_N_MAX_WORKERS,
-    use_parallel: bool = False,
-    reconstruct_bootstrap_on_full_data: bool = False,  # this migth help but not sure how to fully disconnect loop at this point
+    use_parallel: bool = True,
     verbose: bool = False,
     max_log_messages: int | None = None,
     kwargs_bootstrap: dict[str, Any] | None = None,
@@ -179,7 +178,7 @@ def find_loops(
             k_neighbors_check_equivalence=DEFAULT_K_NEIGHBORS_CHECK_EQUIVALENCE,
             n_max_workers=n_max_workers,
             life_pct=tightness_loops,
-            reconstruct_on_full_data=reconstruct_bootstrap_on_full_data,
+            reconstruct_on_full_data=False,  # this is not working, revisit in the future
             bootstrap_sampling=bootstrap_sampling,
             bootstrap_downsample_fraction=bootstrap_downsample_fraction,
             bootstrap_fps_top_k=bootstrap_fps_top_k,

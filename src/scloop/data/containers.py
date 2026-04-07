@@ -484,6 +484,7 @@ class HomologyData:
         decay_random_walk: PositiveFloat = 1.0,
         noise_random_walk: PositiveFloat = 1.0,
         seed_random_walk: int = 1,
+        do_force_deviate_random_walk: bool = False,
     ):
         assert pairwise_distance_matrix.shape is not None
         assert self.meta.preprocess is not None
@@ -529,6 +530,7 @@ class HomologyData:
             decay_random_walk=decay_random_walk,
             noise_random_walk=noise_random_walk,
             seed_random_walk=seed_random_walk,
+            do_force_deviate_random_walk=do_force_deviate_random_walk,
             bootstrap=bootstrap,
             rank_offset=0,
         )
@@ -809,6 +811,7 @@ class HomologyData:
         decay_random_walk: PositiveFloat = 1.0,
         noise_random_walk: PositiveFloat = 1.0,
         seed_random_walk: int = 1,
+        do_force_deviate_random_walk: bool = False,
         n_pairs_check_equivalence: Count_t = DEFAULT_N_PAIRS_CHECK_EQUIVALENCE,
         with_relaxation_equivalence: bool = DEFAULT_WITH_RELAXATION_EQUIVALENCE,
         n_hubs_relaxation_equivalence: Count_t = DEFAULT_N_HUBS_RELAXATION_EQUIVALENCE,
@@ -853,6 +856,7 @@ class HomologyData:
                 decay_random_walk=decay_random_walk,
                 noise_random_walk=noise_random_walk,
                 seed_random_walk=seed_random_walk,
+                do_force_deviate_random_walk=do_force_deviate_random_walk,
                 n_pairs_check_equivalence=n_pairs_check_equivalence,
                 with_relaxation_equivalence=with_relaxation_equivalence,
                 n_hubs_relaxation_equivalence=n_hubs_relaxation_equivalence,
@@ -931,6 +935,7 @@ class HomologyData:
                     decay_random_walk=decay_random_walk,
                     noise_random_walk=noise_random_walk,
                     seed_random_walk=seed_random_walk,
+                    do_force_deviate_random_walk=do_force_deviate_random_walk,
                 )
                 if verbose:
                     logger.info("Matching bootstrapped loops to the original loops")
@@ -1072,6 +1077,7 @@ class HomologyData:
         decay_random_walk: PositiveFloat = 1.0,
         noise_random_walk: PositiveFloat = 1.0,
         seed_random_walk: int = 1,
+        do_force_deviate_random_walk: bool = False,
         n_pairs_check_equivalence: int = DEFAULT_N_PAIRS_CHECK_EQUIVALENCE,
         with_relaxation_equivalence: bool = DEFAULT_WITH_RELAXATION_EQUIVALENCE,
         n_hubs_relaxation_equivalence: int = DEFAULT_N_HUBS_RELAXATION_EQUIVALENCE,
@@ -1113,6 +1119,7 @@ class HomologyData:
             decay_random_walk=decay_random_walk,
             noise_random_walk=noise_random_walk,
             seed_random_walk=seed_random_walk,
+            do_force_deviate_random_walk=do_force_deviate_random_walk,
             k_neighbors_check_equivalence=k_neighbors_check_equivalence,
             method_geometric_equivalence=method_geometric_equivalence,
             n_pairs_check_equivalence=n_pairs_check_equivalence,
