@@ -34,6 +34,8 @@ def _sample_posterior_predictive_counts(
     log_var: np.ndarray,
     library_size: np.ndarray,
     cell_idx: np.ndarray,
+    n_posterior: int = 1000,
+    ltq_var_scale: float = 0.1,
 ) -> np.ndarray:
     n_cells = cell_idx.shape[0]
     n_genes = log_mean.shape[1]
@@ -41,9 +43,11 @@ def _sample_posterior_predictive_counts(
     for i in range(n_cells):
         c = cell_idx[i]
         for g in range(n_genes):
-            ltq = np.random.normal(log_mean[c, g], np.sqrt(log_var[c, g]))
+            ltq = np.random.normal(
+                log_mean[c, g], ltq_var_scale * np.sqrt(log_var[c, g])
+            )
             rate = library_size[c] * np.exp(ltq)
-            counts[i, g] = np.random.poisson(rate)
+            counts[i, g] = np.mean(np.random.poisson(rate, size=n_posterior))
     return counts
 
 
@@ -55,17 +59,15 @@ def sample_posterior_predictive_counts(
 ) -> np.ndarray:
     log_mean = np.ascontiguousarray(adata.layers["sanity_log_mean"])
     log_var = np.ascontiguousarray(adata.layers["sanity_log_var"])
-    library_size = np.asarray(
-        adata.layers["counts"].sum(axis=1), dtype=np.float64
-    ).ravel()
+    library_size = np.array(adata.obs["library_size_sanity"])
     X = _sample_posterior_predictive_counts(log_mean, log_var, library_size, cell_idx)
     # map back to Sanity's log-fraction scale
     N_c = library_size[cell_idx]
     X = np.log(X / N_c[:, np.newaxis] + NUMERIC_EPSILON)
     if scale_before_pca:
-        X = (X - adata.var["mean"].values) / adata.var["std"].values
+        X = (X - np.mean(log_mean, axis=0)) / np.std(log_mean, axis=0)
     elif not scale_before_pca and n_pca_comps is not None:
-        X = X - adata.uns["pca"]["params"]["mean"]
+        X = X - np.mean(log_mean, axis=0)
     if n_pca_comps is not None:
         X = X @ adata.varm["PCs"]
     return X
