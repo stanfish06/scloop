@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 from pydantic import BaseModel
 
+from ..computing.embedding import DiffusionMap
 from .types import (
     CrossMatchModelTypes,
     EmbeddingMethod,
@@ -32,6 +33,7 @@ class PreprocessMeta(BaseModel):
     n_pca_comps: int | None = None
     n_neighbors: int
     n_diffusion_comps: int | None = None
+    diffmap_operator: DiffusionMap | None = None
     scvi_key: str | None = None
     indices_downsample: IndexListDownSample | None = None
     kwargs_downsample: dict | None = None

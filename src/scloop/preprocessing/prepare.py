@@ -232,6 +232,8 @@ def prepare_adata(
             raise ValueError("counts layer is required for Sanity noise model")
         if verbose:
             logger.info("Step 2/5: Computing Sanity noise model")
+        # TODO: need to handle data type here (assume sparse matrix for now)
+        adata.obs["library_size_sanity"] = adata.layers["counts"].sum(axis=1).A1
         compute_posterior_gene_noise_model(
             adata=adata, use_layer="counts", **kwargs_sanity
         )
@@ -263,6 +265,7 @@ def prepare_adata(
         if verbose:
             logger.info("Step 3/5: PCA not needed, skipping")
 
+    diffmap = None
     if needs_diffmap:
         if verbose:
             logger.info("Step 4/5: Computing diffusion map")
@@ -277,10 +280,6 @@ def prepare_adata(
             random_state=random_state,
             **kwargs_diffmap,
         )
-
-        # first component of diffusion map represent local density
-        adata.obsm["X_diffmap_original"] = diffmap.copy()
-        adata.obsm["X_diffmap"] = diffmap[:, 1:]
     elif "X_diffmap" in adata.obsm:
         if verbose:
             logger.info("Step 4/5: Diffusion map already computed, skipping")
@@ -351,6 +350,7 @@ def prepare_adata(
         n_pca_comps=n_pca_comps if needs_pca else None,
         n_neighbors=n_neighbors,
         n_diffusion_comps=n_diffusion_comps if needs_diffmap else None,
+        diffmap_operator=diffmap,
         scvi_key=scvi_key if needs_scvi else None,
         indices_downsample=indices_downsample,
         kwargs_downsample=kwargs_downsample,

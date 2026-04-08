@@ -315,7 +315,7 @@ class CrossDatasetMatcher:
                 use_rep="X_aligned",
                 key_added_neighbors="neighbors_scloop_reembed",
             )
-            embedding_joint = diffmap
+            embedding_joint = diffmap.diffmap_coords
         elif reembed_method == "umap":
             import scanpy as sc
 

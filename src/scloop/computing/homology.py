@@ -53,13 +53,31 @@ def _sample_bootstrap_embedding(
     boot_idx = [selected_indices[int(i)] for i in sample_idx.tolist()]
     emb = np.asarray(adata.obsm[f"X_{meta.preprocess.embedding_method}"])
 
-    if bootstrap_noise_model == "sanity" and meta.preprocess.embedding_method == "pca":
-        X = sample_posterior_predictive_counts(
-            adata=adata,
-            cell_idx=np.asarray(boot_idx, dtype=np.int64),
-            scale_before_pca=meta.preprocess.scale_before_pca,
-            n_pca_comps=meta.preprocess.n_pca_comps,
-        )
+    X = emb[selected_indices]
+    if bootstrap_noise_model == "sanity":
+        if meta.preprocess.embedding_method == "pca":
+            X = sample_posterior_predictive_counts(
+                adata=adata,
+                cell_idx=np.asarray(boot_idx, dtype=np.int64),
+                scale_before_pca=meta.preprocess.scale_before_pca,
+                n_pca_comps=meta.preprocess.n_pca_comps,
+            )
+        elif meta.preprocess.embedding_method == "diffmap":
+            if meta.preprocess.embedding_neighbors == "pca":
+                X = sample_posterior_predictive_counts(
+                    adata=adata,
+                    cell_idx=np.asarray(boot_idx, dtype=np.int64),
+                    scale_before_pca=meta.preprocess.scale_before_pca,
+                    n_pca_comps=meta.preprocess.n_pca_comps,
+                )
+                assert meta.preprocess.diffmap_operator
+                diffmap_operator = meta.preprocess.diffmap_operator
+                emb_reference = np.asarray(
+                    adata.obsm[f"X_{meta.preprocess.embedding_neighbors}"]
+                )
+                X = diffmap_operator.project_query_data(
+                    emb_reference=emb_reference, emb_query=X
+                )
     else:
         X_ref = emb[selected_indices]
         X = emb[boot_idx]

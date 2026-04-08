@@ -27,7 +27,10 @@ def compute_diffmap(
     *,
     damp_multistep_diffusion: Percent_t = 1.0,
     use_multistep_eigenvalues: bool = True,
-) -> np.ndarray:
+) -> DiffusionMap:
+    diffmap = DiffusionMap(
+        n_neighbors=n_neighbors, damp_multistep=damp_multistep_diffusion
+    )
     match flavor:
         case "scanpy":
             sc.pp.neighbors(
@@ -43,10 +46,14 @@ def compute_diffmap(
                 n_comps=n_comps,
                 neighbors_key=key_added_neighbors,
             )
-        case "custom":
-            diffmap = DiffusionMap(
-                n_neighbors=n_neighbors, damp_multistep=damp_multistep_diffusion
+            assert (
+                "X_diffmap" in adata.obsm
+                and type(adata.obsm["X_diffmap"]) is np.ndarray
             )
+            diffmap.diffmap_coords = adata.obsm["X_diffmap"][:, 1:]
+            adata.obsm["X_diffmap_original"] = adata.obsm["X_diffmap"].copy()
+            adata.obsm["X_diffmap"] = adata.obsm["X_diffmap"][:, 1:]
+        case "custom":
             # TODO: better input handling
             emb = adata.obsm[f"X_{use_rep}"] if use_rep is not None else adata.X
             assert emb is not None and type(emb) is np.ndarray
@@ -61,11 +68,11 @@ def compute_diffmap(
             eigvals /= eigvals.max()
             eigvecs = diffmap.eigenvectors
             assert eigvecs is not None
-            diffmap.diffmap_coords = eigvecs * eigvals
-            adata.obsm["X_diffmap"] = diffmap.diffmap_coords
-            adata.uns["diffmap_evals"] = eigvals
-
-    return np.array(adata.obsm["X_diffmap"])
+            diffusion_coords_full = eigvecs * eigvals
+            adata.obsm["X_diffmap_original"] = diffusion_coords_full.copy()
+            adata.obsm["X_diffmap"] = diffusion_coords_full[:, 1:]
+            diffmap.diffmap_coords = diffusion_coords_full[:, 1:]
+    return diffmap
 
 
 @jit(nopython=True, cache=True)
@@ -157,7 +164,9 @@ class DiffusionMap:
     eigenvalues: np.ndarray | None = None
     eigenvalues_multistep: np.ndarray | None = None
     eigenvectors: np.ndarray | None = None
-    diffmap_coords: np.ndarray | None = None
+    diffmap_coords: np.ndarray | None = (
+        None  # no first component: first component of diffusion map represent local density
+    )
     _knn_index_cache: NNDescent | None = None
     _d_inv_sqrt: np.ndarray | None = None
     _vars_local: np.ndarray | None = None
