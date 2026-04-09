@@ -5,11 +5,13 @@ import anndata
 import numpy as np
 import pandas as pd
 import scipy
+
+# from tqdm import tqdm
+from loguru import logger as loguru_logger
 from numba import jit
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.neighbors import NearestNeighbors
-from tqdm import tqdm
 
 from .kh import sketch
 
@@ -186,7 +188,9 @@ def seed_select(
     random_state_idx = []
 
     logging.info(f"Running {n_random_state} clustering iterations sequentially")
-    for state in tqdm(random_state_arr, desc="clustering and permutation testing"):
+    loguru_logger.info("[DELVE] Performing permutation testing")
+    # for state in tqdm(random_state_arr, desc="clustering and permutation testing", disable=True):
+    for state in random_state_arr:
         result = _run_cluster(
             delta_mean, feature_names, n_clusters, null_iterations, state
         )

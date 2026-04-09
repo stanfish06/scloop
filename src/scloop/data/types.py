@@ -3,7 +3,7 @@ from typing import Annotated, Literal, TypeAlias
 
 from pydantic import Field
 
-FeatureSelectionMethod = Literal["hvg", "delve", "none"]
+FeatureSelectionMethod = Literal["hvg", "hvg_delve", "none"]
 EmbeddingMethod = Literal["pca", "diffmap", "scvi"]
 EmbeddingNeighbors = Literal["pca", "scvi"]
 LoopDistMethod = Literal["hausdorff", "frechet"]

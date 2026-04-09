@@ -24,8 +24,8 @@ def compute_posterior_gene_noise_model(
     X = X.toarray(order="C") if issparse(X) else np.ascontiguousarray(X)
     library_size = X.sum(axis=0)
     gene_total = X.sum(axis=1)
-    if use_max_v:
-        print("[DEBUG] Use max-like posterior Gaussian bin")
+    # if use_max_v:
+    #     print("[DEBUG] Use max-like posterior Gaussian bin")
     log_mean, log_var = run_sanity(
         X, library_size, gene_total, nbins, vmin, vmax, use_max_v
     )
@@ -67,7 +67,7 @@ def sample_posterior_predictive_counts(
     log_mean = np.ascontiguousarray(adata.layers["sanity_log_mean"])
     log_var = np.ascontiguousarray(adata.layers["sanity_log_var"])
     library_size = np.array(adata.obs["library_size_sanity"])
-    print(f"[DEBUG] Use noise scale {ltq_var_scale}")
+    # print(f"[DEBUG] Use noise scale {ltq_var_scale}")
     X = _sample_posterior_predictive_counts(
         log_mean=log_mean,
         log_var=log_var,

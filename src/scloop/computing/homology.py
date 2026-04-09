@@ -63,7 +63,7 @@ def _sample_bootstrap_embedding(
                 scale_before_pca=meta.preprocess.scale_before_pca,
                 n_pca_comps=meta.preprocess.n_pca_comps,
                 n_posterior=sanity_n_posterior,
-                ltq_var_scale=noise_scale
+                ltq_var_scale=noise_scale,
             )
         elif meta.preprocess.embedding_method == "diffmap":
             if meta.preprocess.embedding_neighbors == "pca":
@@ -73,7 +73,7 @@ def _sample_bootstrap_embedding(
                     scale_before_pca=meta.preprocess.scale_before_pca,
                     n_pca_comps=meta.preprocess.n_pca_comps,
                     n_posterior=sanity_n_posterior,
-                    ltq_var_scale=noise_scale
+                    ltq_var_scale=noise_scale,
                 )
                 assert meta.preprocess.diffmap_operator
                 diffmap_operator = meta.preprocess.diffmap_operator
@@ -97,6 +97,7 @@ def compute_sparse_pairwise_distance(
     meta: ScloopMeta,
     bootstrap: bool = False,
     noise_scale: float = 1e-3,
+    sanity_n_posterior: int = 1000,
     bootstrap_noise_model: str = "gaussian",
     thresh: Diameter_t | None = None,
     bootstrap_sampling: str = "resample",
@@ -131,6 +132,7 @@ def compute_sparse_pairwise_distance(
                 sample_idx=np.asarray(sample_idx, dtype=np.int64),
                 bootstrap_noise_model=bootstrap_noise_model,
                 noise_scale=noise_scale,
+                sanity_n_posterior=sanity_n_posterior,
             )
         elif bootstrap_sampling == "fps":
             n_keep = max(
@@ -145,6 +147,7 @@ def compute_sparse_pairwise_distance(
                 sample_idx=np.asarray(sample_idx, dtype=np.int64),
                 bootstrap_noise_model=bootstrap_noise_model,
                 noise_scale=noise_scale,
+                sanity_n_posterior=sanity_n_posterior,
             )
         elif bootstrap_sampling == "fps_random":
             if bootstrap_fps_top_k <= 0:
@@ -165,6 +168,7 @@ def compute_sparse_pairwise_distance(
                 sample_idx=np.asarray(sample_idx, dtype=np.int64),
                 bootstrap_noise_model=bootstrap_noise_model,
                 noise_scale=noise_scale,
+                sanity_n_posterior=sanity_n_posterior,
             )
         elif (
             bootstrap_sampling == "herding"
@@ -189,6 +193,7 @@ def compute_sparse_pairwise_distance(
                 sample_idx=np.asarray(sample_idx, dtype=np.int64),
                 bootstrap_noise_model=bootstrap_noise_model,
                 noise_scale=noise_scale,
+                sanity_n_posterior=sanity_n_posterior,
             )
     else:
         boot_idx = selected_indices

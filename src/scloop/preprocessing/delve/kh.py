@@ -5,10 +5,9 @@ import anndata
 import numpy as np
 import scipy
 from joblib import Parallel, delayed
+from loguru import logger
 from numba import njit
 from pandas.api.types import is_numeric_dtype
-from tqdm import tqdm
-from tqdm_joblib import tqdm_joblib
 
 
 def random_feats(
@@ -268,10 +267,11 @@ def sketch(
             density=density_subset,
         )
 
-    with tqdm_joblib(tqdm(desc="Performing subsampling", total=n_sample_sets)):
-        kh_indices = Parallel(n_jobs=n_jobs)(
-            delayed(process_set)(i, inds) for i, inds in enumerate(sample_set_inds)
-        )
+    logger.info("[DELVE] Performing subsampling")
+    # with tqdm_joblib(tqdm(desc="Performing subsampling", total=n_sample_sets, disable=True)):
+    kh_indices = Parallel(n_jobs=n_jobs)(
+        delayed(process_set)(i, inds) for i, inds in enumerate(sample_set_inds)
+    )
 
     subsampled_cell_indices = [
         sample_set_inds[i][kh_indices[i]] for i in range(n_sample_sets)
