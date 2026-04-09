@@ -19,7 +19,7 @@ cdef extern from "Sanity/src/calc_true_variation_parallel_prior_mu_sigma.h":
     void get_gene_expression_level(double *n_c, double *N_c, double n, double vmin, double vmax, double &mu, double &var_mu, double *delta, double *var_delta, int C, int numbin, double a, double b, double *lik, double &v_ml, double &mu_v_ml, double &var_mu_v_ml, double *delta_v_ml, double *var_delta_v_ml) nogil
 
 
-def run_sanity(double[:, ::1] X, double[::1] library_size, double[::1] gene_total, int nbins, double vmin, double vmax, bint verbose=True):
+def run_sanity(double[:, ::1] X, double[::1] library_size, double[::1] gene_total, int nbins, double vmin, double vmax, bint verbose=True, bint use_max_v=False):
     cdef int G = X.shape[0]
     cdef int C = X.shape[1]
     cdef double a = 1.0
@@ -60,8 +60,12 @@ def run_sanity(double[:, ::1] X, double[::1] library_size, double[::1] gene_tota
         )
 
         for c in range(C):
-            log_mean[g, c] = mu_g + delta[c]
-            log_var[g, c] = var_mu_g + var_delta[c]
+          if use_max_v:
+              log_mean[g, c] = mu_v_ml + delta_v_ml[c]
+              log_var[g, c] = var_mu_v_ml + var_delta_v_ml[c]
+          else:
+              log_mean[g, c] = mu_g + delta[c]
+              log_var[g, c] = var_mu_g + var_delta[c]
 
         free(delta)
         free(var_delta)

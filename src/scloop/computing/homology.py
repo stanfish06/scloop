@@ -46,6 +46,7 @@ def _sample_bootstrap_embedding(
     sample_idx: np.ndarray,
     bootstrap_noise_model: str,
     noise_scale: float,
+    sanity_n_posterior: int = 1000,
 ) -> tuple[np.ndarray, list[int]]:
     assert meta.preprocess is not None
     assert meta.preprocess.embedding_method is not None
@@ -61,6 +62,8 @@ def _sample_bootstrap_embedding(
                 cell_idx=np.asarray(boot_idx, dtype=np.int64),
                 scale_before_pca=meta.preprocess.scale_before_pca,
                 n_pca_comps=meta.preprocess.n_pca_comps,
+                n_posterior=sanity_n_posterior,
+                ltq_var_scale=noise_scale
             )
         elif meta.preprocess.embedding_method == "diffmap":
             if meta.preprocess.embedding_neighbors == "pca":
@@ -69,6 +72,8 @@ def _sample_bootstrap_embedding(
                     cell_idx=np.asarray(boot_idx, dtype=np.int64),
                     scale_before_pca=meta.preprocess.scale_before_pca,
                     n_pca_comps=meta.preprocess.n_pca_comps,
+                    n_posterior=sanity_n_posterior,
+                    ltq_var_scale=noise_scale
                 )
                 assert meta.preprocess.diffmap_operator
                 diffmap_operator = meta.preprocess.diffmap_operator
@@ -202,7 +207,7 @@ def compute_persistence_diagram_and_cocycles(
     meta: ScloopMeta,
     thresh: Diameter_t | None = None,
     bootstrap: bool = False,
-    noise_scale: float = 1e3,
+    noise_scale: float = 1e-3,
     **nei_kwargs,
 ) -> tuple[list, list, IndexListDistMatrix | None, csr_matrix]:
     def _cap_infinite_deaths(diagrams: list, cap: float | None) -> list:
