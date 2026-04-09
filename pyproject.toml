@@ -103,13 +103,13 @@ reportMissingImports = "error"
 reportMissingTypeStubs = false
 
 pythonVersion = "3.12"
-pythonPlatform = "Linux"
+pythonPlatform = "All"
 
 executionEnvironments = [
   { root = "src" },
 ]
 
-venvPath = "/home/stanfish/Git/scloop"
+venvPath = "."
 venv = ".venv"
 
 [tool.ty]

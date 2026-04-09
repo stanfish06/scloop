@@ -1,4 +1,5 @@
 import os
+import platform
 import sys
 
 from Cython.Build import cythonize
@@ -10,10 +11,17 @@ gf2toolkit_srcs = os.path.join(gf2_dir, "GF2toolkit/srcs")
 sanity_dir = os.path.join(project_root, "src/scloop/utils/denoise")
 
 is_windows = sys.platform.startswith("win")
+is_mac = platform.system() == "Darwin"
+
 if is_windows:
     base_link_args = ["-static"]
     openmp_compile = ["-fopenmp"]
     openmp_link = ["-static", "-fopenmp"]
+elif is_mac:
+    libomp_prefix = "/opt/homebrew/opt/libomp"
+    base_link_args = []
+    openmp_compile = ["-Xpreprocessor", "-fopenmp", f"-I{libomp_prefix}/include"]
+    openmp_link = [f"-L{libomp_prefix}/lib", "-lomp"]
 else:
     base_link_args = []
     openmp_compile = ["-fopenmp"]
