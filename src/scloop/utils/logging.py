@@ -161,9 +161,7 @@ def get_logging_config() -> LoggingConfig:
     return _LOGGING_CONFIG.model_copy(deep=True)
 
 
-def create_console(
-    *, width: int | None = None, height: int | None = None
-) -> Console:
+def create_console(*, width: int | None = None, height: int | None = None) -> Console:
     config = get_logging_config()
     return Console(
         width=config.console_width if width is None else width,
@@ -345,7 +343,9 @@ class LogDisplay(BaseModel):
         return summary
 
     def _create_table(self) -> Panel:
-        table = Table(show_header=True, header_style="bold magenta", box=None, expand=True)
+        table = Table(
+            show_header=True, header_style="bold magenta", box=None, expand=True
+        )
         table.add_column("Time", style="dim", width=8, no_wrap=True)
         table.add_column("Level", width=8, no_wrap=True)
         table.add_column(

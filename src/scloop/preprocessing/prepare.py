@@ -238,7 +238,9 @@ def prepare_adata(
             adata.uns["delve_delta_mean"] = delta_mean
             adata.uns["delve_modules"] = modules
             adata.uns["delve_selected_features"] = selected_features
-            dyn_feats = list(np.asarray(modules.index[modules["cluster_id"] != "static"]))
+            dyn_feats = list(
+                np.asarray(modules.index[modules["cluster_id"] != "static"])
+            )
             lap_feats = (
                 selected_features.loc[
                     list(set(selected_features.index) - set(dyn_feats)), :
@@ -279,7 +281,9 @@ def prepare_adata(
             if verbose:
                 logger.info(f"Computing PCA with {n_pca_comps} components")
 
-            pca_kwargs = {k: v for k, v in kwargs_pca.items() if k != "scale_before_pca"}
+            pca_kwargs = {
+                k: v for k, v in kwargs_pca.items() if k != "scale_before_pca"
+            }
             pca_kwargs.setdefault("random_state", random_state)
             sc.pp.pca(
                 adata,
