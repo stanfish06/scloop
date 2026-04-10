@@ -435,9 +435,7 @@ def compute_loop_homological_equivalence(
         # replace last columns (already sorted by diameters) with identity columns
         n_extra_edges = min(len(n_hubs_edges), max_n_edges_relaxation)
         if n_extra_edges > 0:
-            one_ridx_A[: 3 * n_extra_edges :] = np.repeat(
-                n_hubs_edges[:n_extra_edges], 3
-            )
+            one_ridx_A[: 3 * n_extra_edges] = np.repeat(n_hubs_edges[:n_extra_edges], 3)
             results_relax, solutions_relax = solve_multiple_gf2_m4ri(
                 one_ridx_A=one_ridx_A.tolist(),
                 one_cidx_A=one_cidx_A.tolist(),

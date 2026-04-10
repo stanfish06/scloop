@@ -17,8 +17,10 @@ from rich.progress import (
     TimeElapsedColumn,
     TimeRemainingColumn,
 )
+from scipy.spatial.distance import pdist
 
 from ..data.constants import (
+    DEFAULT_AUTO_THRESHOLD_FACTOR,
     DEFAULT_K_NEIGHBORS_CHECK_EQUIVALENCE,
     DEFAULT_MAX_COLUMNS_BOUNDARY_MATRIX,
     DEFAULT_MAXITER_EIGENDECOMPOSITION,
@@ -103,6 +105,39 @@ def find_loops(
             meta.bootstrap = BootstrapMeta()
         meta.bootstrap.life_pct = tightness_loops
         hd: HomologyData = HomologyData(meta=meta)
+        """
+        ============ Auto-choose PH threshold ============
+        - upper bound would be the max pw dist
+        - choose a value such that all 1-loop dies
+        ==================================================
+        """
+        if threshold_homology is None:
+            assert meta.preprocess is not None
+            assert meta.preprocess.embedding_method is not None
+            emb = adata.obsm[f"X_{meta.preprocess.embedding_method}"]
+            selected_indices = (
+                meta.preprocess.indices_downsample
+                if meta.preprocess.indices_downsample is not None
+                else list(range(emb.shape[0]))
+            )
+            max_pw_dist = float(pdist(emb[selected_indices]).max())
+            if verbose:
+                logger.info(
+                    f"Auto-threshold: max pairwise distance = {max_pw_dist:.4f}"
+                )
+            hd._compute_homology(adata=adata, thresh=max_pw_dist)
+            # need some room for bootstrap, loops will die later for fewer points
+            auto_factor = (kwargs_bootstrap or {}).get(
+                "auto_threshold_factor", DEFAULT_AUTO_THRESHOLD_FACTOR
+            )
+            max_h1_death = float(np.max(hd.persistence_diagram[1][1]))
+            threshold_homology = max_h1_death * auto_factor
+            if verbose:
+                logger.info(
+                    f"Auto-threshold: max H1 death = {max_h1_death:.4f}, "
+                    f"using threshold = {threshold_homology:.4f} (factor={auto_factor})"
+                )
+
         sparse_dist_mat = hd._compute_homology(adata=adata, thresh=threshold_homology)
         boundary_thresh = threshold_boundary
         if boundary_thresh is None:
