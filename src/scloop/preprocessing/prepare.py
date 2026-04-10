@@ -1,5 +1,5 @@
 # Copyright 2025 Zhiyuan Yu (Heemskerk's lab, University of Michigan)
-import logging
+from contextlib import nullcontext
 from typing import Any
 
 import numpy as np
@@ -7,7 +7,6 @@ import scanpy as sc
 from anndata import AnnData
 from loguru import logger
 from pydantic import validate_call
-from rich.console import Console
 
 from ..computing import compute_diffmap
 from ..data.constants import (
@@ -23,13 +22,11 @@ from ..data.types import (
     FeatureSelectionMethod,
 )
 from ..utils.denoise import compute_posterior_gene_noise_model
-from ..utils.logging import LogDisplay
+from ..utils.logging import LogDisplay, ensure_logging
 from .delve import delve_fs
 from .downsample import sample
 
 __all__ = ["prepare_adata"]
-
-console = Console()
 
 
 @validate_call(config={"arbitrary_types_allowed": True})
@@ -188,25 +185,11 @@ def prepare_adata(
     density_exempt_groups = kwargs_downsample.get("density_exempt_groups", None)
 
     use_log_display = verbose and max_log_messages is not None
-    log_display_ctx: LogDisplay | None = None
-    if use_log_display:
-        assert max_log_messages is not None
-        log_display_ctx = LogDisplay(maxlen=max_log_messages)
-        log_display_ctx.__enter__()
-        logger.info(
-            f"Preparing AnnData with {adata.n_obs} cells and {adata.n_vars} genes"
-        )
-    elif verbose:
-        logger.remove()
-        logger.add(
-            lambda s: console.print(s, end=""),
-            colorize=False,
-            level="TRACE",
-            format="<green>{time:YYYY/MM/DD HH:mm:ss}</green> | {level.icon} - <level>{message}</level>",
-        )
-        logger.info(
-            f"Preparing AnnData with {adata.n_obs} cells and {adata.n_vars} genes"
-        )
+    if verbose:
+        ensure_logging()
+    log_context = (
+        LogDisplay(maxlen=max_log_messages) if use_log_display else nullcontext()
+    )
 
     needs_pca = "X_pca" not in adata.obsm and "pca" in (
         embedding_method,
@@ -217,203 +200,202 @@ def prepare_adata(
     needs_delve = feature_selection_method == "hvg_delve"
     needs_scvi = embedding_method == "scvi" or embedding_neighbors == "scvi"
 
-    if verbose and (library_normalization or needs_hvg):
-        logger.info("Step 1/5: Normalization and feature selection")
-    _normalize_and_select_hvg(
-        adata,
-        library_normalization,
-        needs_hvg,
-        target_sum,
-        n_top_genes,
-        batch_key,
-        subset=True,
-        verbose=verbose,
-    )
-
-    if needs_delve:
+    with log_context:
         if verbose:
             logger.info(
-                f"Step 1.5/5: Running DELVE feature selection (k={delve_k}, n_clusters={delve_n_clusters})"
+                f"Preparing AnnData with {adata.n_obs} cells and {adata.n_vars} genes"
             )
-        logging.disable(logging.CRITICAL)
-        try:
+
+        if verbose and (library_normalization or needs_hvg):
+            logger.info("Step 1/5: Normalization and feature selection")
+        _normalize_and_select_hvg(
+            adata,
+            library_normalization,
+            needs_hvg,
+            target_sum,
+            n_top_genes,
+            batch_key,
+            subset=True,
+            verbose=verbose,
+        )
+
+        if needs_delve:
+            if verbose:
+                logger.info(
+                    f"Step 1.5/5: Running DELVE feature selection (k={delve_k}, n_clusters={delve_n_clusters})"
+                )
             delta_mean, modules, selected_features = delve_fs(
                 adata=adata,
                 k=delve_k,
                 n_clusters=delve_n_clusters,
                 **kwargs_delve,
             )
-        finally:
-            logging.disable(logging.NOTSET)
-        assert (
-            delta_mean is not None
-            and modules is not None
-            and selected_features is not None
-        ), "DELVE failed to identify dynamic features."
-        adata.uns["delve_delta_mean"] = delta_mean
-        adata.uns["delve_modules"] = modules
-        adata.uns["delve_selected_features"] = selected_features
-        dyn_feats = list(np.asarray(modules.index[modules["cluster_id"] != "static"]))
-        lap_feats = (
-            selected_features.loc[
-                list(set(selected_features.index) - set(dyn_feats)), :
-            ]
-            .sort_values("DELVE", ascending=True)[
-                : max((delve_n_top_genes - len(dyn_feats)), 0)
-            ]
-            .index.tolist()
-        )
-        delve_feature_list = dyn_feats + lap_feats
-        adata._inplace_subset_var(adata.var_names.isin(delve_feature_list))
-
-    """
-    =============== sanity ===============
-    - estimate noise model for each gene
-    ======================================
-    """
-    if run_sanity:
-        if "counts" not in adata.layers:
-            raise ValueError("counts layer is required for Sanity noise model")
-        if verbose:
-            logger.info("Step 2/5: Computing Sanity noise model")
-        # TODO: need to handle data type here (assume sparse matrix for now)
-        adata.obs["library_size_sanity"] = adata.layers["counts"].sum(axis=1).A1
-        compute_posterior_gene_noise_model(
-            adata=adata, use_layer="counts", **kwargs_sanity
-        )
-    elif verbose:
-        logger.info("Step 2/5: Sanity noise model skipped")
-
-    if needs_pca:
-        if verbose:
-            logger.info("Step 3/5: Computing PCA")
-        if scale_before_pca:
-            if verbose:
-                logger.info("Scaling data before PCA")
-            sc.pp.scale(adata, layer="sanity_log_mean" if run_sanity else None)
-        if verbose:
-            logger.info(f"Computing PCA with {n_pca_comps} components")
-
-        pca_kwargs = {k: v for k, v in kwargs_pca.items() if k != "scale_before_pca"}
-        pca_kwargs.setdefault("random_state", random_state)
-        sc.pp.pca(
-            adata,
-            layer="sanity_log_mean" if run_sanity else None,
-            n_comps=n_pca_comps,
-            **pca_kwargs,
-        )
-    elif "X_pca" in adata.obsm:
-        if verbose:
-            logger.info("Step 3/5: PCA already computed, skipping")
-    else:
-        if verbose:
-            logger.info("Step 3/5: PCA not needed, skipping")
-
-    diffmap = None
-    if needs_diffmap:
-        if verbose:
-            logger.info("Step 4/5: Computing diffusion map")
-            logger.info(f"Computing neighbors with n_neighbors={n_neighbors}")
-
-        diffmap = compute_diffmap(
-            adata,
-            n_comps=n_diffusion_comps,
-            n_neighbors=n_neighbors,
-            use_rep=embedding_neighbors,
-            key_added_neighbors=SCLOOP_NEIGHBORS_KEY,
-            random_state=random_state,
-            **kwargs_diffmap,
-        )
-    elif "X_diffmap" in adata.obsm:
-        if verbose:
-            logger.info("Step 4/5: Diffusion map already computed, skipping")
-    else:
-        if verbose:
-            logger.info("Step 4/5: Diffusion map not needed, skipping")
-
-    if needs_scvi:
-        if scvi_key not in adata.obsm:
-            raise ValueError(f"scvi key {scvi_key} does not exist in adata.obsm")
-        if verbose:
-            logger.info(f"Using scVI embedding from {scvi_key}")
-
-    """
-    ========= downsample =========
-    - minimize bottleneck distance
-    - keep rare cell types
-    ==============================
-    """
-    if verbose:
-        logger.info("Step 5/5: Downsampling")
-    if embedding_downsample is None:
-        embedding_downsample = embedding_method
-    if downsample:
-        if verbose:
-            logger.info(
-                f"Downsampling to {n_downsample} cells using {embedding_downsample} embedding"
+            assert (
+                delta_mean is not None
+                and modules is not None
+                and selected_features is not None
+            ), "DELVE failed to identify dynamic features."
+            adata.uns["delve_delta_mean"] = delta_mean
+            adata.uns["delve_modules"] = modules
+            adata.uns["delve_selected_features"] = selected_features
+            dyn_feats = list(np.asarray(modules.index[modules["cluster_id"] != "static"]))
+            lap_feats = (
+                selected_features.loc[
+                    list(set(selected_features.index) - set(dyn_feats)), :
+                ]
+                .sort_values("DELVE", ascending=True)[
+                    : max((delve_n_top_genes - len(dyn_feats)), 0)
+                ]
+                .index.tolist()
             )
-            if groupby_downsample:
-                logger.info(f"Stratified by {groupby_downsample}")
-        indices_downsample = sample(
-            adata=adata,
-            embedding_method=embedding_downsample,
-            groupby=groupby_downsample,
-            n=n_downsample,
-            random_state=random_state,
-            percent_removal_density=percent_removal_density,
-            n_neighbors_density=n_neighbors_removal_density,
-            density_exempt_groups=density_exempt_groups,
+            delve_feature_list = dyn_feats + lap_feats
+            adata._inplace_subset_var(adata.var_names.isin(delve_feature_list))
+
+        """
+        =============== sanity ===============
+        - estimate noise model for each gene
+        ======================================
+        """
+        if run_sanity:
+            if "counts" not in adata.layers:
+                raise ValueError("counts layer is required for Sanity noise model")
+            if verbose:
+                logger.info("Step 2/5: Computing Sanity noise model")
+            # TODO: need to handle data type here (assume sparse matrix for now)
+            adata.obs["library_size_sanity"] = adata.layers["counts"].sum(axis=1).A1
+            compute_posterior_gene_noise_model(
+                adata=adata, use_layer="counts", **kwargs_sanity
+            )
+        elif verbose:
+            logger.info("Step 2/5: Sanity noise model skipped")
+
+        if needs_pca:
+            if verbose:
+                logger.info("Step 3/5: Computing PCA")
+            if scale_before_pca:
+                if verbose:
+                    logger.info("Scaling data before PCA")
+                sc.pp.scale(adata, layer="sanity_log_mean" if run_sanity else None)
+            if verbose:
+                logger.info(f"Computing PCA with {n_pca_comps} components")
+
+            pca_kwargs = {k: v for k, v in kwargs_pca.items() if k != "scale_before_pca"}
+            pca_kwargs.setdefault("random_state", random_state)
+            sc.pp.pca(
+                adata,
+                layer="sanity_log_mean" if run_sanity else None,
+                n_comps=n_pca_comps,
+                **pca_kwargs,
+            )
+        elif "X_pca" in adata.obsm:
+            if verbose:
+                logger.info("Step 3/5: PCA already computed, skipping")
+        else:
+            if verbose:
+                logger.info("Step 3/5: PCA not needed, skipping")
+
+        diffmap = None
+        if needs_diffmap:
+            if verbose:
+                logger.info("Step 4/5: Computing diffusion map")
+                logger.info(f"Computing neighbors with n_neighbors={n_neighbors}")
+
+            diffmap = compute_diffmap(
+                adata,
+                n_comps=n_diffusion_comps,
+                n_neighbors=n_neighbors,
+                use_rep=embedding_neighbors,
+                key_added_neighbors=SCLOOP_NEIGHBORS_KEY,
+                random_state=random_state,
+                **kwargs_diffmap,
+            )
+        elif "X_diffmap" in adata.obsm:
+            if verbose:
+                logger.info("Step 4/5: Diffusion map already computed, skipping")
+        else:
+            if verbose:
+                logger.info("Step 4/5: Diffusion map not needed, skipping")
+
+        if needs_scvi:
+            if scvi_key not in adata.obsm:
+                raise ValueError(f"scvi key {scvi_key} does not exist in adata.obsm")
+            if verbose:
+                logger.info(f"Using scVI embedding from {scvi_key}")
+
+        """
+        ========= downsample =========
+        - minimize bottleneck distance
+        - keep rare cell types
+        ==============================
+        """
+        if verbose:
+            logger.info("Step 5/5: Downsampling")
+        if embedding_downsample is None:
+            embedding_downsample = embedding_method
+        if downsample:
+            if verbose:
+                logger.info(
+                    f"Downsampling to {n_downsample} cells using {embedding_downsample} embedding"
+                )
+                if groupby_downsample:
+                    logger.info(f"Stratified by {groupby_downsample}")
+            indices_downsample = sample(
+                adata=adata,
+                embedding_method=embedding_downsample,
+                groupby=groupby_downsample,
+                n=n_downsample,
+                random_state=random_state,
+                percent_removal_density=percent_removal_density,
+                n_neighbors_density=n_neighbors_removal_density,
+                density_exempt_groups=density_exempt_groups,
+            )
+            if verbose:
+                logger.info(f"Selected {len(indices_downsample)} cells for analysis")
+        else:
+            if verbose:
+                logger.info("Downsampling disabled, using all cells")
+            indices_downsample = None
+        kwargs_downsample = {
+            "embedding_method": embedding_downsample,
+            "groupby": groupby_downsample,
+            "n": n_downsample,
+            "random_state": random_state,
+            "percent_removal_density": percent_removal_density,
+            "n_neighbors_density": n_neighbors_removal_density,
+            "density_exempt_groups": density_exempt_groups,
+        }
+
+        preprocess_meta = PreprocessMeta(
+            library_normalized=library_normalization,
+            target_sum=target_sum,
+            feature_selection_method=feature_selection_method,
+            batch_key=batch_key if needs_hvg else None,
+            n_top_genes=n_top_genes if needs_hvg else None,
+            embedding_method=embedding_method,
+            embedding_neighbors=embedding_neighbors
+            if embedding_method in ("pca", "diffmap")
+            else None,
+            scale_before_pca=scale_before_pca,
+            n_pca_comps=n_pca_comps if needs_pca else None,
+            n_neighbors=n_neighbors,
+            n_diffusion_comps=n_diffusion_comps if needs_diffmap else None,
+            diffmap_operator=diffmap,
+            scvi_key=scvi_key if needs_scvi else None,
+            indices_downsample=indices_downsample,
+            kwargs_downsample=kwargs_downsample,
+            num_vertices=adata.shape[0],
         )
+
+        if SCLOOP_META_UNS_KEY not in adata.uns:
+            adata.uns[SCLOOP_META_UNS_KEY] = ScloopMeta(preprocess=preprocess_meta)
+        else:
+            scloop_meta = adata.uns[SCLOOP_META_UNS_KEY]
+            if isinstance(scloop_meta, dict):
+                scloop_meta = ScloopMeta(**scloop_meta)
+            scloop_meta.preprocess = preprocess_meta
+            adata.uns[SCLOOP_META_UNS_KEY] = scloop_meta
+
         if verbose:
-            logger.info(f"Selected {len(indices_downsample)} cells for analysis")
-    else:
-        if verbose:
-            logger.info("Downsampling disabled, using all cells")
-        indices_downsample = None
-    kwargs_downsample = {
-        "embedding_method": embedding_downsample,
-        "groupby": groupby_downsample,
-        "n": n_downsample,
-        "random_state": random_state,
-        "percent_removal_density": percent_removal_density,
-        "n_neighbors_density": n_neighbors_removal_density,
-        "density_exempt_groups": density_exempt_groups,
-    }
-
-    preprocess_meta = PreprocessMeta(
-        library_normalized=library_normalization,
-        target_sum=target_sum,
-        feature_selection_method=feature_selection_method,
-        batch_key=batch_key if needs_hvg else None,
-        n_top_genes=n_top_genes if needs_hvg else None,
-        embedding_method=embedding_method,
-        embedding_neighbors=embedding_neighbors
-        if embedding_method in ("pca", "diffmap")
-        else None,
-        scale_before_pca=scale_before_pca,
-        n_pca_comps=n_pca_comps if needs_pca else None,
-        n_neighbors=n_neighbors,
-        n_diffusion_comps=n_diffusion_comps if needs_diffmap else None,
-        diffmap_operator=diffmap,
-        scvi_key=scvi_key if needs_scvi else None,
-        indices_downsample=indices_downsample,
-        kwargs_downsample=kwargs_downsample,
-        num_vertices=adata.shape[0],
-    )
-
-    if SCLOOP_META_UNS_KEY not in adata.uns:
-        adata.uns[SCLOOP_META_UNS_KEY] = ScloopMeta(preprocess=preprocess_meta)
-    else:
-        scloop_meta = adata.uns[SCLOOP_META_UNS_KEY]
-        if isinstance(scloop_meta, dict):
-            scloop_meta = ScloopMeta(**scloop_meta)
-        scloop_meta.preprocess = preprocess_meta
-        adata.uns[SCLOOP_META_UNS_KEY] = scloop_meta
-
-    if verbose:
-        logger.success("AnnData preparation complete")
-
-    if use_log_display and log_display_ctx:
-        log_display_ctx.__exit__(None, None, None)
+            logger.success("AnnData preparation complete")
 
     return adata if copy else None

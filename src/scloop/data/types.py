@@ -9,7 +9,15 @@ EmbeddingNeighbors = Literal["pca", "scvi"]
 LoopDistMethod = Literal["hausdorff", "frechet"]
 MultipleTestCorrectionMethod = Literal["bonferroni", "benjamini-hochberg"]
 CrossMatchModelTypes = Literal["mlp", "nf"]
-LogLevel = Literal["DEBUG", "INFO", "SUCCESS", "WARNING", "ERROR"]
+LogLevel = Literal[
+    "TRACE",
+    "DEBUG",
+    "INFO",
+    "SUCCESS",
+    "WARNING",
+    "ERROR",
+    "CRITICAL",
+]
 
 Index_t = Annotated[int, Field(ge=0)]
 Size_t = Annotated[int, Field(ge=0)]

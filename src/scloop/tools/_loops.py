@@ -1,22 +1,13 @@
 # Copyright 2025 Zhiyuan Yu (Heemskerk's lab, University of Michigan)
 from __future__ import annotations
 
+from contextlib import nullcontext
 from typing import Annotated, Any
 
 import numpy as np
 from anndata import AnnData
 from loguru import logger
 from pydantic import Field
-from rich.console import Console
-from rich.progress import (
-    BarColumn,
-    Progress,
-    SpinnerColumn,
-    TaskProgressColumn,
-    TextColumn,
-    TimeElapsedColumn,
-    TimeRemainingColumn,
-)
 from scipy.spatial.distance import pdist
 
 from ..data.constants import (
@@ -36,7 +27,12 @@ from ..data.containers import HomologyData
 from ..data.metadata import ScloopMeta
 from ..data.types import Index_t, NonZeroCount_t, Percent_t, PositiveFloat, Size_t
 from ..preprocessing.downsample import sample
-from ..utils.logging import LogDisplay
+from ..utils.logging import (
+    LogDisplay,
+    create_console,
+    create_progress,
+    ensure_logging,
+)
 
 __all__ = ["find_loops", "analyze_loops"]
 
@@ -77,27 +73,24 @@ def find_loops(
     kwargs_loop_representatives: dict[str, Any] | None = None,
 ) -> None:
     use_log_display = verbose and max_log_messages is not None
-    log_display_ctx = None
-    progress_main = None
-    console = Console()
+    if verbose:
+        ensure_logging()
 
-    if use_log_display:
-        assert max_log_messages is not None
-        progress_main = Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
-            TaskProgressColumn(),
-            TimeRemainingColumn(),
-            TimeElapsedColumn(),
-            console=console,
+    display_console = create_console() if use_log_display else None
+    progress_main = (
+        create_progress(console=display_console) if use_log_display else None
+    )
+    log_context = (
+        LogDisplay(
+            maxlen=max_log_messages,
+            progress=progress_main,
+            console=display_console,
         )
-        log_display_ctx = LogDisplay(
-            maxlen=max_log_messages, progress=progress_main, console=console
-        )
-        log_display_ctx.__enter__()
+        if use_log_display
+        else nullcontext()
+    )
 
-    try:
+    with log_context:
         meta = _get_scloop_meta(adata)
         if meta.bootstrap is None:
             from ..data.metadata import BootstrapMeta
@@ -237,10 +230,6 @@ def find_loops(
         hd._test_loops(**(kwargs_loop_test or {}))
         adata.uns[SCLOOP_UNS_KEY] = hd
 
-    finally:
-        if use_log_display and log_display_ctx:
-            log_display_ctx.__exit__(None, None, None)
-
 
 def analyze_loops(
     adata: AnnData,
@@ -307,27 +296,22 @@ def analyze_loops(
     kwargs_gene_trends.setdefault("bandwidth_scale", gene_trend_bandwidth_scale)
 
     use_log_display = verbose and max_log_messages is not None
-    log_display_ctx = None
-    progress = None
-    console = Console()
+    if verbose:
+        ensure_logging()
 
-    if use_log_display:
-        assert max_log_messages is not None
-        progress = Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
-            TaskProgressColumn(),
-            TimeRemainingColumn(),
-            TimeElapsedColumn(),
-            console=console,
+    display_console = create_console() if use_log_display else None
+    progress = create_progress(console=display_console) if use_log_display else None
+    log_context = (
+        LogDisplay(
+            maxlen=max_log_messages,
+            progress=progress,
+            console=display_console,
         )
-        log_display_ctx = LogDisplay(
-            maxlen=max_log_messages, progress=progress, console=console
-        )
-        log_display_ctx.__enter__()
+        if use_log_display
+        else nullcontext()
+    )
 
-    try:
+    with log_context:
         if SCLOOP_UNS_KEY not in adata.uns:
             raise ValueError("Run find_loops() first")
 
@@ -367,14 +351,7 @@ def analyze_loops(
             track_ids = track_ids_avail
 
         if not use_log_display:
-            progress = Progress(
-                SpinnerColumn(),
-                TextColumn("[progress.description]{task.description}"),
-                BarColumn(),
-                TaskProgressColumn(),
-                TimeRemainingColumn(),
-                TimeElapsedColumn(),
-            )
+            progress = create_progress()
 
         assert progress is not None
         with progress:
@@ -406,7 +383,3 @@ def analyze_loops(
                     kwargs_gene_trends=kwargs_gene_trends,
                 )
                 progress.advance(task_main)
-
-    finally:
-        if use_log_display and log_display_ctx:
-            log_display_ctx.__exit__(None, None, None)

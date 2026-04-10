@@ -5,9 +5,10 @@ import anndata
 import numpy as np
 import scipy
 from joblib import Parallel, delayed
-from loguru import logger
 from numba import njit
 from pandas.api.types import is_numeric_dtype
+
+std_logger = logging.getLogger(__name__)
 
 
 def random_feats(
@@ -132,7 +133,7 @@ def _parse_input(adata: anndata.AnnData):
         if isinstance(X, scipy.sparse.csr_matrix):
             X = np.asarray(X.todense())
         if is_numeric_dtype(adata.obs_names):
-            logging.warning("Converting cell IDs to strings.")
+            std_logger.warning("Converting cell IDs to strings.")
             adata.obs_names = adata.obs_names.astype("str")
     except NameError:
         pass
@@ -241,7 +242,7 @@ def sketch(
 
     min_cell_size = min([len(i) for i in sample_set_inds])
     if num_subsamples > min_cell_size:
-        logging.warning(
+        std_logger.warning(
             f"Number of subsamples per sample-set {num_subsamples} is greater than the maximum number of cells in the smallest sample-set {min_cell_size}. \n Performing subsampling using {min_cell_size} cells per sample-set"
         )
         num_subsamples = min_cell_size
@@ -267,7 +268,7 @@ def sketch(
             density=density_subset,
         )
 
-    logger.info("[DELVE] Performing subsampling")
+    std_logger.info("[DELVE] Performing subsampling")
     # with tqdm_joblib(tqdm(desc="Performing subsampling", total=n_sample_sets, disable=True)):
     kh_indices = Parallel(n_jobs=n_jobs)(
         delayed(process_set)(i, inds) for i, inds in enumerate(sample_set_inds)

@@ -7,7 +7,6 @@ import pandas as pd
 import scipy
 
 # from tqdm import tqdm
-from loguru import logger as loguru_logger
 from numba import jit
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
@@ -15,7 +14,7 @@ from sklearn.neighbors import NearestNeighbors
 
 from .kh import sketch
 
-logging.basicConfig(level=logging.INFO)
+std_logger = logging.getLogger(__name__)
 
 
 def delve_fs(
@@ -71,7 +70,7 @@ def delve_fs(
     X, feature_names, obs_names = parse_input(adata)  # parse anndata
 
     try:
-        logging.info("Step 1: identifying dynamic feature modules")
+        std_logger.info("Step 1: identifying dynamic feature modules")
         sub_idx, _, delta_mean, modules = seed_select(
             X=X,
             feature_names=feature_names,
@@ -87,9 +86,9 @@ def delve_fs(
             n_jobs=n_jobs,
         )
 
-        logging.info("Step 2: performing feature selection")
+        std_logger.info("Step 2: performing feature selection")
         if modules is None:
-            logging.warning("No modules found, returning None")
+            std_logger.warning("No modules found, returning None")
             return None, None, None
 
         dyn_feats = np.asarray(modules.index[modules["cluster_id"] != "static"])
@@ -168,7 +167,7 @@ def seed_select(
     np.random.seed(random_state)
     random_state_arr = np.random.randint(0, 1000000, n_random_state)
 
-    logging.info("estimating feature dynamics")
+    std_logger.info("estimating feature dynamics")
     sub_idx, adata_sub, delta_mean = delta_exp(
         X=X,
         feature_names=feature_names,
@@ -187,8 +186,8 @@ def seed_select(
     dyn_feats = []
     random_state_idx = []
 
-    logging.info(f"Running {n_random_state} clustering iterations sequentially")
-    loguru_logger.info("[DELVE] Performing permutation testing")
+    std_logger.info(f"Running {n_random_state} clustering iterations sequentially")
+    std_logger.info("[DELVE] Performing permutation testing")
     # for state in tqdm(random_state_arr, desc="clustering and permutation testing", disable=True):
     for state in random_state_arr:
         result = _run_cluster(
@@ -200,7 +199,7 @@ def seed_select(
             dyn_feats.append(result[2])
             random_state_idx.append(result[3])
 
-    logging.info(f"Completed {len(dyn_feats)} successful clustering runs")
+    std_logger.info(f"Completed {len(dyn_feats)} successful clustering runs")
     # try:
     #     for result in tqdm(
     #         p.imap(
@@ -223,20 +222,20 @@ def seed_select(
     #     p.join()
 
     if len(dyn_feats) == 0:
-        logging.warning(
+        std_logger.warning(
             "No feature clusters have a dynamic variance greater than null. Consider changing the number of clusters or the subsampling size."
         )
-        logging.warning(
+        std_logger.warning(
             f"All {n_random_state} random state runs failed to find dynamic clusters"
         )
         return None, None, None, None
     else:
         dyn_feats = list(np.unique(list(set.intersection(*map(set, dyn_feats)))))
         if len(dyn_feats) == 0:
-            logging.warning(
+            std_logger.warning(
                 "No features were considered dynamically-expressed across runs."
             )
-            logging.warning(
+            std_logger.warning(
                 f"Found dynamic features in individual runs but none were consistent across all {n_random_state} runs"
             )
             return None, None, None, None
@@ -250,7 +249,7 @@ def seed_select(
             n_dynamic_clusters = len(
                 np.unique(modules["cluster_id"][modules["cluster_id"] != "static"])
             )
-            logging.info(f"identified {n_dynamic_clusters} dynamic cluster(s)")
+            std_logger.info(f"identified {n_dynamic_clusters} dynamic cluster(s)")
             return sub_idx, adata_sub, delta_mean, modules
 
 
