@@ -12,7 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
      dx1    f11(t)x1 + f12(t)x2 + g11(x1, t)dW11 + g12(x2, t)dW12 + h1(x1, t)
           =
      dx2    f21(t)x1 + f22(t)x2 + g21(x1, t)dW21 + g22(x2, t)dW12 + h2(x2, t)
-    └───┘  └────────────────────────────────────────────────────────────────-┘
+    └───┘  └─────────────────────────────────────────────────────────────────┘
     - optionally, replace f, g, and/or h with some stochastic processes
 (1.5). sample trajectories for stochastic systems
     - trajectoies can be same deterministically and differ by noise
@@ -99,10 +99,14 @@ class RawPHRunner(MethodRunner):
 class BenchContainer(BaseModel, ABC):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    data: AnnData | list[AnnData]
+    data: AnnData | list[AnnData] | None
     meta: BenchDataMeta
     runners: list[MethodRunner] = Field(default_factory=list)
     results: list[BenchResult] = Field(default_factory=list)
+
+    @abstractmethod
+    def generate_data(self):
+        pass
 
     @abstractmethod
     def run_methods(self):
@@ -116,12 +120,14 @@ class BenchContainer(BaseModel, ABC):
 class BenchSingleData(BenchContainer, ABC):
     @model_validator(mode="after")
     def check_match_data(self):
-        if type(self.data) is not AnnData:
-            raise ValueError("Benchmark data is not a single AnnData object")
-        # more checking to make sure each anndata has been processed
+        # Allow None (data not yet generated), but reject wrong types
+        if self.data is not None and not isinstance(self.data, AnnData):
+            raise ValueError(f"Expected AnnData, got {type(self.data)}")
         return self
 
     def run_methods(self):
+        if self.data is None:
+            raise RuntimeError("Data not generated. Call generate_data() first.")
         self.results = []
         for runner in self.runners:
             runner.prepare_adata(self.data)
@@ -134,11 +140,6 @@ class BenchSingleData(BenchContainer, ABC):
 
     def evaluate_results(self):
         pass
-
-
-from abc import ABC, abstractmethod
-
-from pydantic import BaseModel
 
 
 def _zero(*args, **kwargs):
@@ -230,7 +231,12 @@ class RealData(BenchSingleData):
 class BenchDataCollection(BenchContainer, ABC):
     @model_validator(mode="after")
     def check_match_data(self):
-        if type(self.data) is not list and len(self.data) < 2:
+        # Allow None (data not yet generated)
+        if self.data is None:
+            raise ValueError(
+                "Cross-match benchmark requires individually processed datasets"
+            )
+        if not isinstance(self.data, list) or len(self.data) < 2:
             raise ValueError(
                 "Benchmark data does not contain at least 2 AnnData objects"
             )
