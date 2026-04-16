@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Callable
+from typing import Any, Callable, NamedTuple
 
 import numpy as np
 from anndata import AnnData
@@ -105,7 +105,7 @@ class BenchContainer(BaseModel, ABC):
     results: list[BenchResult] = Field(default_factory=list)
 
     @abstractmethod
-    def generate_data(self):
+    def generate_data(self, **kwargs):
         pass
 
     @abstractmethod
@@ -216,8 +216,91 @@ class BenchSDE(BenchDiffEq):
     pass
 
 
+class ModelParam(BaseModel, ABC):
+    @abstractmethod
+    def build(self) -> BenchDiffEq: ...
+
+
+class BenchODEParam(ModelParam):
+    F_terms: list[list[Callable]]
+    F_jacobian: list[Callable]
+    force_func: list[Callable | None] | None = None
+    force_func_jac: list[Callable | None] | None = None
+
+    def build(self) -> BenchODE:
+        return BenchODE(
+            F_terms=self.F_terms,
+            F_jacobian=self.F_jacobian,
+            force_func=self.force_func,
+            force_func_jac=self.force_func_jac,
+        )
+
+
+class TrajectoryConfig(NamedTuple):
+    model: ModelParam
+    initial_condition: list[float]
+
+
+class EnsembleSpec(BaseModel, ABC):
+    n_trajectories_per: int = 1
+    seed: int = 0
+
+    @abstractmethod
+    def sample(self) -> list[TrajectoryConfig]: ...
+
+
 class DynamicData(BenchSingleData):
-    pass
+    ensemble: EnsembleSpec
+    t0: float = 0.0
+    t1: float = 1.0
+    dt: float = 0.01
+    ambient_dim: int = 200
+    embedding_seed: int = 1
+    low_dim_noise_std: float = 0.0
+    high_dim_noise_std: float = 0.0
+
+    def generate_data(self, **integrator_kwargs):
+        def _embedding_isometric(X: np.ndarray, target_dim: int, seed: int = 1):
+            import random
+
+            source_dim = X.shape[1]
+            np.random.seed(seed)
+            random_matrix = np.random.randn(target_dim, target_dim)
+            Q, _ = np.linalg.qr(random_matrix)
+            Q_sub = Q[:, random.sample(range(target_dim), source_dim)]
+            return X @ Q_sub.T
+
+        configs = self.ensemble.sample()
+        trajectories = []
+        traj_ids = []
+        tid = 0
+        for config in configs:
+            for _ in range(self.ensemble.n_trajectories_per):
+                diffeq = config.model.build()
+                sol = diffeq.solve(
+                    self.t0,
+                    self.t1,
+                    self.dt,
+                    config.initial_condition,
+                    **integrator_kwargs,
+                )
+                traj = np.asarray(sol.y).T
+                trajectories.append(traj)
+                traj_ids.extend([tid] * traj.shape[0])
+                tid += 1
+
+        X_clean = np.vstack(trajectories)
+        rng = np.random.default_rng(self.embedding_seed)
+        X_low = X_clean
+        if self.low_dim_noise_std > 0:
+            X_low = X_low + rng.normal(0.0, self.low_dim_noise_std, X_low.shape)
+        X_high = _embedding_isometric(X_low, self.ambient_dim, seed=self.embedding_seed)
+        if self.high_dim_noise_std > 0:
+            X_high = X_high + rng.normal(0.0, self.high_dim_noise_std, X_high.shape)
+
+        self.data = AnnData(X=X_high)
+        self.data.obs["trajectory_id"] = np.asarray(traj_ids)
+        self.meta.true_trajectories = [traj.tolist() for traj in trajectories]
 
 
 class SplatterData(BenchSingleData):
