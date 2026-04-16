@@ -1,17 +1,18 @@
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Callable
 
+import numpy as np
 from anndata import AnnData
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 """
 ============================== Dataset generation ==============================
 1. start with 2D dynamical system (assumed underlying dynamical system)
-    ┌───┐  ┌─────────────────────────────────────────────────────────────┐
-     dx1    f11(t)x1 + f12(t)x2 + g11(x1, t)dW11 + g12(x2, t)dW12 + h1(t)
+    ┌───┐  ┌─────────────────────────────────────────────────────────────────┐
+     dx1    f11(t)x1 + f12(t)x2 + g11(x1, t)dW11 + g12(x2, t)dW12 + h1(x1, t)
           =
-     dx2    f21(t)x1 + f22(t)x2 + g21(x1, t)dW21 + g22(x2, t)dW12 + h2(t)
-    └───┘  └────────────────────────────────────────────────────────────-┘
+     dx2    f21(t)x1 + f22(t)x2 + g21(x1, t)dW21 + g22(x2, t)dW12 + h2(x2, t)
+    └───┘  └────────────────────────────────────────────────────────────────-┘
     - optionally, replace f, g, and/or h with some stochastic processes
 (1.5). sample trajectories for stochastic systems
     - trajectoies can be same deterministically and differ by noise
@@ -133,6 +134,85 @@ class BenchSingleData(BenchContainer, ABC):
 
     def evaluate_results(self):
         pass
+
+
+from abc import ABC, abstractmethod
+
+from pydantic import BaseModel
+
+
+def _zero(*args, **kwargs):
+    return 0.0
+
+
+class BenchDiffEq(BaseModel, ABC):
+    @abstractmethod
+    def solve(self, t0, t1, dt, y0, **integrator_kwargs):
+        pass
+
+
+class BenchODE(BenchDiffEq):
+    F_terms: list[list[Callable]]
+    F_jacobian: list[Callable]  # diagonal: F_jacobian[i] = ∂f_i/∂y_i
+    force_func: list[Callable | None] | None = None
+    force_func_jac: list[Callable | None] | None = None
+
+    @property
+    def ndims(self):
+        return len(self.F_terms)
+
+    def _resolve(self, ff: list[Callable | None] | None) -> list[Callable]:
+        if ff is None:
+            return [_zero] * self.ndims
+        return [fn if fn is not None else _zero for fn in ff]
+
+    @property
+    def f(self) -> Callable:
+        n = self.ndims
+        forces = self._resolve(self.force_func)
+
+        def _f(t, y):
+            return [
+                sum(self.F_terms[i][j](t, y[j]) for j in range(n)) + forces[i](t, y[i])
+                for i in range(n)
+            ]
+
+        return _f
+
+    @property
+    def jac(self) -> Callable:
+        n = self.ndims
+        forces = self._resolve(self.force_func_jac)
+
+        def _jac(t, y):
+            return [
+                [
+                    (self.F_jacobian[i](t, y[i]) + forces[i](t, y[i]))
+                    if i == j
+                    else 0.0
+                    for j in range(n)
+                ]
+                for i in range(n)
+            ]
+
+        return _jac
+
+    def solve(self, t0, t1, dt, y0, **integrator_kwargs):
+        from scipy.integrate import solve_ivp
+
+        return solve_ivp(
+            self.f,
+            (t0, t1),
+            y0,
+            jac=self.jac,
+            t_eval=np.arange(t0, t1 + dt, dt),
+            **integrator_kwargs,
+        )
+
+
+# TODO: implement solver
+class BenchSDE(BenchDiffEq):
+    pass
 
 
 class DynamicData(BenchSingleData):
