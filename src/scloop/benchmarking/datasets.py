@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 from anndata import AnnData
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 """
 ============================== Dataset generation ==============================
@@ -55,10 +55,9 @@ class BenchResult(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     method_name: str
-    prepared: AnnData | list[AnnData] | None = None
-    loops: Any | None = None
-    analysis: Any | None = None
-    matches: Any | None = None
+    result_loop_finding: Any | None = None
+    result_loop_analysis: Any | None = None
+    result_loop_matching: Any | None = None
 
 
 class MethodRunner(BaseModel, ABC):
@@ -68,19 +67,19 @@ class MethodRunner(BaseModel, ABC):
     result: BenchResult | None = None
 
     @abstractmethod
-    def prepare_adata(self, data: AnnData | list[AnnData]) -> AnnData | list[AnnData]:
+    def prepare_adata(self, data):
         pass
 
     @abstractmethod
-    def find_loops(self, data: AnnData | list[AnnData]) -> Any:
+    def find_loops(self, data):
         pass
 
     @abstractmethod
-    def analyze_loops(self, data: AnnData | list[AnnData]) -> Any:
+    def analyze_loops(self, data):
         pass
 
     @abstractmethod
-    def match_loops(self, data: list[AnnData]) -> Any:
+    def match_loops(self, data):
         pass
 
 
@@ -105,32 +104,34 @@ class BenchContainer(BaseModel, ABC):
     results: list[BenchResult] = Field(default_factory=list)
 
     @abstractmethod
-    def run_methods(self) -> None:
+    def run_methods(self):
         pass
 
     @abstractmethod
-    def evaluate_results(self) -> None:
+    def evaluate_results(self):
         pass
 
 
 class BenchSingleData(BenchContainer, ABC):
-    data: AnnData
+    @model_validator(mode="after")
+    def check_match_data(self):
+        if type(self.data) is not AnnData:
+            raise ValueError("Benchmark data is not a single AnnData object")
+        # more checking to make sure each anndata has been processed
+        return self
 
-    def run_methods(self) -> None:
+    def run_methods(self):
         self.results = []
         for runner in self.runners:
-            prepared = runner.prepare_adata(self.data)
-            loops = runner.find_loops(prepared)
-            analysis = runner.analyze_loops(prepared)
+            runner.prepare_adata(self.data)
+            runner.find_loops(self.data)
+            runner.analyze_loops(self.data)
             runner.result = BenchResult(
                 method_name=runner.method_name,
-                prepared=prepared,
-                loops=loops,
-                analysis=analysis,
             )
             self.results.append(runner.result)
 
-    def evaluate_results(self) -> None:
+    def evaluate_results(self):
         pass
 
 
@@ -147,18 +148,23 @@ class RealData(BenchSingleData):
 
 
 class BenchDataCollection(BenchContainer, ABC):
-    data: list[AnnData]
+    @model_validator(mode="after")
+    def check_match_data(self):
+        if type(self.data) is not list and len(self.data) < 2:
+            raise ValueError(
+                "Benchmark data does not contain at least 2 AnnData objects"
+            )
+        # more checking to make sure each anndata has been processed
+        return self
 
-    def run_methods(self) -> None:
+    def run_methods(self):
         self.results = []
         for runner in self.runners:
             matches = runner.match_loops(self.data)
             runner.result = BenchResult(
                 method_name=runner.method_name,
-                prepared=self.data,
-                matches=matches,
             )
             self.results.append(runner.result)
 
-    def evaluate_results(self) -> None:
+    def evaluate_results(self):
         pass
