@@ -148,7 +148,7 @@ def _zero(*args, **kwargs):
 
 class BenchDiffEq(BaseModel, ABC):
     @abstractmethod
-    def solve(self, t0, t1, dt, y0, **integrator_kwargs):
+    def solve(self, t0, t1, dt, y0, *, t_eval: list | np.ndarray | None = None, **integrator_kwargs):
         pass
 
 
@@ -198,15 +198,15 @@ class BenchODE(BenchDiffEq):
 
         return _jac
 
-    def solve(self, t0, t1, dt, y0, **integrator_kwargs):
+    def solve(self, t0, t1, dt, y0, *, t_eval: list | np.ndarray | None = None, **integrator_kwargs):
         from scipy.integrate import solve_ivp
 
         return solve_ivp(
-            self.f,
-            (t0, t1),
-            y0,
+            fun=self.f,
+            t_span=(t0, t1),
+            y0=y0,
             jac=self.jac,
-            t_eval=np.arange(t0, t1 + dt, dt),
+            t_eval=np.arange(t0, t1 + dt, dt) if t_eval is None else t_eval,
             **integrator_kwargs,
         )
 
@@ -254,7 +254,8 @@ class DynamicData(BenchSingleData):
     t0: float = 0.0
     t1: float = 1.0
     dt: float = 0.01
-    ambient_dim: int = 200
+    uneven_trajectory_sampling: bool = False
+    embedding_dim: int = 200
     embedding_seed: int = 1
     low_dim_noise_std: float = 0.0
     high_dim_noise_std: float = 0.0
@@ -270,6 +271,9 @@ class DynamicData(BenchSingleData):
             Q_sub = Q[:, random.sample(range(target_dim), source_dim)]
             return X @ Q_sub.T
 
+        def _latin_hypercube_time_sampling(t_bins_fines):
+            pass
+
         configs = self.ensemble.sample()
         trajectories = []
         traj_ids = []
@@ -278,12 +282,14 @@ class DynamicData(BenchSingleData):
             for _ in range(self.ensemble.n_trajectories_per):
                 diffeq = config.model.build()
                 sol = diffeq.solve(
-                    self.t0,
-                    self.t1,
-                    self.dt,
-                    config.initial_condition,
+                    t0=self.t0,
+                    t1=self.t1,
+                    dt=self.dt,
+                    ic=config.initial_condition,
+                    t_eval=None,
                     **integrator_kwargs,
                 )
+                assert sol is not None
                 traj = np.asarray(sol.y).T
                 trajectories.append(traj)
                 traj_ids.extend([tid] * traj.shape[0])
