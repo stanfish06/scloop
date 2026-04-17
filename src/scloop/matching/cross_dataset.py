@@ -10,16 +10,7 @@ from anndata import AnnData
 from loguru import logger
 from pydantic import AfterValidator, ConfigDict, Field
 from pydantic.dataclasses import dataclass
-from rich.console import Console
-from rich.progress import (
-    BarColumn,
-    Progress,
-    SpinnerColumn,
-    TaskProgressColumn,
-    TextColumn,
-    TimeElapsedColumn,
-    TimeRemainingColumn,
-)
+from rich.progress import Progress
 from scipy.stats import ttest_ind
 
 from ..computing import compute_diffmap
@@ -43,6 +34,7 @@ from ..data.types import (
     PositiveFloat,
     Size_t,
 )
+from ..utils.logging import create_console, create_progress, ensure_logging
 from ..utils.pvalues import correct_pvalues
 from .data_modules import nnRegressorDataModule
 from .mlp import MLPregressor
@@ -499,23 +491,9 @@ class CrossDatasetMatcher:
         source_loop_classes = list(range(len(source_hd.selected_loop_classes)))
         target_loop_classes = list(range(len(target_hd.selected_loop_classes)))
 
-        console = Console()
-        progress_main = Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
-            TaskProgressColumn(),
-            TimeRemainingColumn(),
-            TimeElapsedColumn(),
-            console=console,
-        )
-        logger.remove()
-        logger.add(
-            lambda s: console.print(s, end=""),
-            colorize=False,
-            level="TRACE",
-            format="<green>{time:YYYY/MM/DD HH:mm:ss}</green> | {level.icon} - <level>{message}</level>",
-        )
+        ensure_logging()
+        console = create_console()
+        progress_main = create_progress(console=console)
 
         if verbose:
             logger.info(

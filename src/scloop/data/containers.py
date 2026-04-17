@@ -10,16 +10,7 @@ from anndata import AnnData
 from loguru import logger
 from pydantic import Field
 from pydantic.dataclasses import dataclass
-from rich.console import Console
-from rich.progress import (
-    BarColumn,
-    Progress,
-    SpinnerColumn,
-    TaskProgressColumn,
-    TextColumn,
-    TimeElapsedColumn,
-    TimeRemainingColumn,
-)
+from rich.progress import Progress
 from scipy.sparse import csr_matrix
 
 from ..analyzing.bootstrap import run_bootstrap_pipeline
@@ -42,6 +33,7 @@ from ..computing.matching import (
     loops_to_edge_mask,
 )
 from ..computing.utils import compute_sparse_eigendecomposition
+from ..utils.logging import create_progress, ensure_logging
 from .analysis_containers import (
     BootstrapAnalysis,
     LoopMatch,
@@ -873,28 +865,11 @@ class HomologyData:
             )
             return
 
-        if not use_log_display:
-            console = Console()
-            if progress_main is None:
-                progress_main = Progress(
-                    SpinnerColumn(),
-                    TextColumn("[progress.description]{task.description}"),
-                    BarColumn(),
-                    TaskProgressColumn(),
-                    TimeRemainingColumn(),
-                    TimeElapsedColumn(),
-                    console=console,
-                )
-            logger.remove()
-            logger.add(
-                lambda s: console.print(s, end=""),
-                colorize=False,
-                level="TRACE",
-                format="<green>{time:YYYY/MM/DD HH:mm:ss}</green> | {level.icon} - <level>{message}</level>",
-            )
+        if verbose:
+            ensure_logging()
 
         if progress_main is None:
-            progress_main = Progress(disable=use_log_display)
+            progress_main = create_progress(disable=use_log_display)
 
         with progress_main:
             for idx_bootstrap in progress_main.track(range(n_bootstrap)):

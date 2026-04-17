@@ -3,13 +3,21 @@ from typing import Annotated, Literal, TypeAlias
 
 from pydantic import Field
 
-FeatureSelectionMethod = Literal["hvg", "delve", "none"]
+FeatureSelectionMethod = Literal["hvg", "hvg_delve", "none"]
 EmbeddingMethod = Literal["pca", "diffmap", "scvi"]
 EmbeddingNeighbors = Literal["pca", "scvi"]
 LoopDistMethod = Literal["hausdorff", "frechet"]
 MultipleTestCorrectionMethod = Literal["bonferroni", "benjamini-hochberg"]
 CrossMatchModelTypes = Literal["mlp", "nf"]
-LogLevel = Literal["DEBUG", "INFO", "SUCCESS", "WARNING", "ERROR"]
+LogLevel = Literal[
+    "TRACE",
+    "DEBUG",
+    "INFO",
+    "SUCCESS",
+    "WARNING",
+    "ERROR",
+    "CRITICAL",
+]
 
 Index_t = Annotated[int, Field(ge=0)]
 Size_t = Annotated[int, Field(ge=0)]
