@@ -148,7 +148,16 @@ def _zero(*args, **kwargs):
 
 class BenchDiffEq(BaseModel, ABC):
     @abstractmethod
-    def solve(self, t0, t1, dt, y0, *, t_eval: list | np.ndarray | None = None, **integrator_kwargs):
+    def solve(
+        self,
+        t0,
+        t1,
+        dt,
+        y0,
+        *,
+        t_eval: list | np.ndarray | None = None,
+        **integrator_kwargs,
+    ):
         pass
 
 
@@ -198,7 +207,16 @@ class BenchODE(BenchDiffEq):
 
         return _jac
 
-    def solve(self, t0, t1, dt, y0, *, t_eval: list | np.ndarray | None = None, **integrator_kwargs):
+    def solve(
+        self,
+        t0,
+        t1,
+        dt,
+        y0,
+        *,
+        t_eval: list | np.ndarray | None = None,
+        **integrator_kwargs,
+    ):
         from scipy.integrate import solve_ivp
 
         return solve_ivp(
@@ -271,8 +289,22 @@ class DynamicData(BenchSingleData):
             Q_sub = Q[:, random.sample(range(target_dim), source_dim)]
             return X @ Q_sub.T
 
-        def _latin_hypercube_time_sampling(t_bins_fines):
-            pass
+        def _latin_hypercube_time_sampling(
+            n_samples: int,
+            n_t_bins_fine_ratio: int = 100,
+            noise_const: float = 1.0,
+            evenness_const: float = 0.1,
+        ):
+            n_t_bins_fine = n_samples * n_t_bins_fine_ratio
+            random_probs = (
+                np.tanh(np.random.normal(scale=noise_const, size=n_t_bins_fine)) + 1
+            ) + evenness_const
+            random_probs = random_probs / np.sum(random_probs)
+            empirical_cdf = np.cumsum(random_probs)
+            bin_width = 1.0 / n_samples
+            offsets = np.arange(n_samples) * bin_width
+            t_vals = np.random.uniform(size=n_samples) * bin_width + offsets
+            return np.searchsorted(empirical_cdf, t_vals) / n_t_bins_fine
 
         configs = self.ensemble.sample()
         trajectories = []
@@ -280,13 +312,18 @@ class DynamicData(BenchSingleData):
         tid = 0
         for config in configs:
             for _ in range(self.ensemble.n_trajectories_per):
+                t_evals = (
+                    _latin_hypercube_time_sampling(int((self.t1 - self.t0) / self.dt))
+                    if self.uneven_trajectory_sampling
+                    else None
+                )
                 diffeq = config.model.build()
                 sol = diffeq.solve(
                     t0=self.t0,
                     t1=self.t1,
                     dt=self.dt,
                     ic=config.initial_condition,
-                    t_eval=None,
+                    t_eval=t_evals,
                     **integrator_kwargs,
                 )
                 assert sol is not None
@@ -300,7 +337,9 @@ class DynamicData(BenchSingleData):
         X_low = X_clean
         if self.low_dim_noise_std > 0:
             X_low = X_low + rng.normal(0.0, self.low_dim_noise_std, X_low.shape)
-        X_high = _embedding_isometric(X_low, self.ambient_dim, seed=self.embedding_seed)
+        X_high = _embedding_isometric(
+            X_low, self.embedding_dim, seed=self.embedding_seed
+        )
         if self.high_dim_noise_std > 0:
             X_high = X_high + rng.normal(0.0, self.high_dim_noise_std, X_high.shape)
 
