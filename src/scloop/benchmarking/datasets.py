@@ -272,7 +272,7 @@ class DynamicData(BenchSingleData):
     t0: float = 0.0
     t1: float = 1.0
     dt: float = 0.01
-    uneven_trajectory_sampling: bool = False
+    uneven_trajectory_sampling: bool = True
     embedding_dim: int = 200
     embedding_seed: int = 1
     low_dim_noise_std: float = 0.0
@@ -312,17 +312,20 @@ class DynamicData(BenchSingleData):
         tid = 0
         for config in configs:
             for _ in range(self.ensemble.n_trajectories_per):
-                t_evals = (
-                    _latin_hypercube_time_sampling(int((self.t1 - self.t0) / self.dt))
-                    if self.uneven_trajectory_sampling
-                    else None
-                )
+                if self.uneven_trajectory_sampling:
+                    t_evals = self.t0 + (self.t1 - self.t0) * (
+                        _latin_hypercube_time_sampling(
+                            int((self.t1 - self.t0) / self.dt)
+                        )
+                    )
+                else:
+                    t_evals = None
                 diffeq = config.model.build()
                 sol = diffeq.solve(
                     t0=self.t0,
                     t1=self.t1,
                     dt=self.dt,
-                    ic=config.initial_condition,
+                    y0=config.initial_condition,
                     t_eval=t_evals,
                     **integrator_kwargs,
                 )
