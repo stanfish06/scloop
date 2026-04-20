@@ -270,14 +270,45 @@ class EnsembleSpec(BaseModel, ABC):
 
 
 class DynEnsembleSpec(EnsembleSpec):
+    def _fourier_basis(
+        self,
+        domain: tuple | list,
+        freqs: np.ndarray,
+        amps: np.ndarray,
+        phases: np.ndarray,
+    ) -> Callable:
+        return lambda x: np.sum(
+            amps
+            * np.cos(
+                freqs * 2 * np.pi * (x - domain[0]) / (domain[1] - domain[0])
+                + phases
+            )
+        )
+    def _chebyshev_basis(
+        self,
+        domain: tuple | list,
+        degs: np.ndarray,
+        amps: np.ndarray,
+    ):
+        return lambda x: np.sum(
+            amps
+            * np.cos(
+                degs
+                * np.arccos(
+                    (2 * x - (domain[0] + domain[1])) / (domain[1] - domain[0])
+                )
+            )
+        )
     @abstractmethod
     def random_forcing_generator(
         self,
-        recipe: Literal["fourier", "chebyshev", "spline"],
-        n_basis: int,
+        domain: tuple | list = (0, 1),
+        recipe: Literal["fourier", "chebyshev"] = "fourier",
+        n_basis: int = 6,
         with_gaussian_noise: bool = False,
+        seed: int = 1,
+        **kwargs
     ) -> Iterator[Callable]: ...
-
 
 class LinearEnsembleSpec(DynEnsembleSpec):
     """Simulate linear trajectories. Assume start at steady state and drift away due to external forcing.
@@ -291,23 +322,28 @@ class LinearEnsembleSpec(DynEnsembleSpec):
     ) -> list[TrajectoryConfig]:
         if manual_configs is not None:
             return manual_configs
-        return None
+        return []
 
     def random_forcing_generator(
         self,
-        recipe: Literal["fourier", "chebyshev", "spline"],
-        n_basis: int,
-        with_gaussian_noise: bool = False,
+        domain: tuple | list = (0, 1),
+        recipe: Literal["fourier", "chebyshev"] = "fourier",
+        n_basis: int = 6,
+        with_gaussian_noise: bool = False,  # ignore for now
+        seed: int = 1,
+        **kwargs,
     ) -> Iterator[Callable]:
-        match recipe:
-            case "fourier":
-                yield lambda x: 0
-            case "chebyshev":
-                yield lambda x: 0
-            case "spline":
-                yield lambda x: 0
-            case _:
-                yield lambda x: 0
+        while True:
+            match recipe:
+                case "fourier":
+                    freqs = kwargs.get("fourier_freqs", np.arange(n_basis))
+                    amps = kwargs.get("fourier_amps", np.repeat(1, n_basis))
+                    phases = kwargs.get("fourier_phases", np.repeat(0, n_basis))
+                    yield lambda x: self._fourier_basis(domain=domain, freqs=freqs, amps=amps, phases=phases)(x)
+                case "chebyshev":
+                    degs = kwargs.get("chebyshev_degs", np.arange(n_basis))
+                    amps = kwargs.get("chebyshev_amps", np.repeat(1, n_basis))
+                    yield lambda x: self._chebyshev_basis(domain=domain, degs=degs, amps=amps)(x)
 
 
 class LoopEnsembleSpec(DynEnsembleSpec):
