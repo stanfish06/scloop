@@ -25,6 +25,12 @@ try:
 except ImportError as e:
     logger.warning(f"Could not import tools modules: {e}")
 
+ben: ModuleType | None = None
+try:
+    from . import benchmarking as ben  # noqa: F401
+except ImportError as e:
+    logger.warning(f"Could not import benchmark modules: {e}")
+
 _io_module: ModuleType | None = None
 try:
     from . import io as _io_module  # noqa: F401
@@ -33,4 +39,4 @@ except Exception as e:
     logger.warning(f"Could not import io modules: {type(e).__name__}: {e}")
 io = _io_module
 
-__all__ = [pkg for pkg in ["pl", "pp", "tl", "io"] if globals().get(pkg) is not None]
+__all__ = [pkg for pkg in ["pl", "pp", "tl", "ben", "io"] if globals().get(pkg) is not None]
