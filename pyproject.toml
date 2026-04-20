@@ -40,7 +40,6 @@ dependencies = [
   "tqdm-joblib>=0.0.5",
   "umap-learn>=0.5.7",
 ]
-
 urls.Issues = "https://github.com/stanfish06/scloop/issues"
 urls.Repository = "https://github.com/stanfish06/scloop.git"
 
@@ -56,25 +55,18 @@ dev = [
 ]
 
 [tool.uv]
+sources.torch = [
+  { index = "pytorch-cu128", marker = "sys_platform == 'linux'" },
+]
+sources.torchvision = [
+  { index = "pytorch-cu128", marker = "sys_platform == 'linux'" },
+]
+index = [ { name = "pytorch-cu128", url = "https://download.pytorch.org/whl/cu128", explicit = true } ]
+extra-build-dependencies.pandas = [
+  "setuptools<81"
+]  # specify this if need to build <2.0.0 pandas (torch.load needs old pandas)
+extra-build-dependencies.scloop = [ "Cython" ]
 package = true
-
-[tool.uv.extra-build-dependencies]
-scloop = [ "Cython" ]
-pandas = [ "setuptools<81" ] # specify this if need to build <2.0.0 pandas (torch.load needs old pandas)
-
-[tool.uv.sources]
-torch = [
-  { index = "pytorch-cu128", marker = "sys_platform == 'linux'" },
-]
-
-torchvision = [
-  { index = "pytorch-cu128", marker = "sys_platform == 'linux'" },
-]
-
-[[tool.uv.index]]
-name = "pytorch-cu128"
-url = "https://download.pytorch.org/whl/cu128"
-explicit = true
 
 [tool.ruff]
 format.indent-style = "space"
@@ -89,7 +81,6 @@ keep_full_version = false
 max_supported_python = "3.12"
 
 # use 1.1.406 pyright or a version after 1.1.407 (does not work well with pydantic dataclass)
-
 [tool.pyright]
 include = [ "src" ]
 exclude = [
@@ -98,23 +89,18 @@ exclude = [
   "**/*.pyx",
   "**/*.pxd",
 ]
-
 reportMissingImports = "error"
 reportMissingTypeStubs = false
-
 pythonVersion = "3.12"
 pythonPlatform = "All"
-
 executionEnvironments = [
   { root = "src" },
 ]
-
 venvPath = "."
 venv = ".venv"
 
 [tool.ty]
 src = { include = [ "src" ] }
-
 # [tool.setuptools]
 # package-dir = { "" = "src" }
 # ext-modules = [

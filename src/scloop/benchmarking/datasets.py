@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Callable, NamedTuple
+from typing import Any, Callable, Iterator, Literal, NamedTuple
 
 import numpy as np
 from anndata import AnnData
@@ -257,14 +257,65 @@ class BenchODEParam(ModelParam):
 class TrajectoryConfig(NamedTuple):
     model: ModelParam
     initial_condition: list[float]
+    n_trajectories: int = 1
 
 
 class EnsembleSpec(BaseModel, ABC):
-    n_trajectories_per: int = 1
     seed: int = 0
 
     @abstractmethod
-    def sample(self) -> list[TrajectoryConfig]: ...
+    def sample(
+        self, manual_configs: list[TrajectoryConfig] | None = None
+    ) -> list[TrajectoryConfig]: ...
+
+
+class DynEnsembleSpec(EnsembleSpec):
+    @abstractmethod
+    def random_forcing_generator(
+        self,
+        recipe: Literal["fourier", "chebyshev", "spline"],
+        n_basis: int,
+        with_gaussian_noise: bool = False,
+    ) -> Iterator[Callable]: ...
+
+
+class LinearEnsembleSpec(DynEnsembleSpec):
+    """Simulate linear trajectories. Assume start at steady state and drift away due to external forcing.
+
+    Attributes
+    ----------
+    """
+
+    def sample(
+        self, manual_configs: list[TrajectoryConfig] | None = None
+    ) -> list[TrajectoryConfig]:
+        if manual_configs is not None:
+            return manual_configs
+        return None
+
+    def random_forcing_generator(
+        self,
+        recipe: Literal["fourier", "chebyshev", "spline"],
+        n_basis: int,
+        with_gaussian_noise: bool = False,
+    ) -> Iterator[Callable]:
+        match recipe:
+            case "fourier":
+                yield lambda x: 0
+            case "chebyshev":
+                yield lambda x: 0
+            case "spline":
+                yield lambda x: 0
+            case _:
+                yield lambda x: 0
+
+
+class LoopEnsembleSpec(DynEnsembleSpec):
+    pass
+
+
+class TreeEnsembleSpec(DynEnsembleSpec):
+    pass
 
 
 class DynamicData(BenchSingleData):
@@ -311,7 +362,7 @@ class DynamicData(BenchSingleData):
         traj_ids = []
         tid = 0
         for config in configs:
-            for _ in range(self.ensemble.n_trajectories_per):
+            for _ in range(config.n_trajectories):
                 if self.uneven_trajectory_sampling:
                     t_evals = self.t0 + (self.t1 - self.t0) * (
                         _latin_hypercube_time_sampling(
