@@ -156,6 +156,7 @@ class BenchDiffEq(BaseModel, ABC):
         y0,
         *,
         t_eval: list | np.ndarray | None = None,
+        method: Literal["RK45", "RK23", "DOP853", "Radau", "BDF", "LSODA"] = "BDF",
         **integrator_kwargs,
     ):
         pass
@@ -163,7 +164,7 @@ class BenchDiffEq(BaseModel, ABC):
 
 class BenchODE(BenchDiffEq):
     F_terms: list[list[Callable]]
-    F_jacobian: list[Callable]  # diagonal: F_jacobian[i] = ∂f_i/∂y_i
+    F_jacobian: list[list[Callable]]  # F_jacobian[i][j] = ∂f_i/∂y_j
     force_func: list[Callable | None] | None = None
     force_func_jac: list[Callable | None] | None = None
 
@@ -197,9 +198,8 @@ class BenchODE(BenchDiffEq):
         def _jac(t, y):
             return [
                 [
-                    (self.F_jacobian[i](t, y[i]) + forces[i](t, y[i]))
-                    if i == j
-                    else 0.0
+                    self.F_jacobian[i][j](t, y[j])
+                    + (forces[i](t, y[i]) if i == j else 0.0)
                     for j in range(n)
                 ]
                 for i in range(n)
@@ -215,6 +215,7 @@ class BenchODE(BenchDiffEq):
         y0,
         *,
         t_eval: list | np.ndarray | None = None,
+        method: Literal["RK45", "RK23", "DOP853", "Radau", "BDF", "LSODA"] = "BDF",
         **integrator_kwargs,
     ):
         from scipy.integrate import solve_ivp
@@ -224,6 +225,7 @@ class BenchODE(BenchDiffEq):
             t_span=(t0, t1),
             y0=y0,
             jac=self.jac,
+            method=method,
             t_eval=np.arange(t0, t1 + dt, dt) if t_eval is None else t_eval,
             **integrator_kwargs,
         )
@@ -241,7 +243,7 @@ class ModelParam(BaseModel, ABC):
 
 class BenchODEParam(ModelParam):
     F_terms: list[list[Callable]]
-    F_jacobian: list[Callable]
+    F_jacobian: list[list[Callable]]
     force_func: list[Callable | None] | None = None
     force_func_jac: list[Callable | None] | None = None
 
@@ -347,12 +349,15 @@ class LinearEnsembleSpec(DynEnsembleSpec):
         )
         configs = []
         for _ in range(self.n_configs):
-            forces = [next(gen) for _ in range(self.ndims)]
-            F_terms = [
+            forces: list[Callable | None] = [next(gen) for _ in range(self.ndims)]
+            F_terms: list[list[Callable]] = [
                 [(lambda t, y, a=self.A[i, j]: a * y) for j in range(self.ndims)]
                 for i in range(self.ndims)
             ]
-            F_jacobian = [(lambda t, y, a=self.A[i, i]: a) for i in range(self.ndims)]
+            F_jacobian: list[list[Callable]] = [
+                [(lambda t, y, a=self.A[i, j]: a) for j in range(self.ndims)]
+                for i in range(self.ndims)
+            ]
             model = BenchODEParam(
                 F_terms=F_terms,
                 F_jacobian=F_jacobian,
