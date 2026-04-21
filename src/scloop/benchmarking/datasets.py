@@ -440,30 +440,35 @@ class DynamicData(BenchSingleData):
                 np.tanh(np.random.normal(scale=noise_const, size=n_t_bins_fine)) + 1
             ) + evenness_const
             random_probs = random_probs / np.sum(random_probs)
-            empirical_cdf = np.cumsum(random_probs)
+            empirical_cdf = np.concatenate([[0.0], np.cumsum(random_probs)])
+            grid = np.arange(n_t_bins_fine + 1) / n_t_bins_fine
             bin_width = 1.0 / n_samples
             offsets = np.arange(n_samples) * bin_width
             t_vals = np.random.uniform(size=n_samples) * bin_width + offsets
-            return np.searchsorted(empirical_cdf, t_vals) / n_t_bins_fine
+            return np.interp(t_vals, empirical_cdf, grid)
+
+        ensemble_t_domain = getattr(self.ensemble, "t_domain", None)
+        t0, t1 = (
+            ensemble_t_domain if ensemble_t_domain is not None else (self.t0, self.t1)
+        )
 
         configs = self.ensemble.sample()
         trajectories = []
+        t_trajectories = []
         traj_ids = []
         tid = 0
         for config in configs:
             for _ in range(config.n_trajectories):
                 if self.uneven_trajectory_sampling:
-                    t_evals = self.t0 + (self.t1 - self.t0) * (
-                        _latin_hypercube_time_sampling(
-                            int((self.t1 - self.t0) / self.dt)
-                        )
+                    t_evals = t0 + (t1 - t0) * (
+                        _latin_hypercube_time_sampling(int((t1 - t0) / self.dt))
                     )
                 else:
                     t_evals = None
                 diffeq = config.model.build()
                 sol = diffeq.solve(
-                    t0=self.t0,
-                    t1=self.t1,
+                    t0=t0,
+                    t1=t1,
                     dt=self.dt,
                     y0=config.initial_condition,
                     t_eval=t_evals,
@@ -472,6 +477,7 @@ class DynamicData(BenchSingleData):
                 assert sol is not None
                 traj = np.asarray(sol.y).T
                 trajectories.append(traj)
+                t_trajectories.append(np.asarray(sol.t))
                 traj_ids.extend([tid] * traj.shape[0])
                 tid += 1
 
@@ -488,6 +494,7 @@ class DynamicData(BenchSingleData):
 
         self.data = AnnData(X=X_high)
         self.data.obs["trajectory_id"] = np.asarray(traj_ids)
+        self.data.obs["t"] = np.concatenate(t_trajectories)
         self.meta.true_trajectories = [traj.tolist() for traj in trajectories]
 
 
