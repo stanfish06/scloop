@@ -220,13 +220,16 @@ class BenchODE(BenchDiffEq):
     ):
         from scipy.integrate import solve_ivp
 
+        if t_eval is None:
+            n_eval = int(np.round((t1 - t0) / dt)) + 1
+            t_eval = np.linspace(t0, t1, n_eval)
         return solve_ivp(
             fun=self.f,
             t_span=(t0, t1),
             y0=y0,
             jac=self.jac,
             method=method,
-            t_eval=np.arange(t0, t1 + dt, dt) if t_eval is None else t_eval,
+            t_eval=t_eval,
             **integrator_kwargs,
         )
 
@@ -402,6 +405,9 @@ class LoopEnsembleSpec(DynEnsembleSpec):
     n_configs: int
     t_domain: tuple[float, float] = (0.0, 1.0)
     n_trajectories_per_config: int = 1
+    phase1_fraction: float | list[float] = 0.9
+    phase2_fraction: float | list[float] | None = 0.2
+    return_strength: float | list[float] = 10.0
     with_forcing: bool = False
     forcing_scale: float = 0.01
     forcing_recipe: Literal["fourier", "chebyshev"] = "fourier"
@@ -419,6 +425,22 @@ class LoopEnsembleSpec(DynEnsembleSpec):
                 f"{name} list length {len(v)} != n_configs {self.n_configs}"
             )
         return [float(x) for x in v]
+
+    def _phase_schedule(self) -> tuple[list[float], list[float], list[float]]:
+        span = self.t_domain[1] - self.t_domain[0]
+        p1s = self._broadcast(self.phase1_fraction, "phase1_fraction")
+        if self.phase2_fraction is None:
+            p2s = [1.0 - p for p in p1s]
+        else:
+            p2s = self._broadcast(self.phase2_fraction, "phase2_fraction")
+        t_switches = [self.t_domain[0] + p1 * span for p1 in p1s]
+        t_ends = [ts + p2 * span for ts, p2 in zip(t_switches, p2s)]
+        return p1s, t_switches, t_ends
+
+    @property
+    def solve_t_domain(self) -> tuple[float, float]:
+        _, _, t_ends = self._phase_schedule()
+        return (self.t_domain[0], max(t_ends))
 
     def sample(
         self, manual_configs: list[TrajectoryConfig] | None = None
@@ -440,24 +462,55 @@ class LoopEnsembleSpec(DynEnsembleSpec):
             if self.with_forcing
             else None
         )
+        _, t_switches, _ = self._phase_schedule()
+        return_strengths = self._broadcast(self.return_strength, "return_strength")
         configs = []
         for k in range(self.n_configs):
             omega_k, radius_k = omegas[k], radii[k]
-            A = np.array([[0.0, -omega_k], [omega_k, 0.0]])
+            t_switch = t_switches[k]
+            rs_k = return_strengths[k]
+            A1 = np.array([[0.0, -omega_k], [omega_k, 0.0]])
+            A2 = -rs_k * np.eye(2)
             ic = [radius_k, 0.0]
             scale = self.forcing_scale * omega_k * radius_k
             F_terms: list[list[Callable]] = [
-                [(lambda t, y, a=A[i, j]: a * y) for j in range(2)] for i in range(2)
+                [
+                    (
+                        lambda t, y, a1=A1[i, j], a2=A2[i, j], ts=t_switch: (
+                            (a1 if t < ts else a2) * y
+                        )
+                    )
+                    for j in range(2)
+                ]
+                for i in range(2)
             ]
             F_jacobian: list[list[Callable]] = [
-                [(lambda t, y, a=A[i, j]: a) for j in range(2)] for i in range(2)
+                [
+                    (
+                        lambda t, y, a1=A1[i, j], a2=A2[i, j], ts=t_switch: (
+                            a1 if t < ts else a2
+                        )
+                    )
+                    for j in range(2)
+                ]
+                for i in range(2)
             ]
-            forces: list[Callable | None] | None
             if gen is not None:
                 raw = [next(gen) for _ in range(2)]
-                forces = [(lambda t, y, f=fn, s=scale: s * f(t, y)) for fn in raw]
+                phase1_forces: list[Callable] = [
+                    (lambda t, y, f=fn, s=scale: s * f(t, y)) for fn in raw
+                ]
             else:
-                forces = None
+                phase1_forces = [_zero, _zero]
+            phase2_drifts = [rs_k * radius_k, 0.0]
+            forces: list[Callable | None] = [
+                (
+                    lambda t, y, p1=phase1_forces[i], p2=phase2_drifts[i], ts=t_switch: (
+                        p1(t, y) if t < ts else p2
+                    )
+                )
+                for i in range(2)
+            ]
             model = BenchODEParam(
                 F_terms=F_terms,
                 F_jacobian=F_jacobian,
@@ -518,7 +571,9 @@ class DynamicData(BenchSingleData):
             t_vals = rng.uniform(size=n_samples) * bin_width + offsets
             return np.interp(t_vals, empirical_cdf, grid)
 
-        ensemble_t_domain = getattr(self.ensemble, "t_domain", None)
+        ensemble_t_domain = getattr(
+            self.ensemble, "solve_t_domain", getattr(self.ensemble, "t_domain", None)
+        )
         t0, t1 = (
             ensemble_t_domain if ensemble_t_domain is not None else (self.t0, self.t1)
         )
@@ -527,8 +582,9 @@ class DynamicData(BenchSingleData):
         trajectories = []
         t_trajectories = []
         traj_ids = []
+        config_ids = []
         tid = 0
-        for config in configs:
+        for cid, config in enumerate(configs):
             for _ in range(config.n_trajectories):
                 if self.uneven_trajectory_sampling:
                     t_evals = t0 + (t1 - t0) * (
@@ -550,6 +606,7 @@ class DynamicData(BenchSingleData):
                 trajectories.append(traj)
                 t_trajectories.append(np.asarray(sol.t))
                 traj_ids.extend([tid] * traj.shape[0])
+                config_ids.extend([cid] * traj.shape[0])
                 tid += 1
 
         X_clean = np.vstack(trajectories)
@@ -561,7 +618,9 @@ class DynamicData(BenchSingleData):
             X_high = X_high + rng.normal(0.0, self.high_dim_noise_std, X_high.shape)
 
         self.data = AnnData(X=X_high)
+        self.data.obsm["X_true_manifold"] = X_low
         self.data.obs["trajectory_id"] = np.asarray(traj_ids)
+        self.data.obs["config_id"] = np.asarray(config_ids)
         self.data.obs["t"] = np.concatenate(t_trajectories)
         self.meta.true_trajectories = [traj.tolist() for traj in trajectories]
 
