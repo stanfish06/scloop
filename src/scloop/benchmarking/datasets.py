@@ -394,6 +394,7 @@ class LinearEnsembleSpec(DynEnsembleSpec):
                 )
             else:
                 lo, hi = kwargs["chebyshev_deg_range"]
+                # this can produce repeated degrees (ignore for now, not a big concern)
                 degs = rng.integers(lo, hi + 1, size=n_basis)
                 amps = rng.uniform(-1.0, 1.0, size=n_basis)
                 yield self._chebyshev_basis(domain=domain, degs=degs, amps=amps)
@@ -414,19 +415,19 @@ class DynamicData(BenchSingleData):
     dt: float = 0.01
     uneven_trajectory_sampling: bool = True
     embedding_dim: int = 200
-    embedding_seed: int = 1
+    seed: int = 1
     low_dim_noise_std: float = 0.0
     high_dim_noise_std: float = 0.0
 
     def generate_data(self, **integrator_kwargs):
-        def _embedding_isometric(X: np.ndarray, target_dim: int, seed: int = 1):
-            import random
+        rng = np.random.default_rng(self.seed)
 
+        def _embedding_isometric(X: np.ndarray, target_dim: int):
             source_dim = X.shape[1]
-            np.random.seed(seed)
-            random_matrix = np.random.randn(target_dim, target_dim)
+            random_matrix = rng.standard_normal((target_dim, target_dim))
             Q, _ = np.linalg.qr(random_matrix)
-            Q_sub = Q[:, random.sample(range(target_dim), source_dim)]
+            cols = rng.choice(target_dim, size=source_dim, replace=False)
+            Q_sub = Q[:, cols]
             return X @ Q_sub.T
 
         def _latin_hypercube_time_sampling(
@@ -437,14 +438,14 @@ class DynamicData(BenchSingleData):
         ):
             n_t_bins_fine = n_samples * n_t_bins_fine_ratio
             random_probs = (
-                np.tanh(np.random.normal(scale=noise_const, size=n_t_bins_fine)) + 1
+                np.tanh(rng.normal(scale=noise_const, size=n_t_bins_fine)) + 1
             ) + evenness_const
             random_probs = random_probs / np.sum(random_probs)
             empirical_cdf = np.concatenate([[0.0], np.cumsum(random_probs)])
             grid = np.arange(n_t_bins_fine + 1) / n_t_bins_fine
             bin_width = 1.0 / n_samples
             offsets = np.arange(n_samples) * bin_width
-            t_vals = np.random.uniform(size=n_samples) * bin_width + offsets
+            t_vals = rng.uniform(size=n_samples) * bin_width + offsets
             return np.interp(t_vals, empirical_cdf, grid)
 
         ensemble_t_domain = getattr(self.ensemble, "t_domain", None)
@@ -482,13 +483,10 @@ class DynamicData(BenchSingleData):
                 tid += 1
 
         X_clean = np.vstack(trajectories)
-        rng = np.random.default_rng(self.embedding_seed)
         X_low = X_clean
         if self.low_dim_noise_std > 0:
             X_low = X_low + rng.normal(0.0, self.low_dim_noise_std, X_low.shape)
-        X_high = _embedding_isometric(
-            X_low, self.embedding_dim, seed=self.embedding_seed
-        )
+        X_high = _embedding_isometric(X_low, self.embedding_dim)
         if self.high_dim_noise_std > 0:
             X_high = X_high + rng.normal(0.0, self.high_dim_noise_std, X_high.shape)
 
