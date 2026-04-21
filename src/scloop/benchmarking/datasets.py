@@ -300,7 +300,6 @@ class DynEnsembleSpec(EnsembleSpec):
             )
         )
 
-    @abstractmethod
     def random_forcing_generator(
         self,
         domain: tuple | list = (0, 1),
@@ -309,7 +308,24 @@ class DynEnsembleSpec(EnsembleSpec):
         with_gaussian_noise: bool = False,
         seed: int = 1,
         **kwargs,
-    ) -> Iterator[Callable]: ...
+    ) -> Iterator[Callable]:
+        rng = np.random.default_rng(seed)
+        amp_lo, amp_hi = kwargs.get("amp_range", (-1.0, 1.0))
+        while True:
+            if recipe == "fourier":
+                lo, hi = kwargs["fourier_freq_range"]
+                freqs = rng.uniform(lo, hi, size=n_basis)
+                amps = rng.uniform(amp_lo, amp_hi, size=n_basis)
+                phases = rng.uniform(0.0, 2 * np.pi, size=n_basis)
+                yield self._fourier_basis(
+                    domain=domain, freqs=freqs, amps=amps, phases=phases
+                )
+            else:
+                lo, hi = kwargs["chebyshev_deg_range"]
+                # this can produce repeated degrees (ignore for now, not a big concern)
+                degs = rng.integers(lo, hi + 1, size=n_basis)
+                amps = rng.uniform(amp_lo, amp_hi, size=n_basis)
+                yield self._chebyshev_basis(domain=domain, degs=degs, amps=amps)
 
 
 class LinearEnsembleSpec(DynEnsembleSpec):
@@ -326,6 +342,7 @@ class LinearEnsembleSpec(DynEnsembleSpec):
     forcing_recipe: Literal["fourier", "chebyshev"] = "fourier"
     forcing_n_basis: int = 6
     forcing_seed: int = 0
+    forcing_amp_range: tuple[float, float] = (-1.0, 1.0)
     fourier_freq_range: tuple[float, float] = (0.0, 4.0)
     chebyshev_deg_range: tuple[int, int] = (0, 6)
 
@@ -344,6 +361,7 @@ class LinearEnsembleSpec(DynEnsembleSpec):
             recipe=self.forcing_recipe,
             n_basis=self.forcing_n_basis,
             seed=self.forcing_seed,
+            amp_range=self.forcing_amp_range,
             fourier_freq_range=self.fourier_freq_range,
             chebyshev_deg_range=self.chebyshev_deg_range,
         )
@@ -373,35 +391,87 @@ class LinearEnsembleSpec(DynEnsembleSpec):
             )
         return configs
 
-    def random_forcing_generator(
-        self,
-        domain: tuple | list = (0, 1),
-        recipe: Literal["fourier", "chebyshev"] = "fourier",
-        n_basis: int = 6,
-        with_gaussian_noise: bool = False,
-        seed: int = 1,
-        **kwargs,
-    ) -> Iterator[Callable]:
-        rng = np.random.default_rng(seed)
-        while True:
-            if recipe == "fourier":
-                lo, hi = kwargs["fourier_freq_range"]
-                freqs = rng.uniform(lo, hi, size=n_basis)
-                amps = rng.uniform(-1.0, 1.0, size=n_basis)
-                phases = rng.uniform(0.0, 2 * np.pi, size=n_basis)
-                yield self._fourier_basis(
-                    domain=domain, freqs=freqs, amps=amps, phases=phases
-                )
-            else:
-                lo, hi = kwargs["chebyshev_deg_range"]
-                # this can produce repeated degrees (ignore for now, not a big concern)
-                degs = rng.integers(lo, hi + 1, size=n_basis)
-                amps = rng.uniform(-1.0, 1.0, size=n_basis)
-                yield self._chebyshev_basis(domain=domain, degs=degs, amps=amps)
-
 
 class LoopEnsembleSpec(DynEnsembleSpec):
-    pass
+    """Simulate cyclic trajectories via 2D rotation `A = [[0, -ω], [ω, 0]]`. Optional forcing perturbs the orbit."""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    omega: float | list[float] = 2 * np.pi
+    radius: float | list[float] = 1.0
+    n_configs: int
+    t_domain: tuple[float, float] = (0.0, 1.0)
+    n_trajectories_per_config: int = 1
+    with_forcing: bool = False
+    forcing_scale: float = 0.01
+    forcing_recipe: Literal["fourier", "chebyshev"] = "fourier"
+    forcing_n_basis: int = 6
+    forcing_seed: int = 0
+    forcing_amp_range: tuple[float, float] = (-1.0, 1.0)
+    fourier_freq_range: tuple[float, float] = (0.0, 4.0)
+    chebyshev_deg_range: tuple[int, int] = (0, 6)
+
+    def _broadcast(self, v: float | list[float], name: str) -> list[float]:
+        if isinstance(v, (int, float)):
+            return [float(v)] * self.n_configs
+        if len(v) != self.n_configs:
+            raise ValueError(
+                f"{name} list length {len(v)} != n_configs {self.n_configs}"
+            )
+        return [float(x) for x in v]
+
+    def sample(
+        self, manual_configs: list[TrajectoryConfig] | None = None
+    ) -> list[TrajectoryConfig]:
+        if manual_configs is not None:
+            return manual_configs
+        omegas = self._broadcast(self.omega, "omega")
+        radii = self._broadcast(self.radius, "radius")
+        gen = (
+            self.random_forcing_generator(
+                domain=self.t_domain,
+                recipe=self.forcing_recipe,
+                n_basis=self.forcing_n_basis,
+                seed=self.forcing_seed,
+                amp_range=self.forcing_amp_range,
+                fourier_freq_range=self.fourier_freq_range,
+                chebyshev_deg_range=self.chebyshev_deg_range,
+            )
+            if self.with_forcing
+            else None
+        )
+        configs = []
+        for k in range(self.n_configs):
+            omega_k, radius_k = omegas[k], radii[k]
+            A = np.array([[0.0, -omega_k], [omega_k, 0.0]])
+            ic = [radius_k, 0.0]
+            scale = self.forcing_scale * omega_k * radius_k
+            F_terms: list[list[Callable]] = [
+                [(lambda t, y, a=A[i, j]: a * y) for j in range(2)] for i in range(2)
+            ]
+            F_jacobian: list[list[Callable]] = [
+                [(lambda t, y, a=A[i, j]: a) for j in range(2)] for i in range(2)
+            ]
+            forces: list[Callable | None] | None
+            if gen is not None:
+                raw = [next(gen) for _ in range(2)]
+                forces = [(lambda t, y, f=fn, s=scale: s * f(t, y)) for fn in raw]
+            else:
+                forces = None
+            model = BenchODEParam(
+                F_terms=F_terms,
+                F_jacobian=F_jacobian,
+                force_func=forces,
+                force_func_jac=None,
+            )
+            configs.append(
+                TrajectoryConfig(
+                    model=model,
+                    initial_condition=ic,
+                    n_trajectories=self.n_trajectories_per_config,
+                )
+            )
+        return configs
 
 
 class TreeEnsembleSpec(DynEnsembleSpec):
