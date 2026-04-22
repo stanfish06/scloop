@@ -17,7 +17,7 @@ setwd(r_project)
 message("r_project: ", r_project)
 
 bioc_version <- "3.22"
-bioc_packages <- c("anndataR")
+bioc_packages <- c("anndataR", "rhdf5")
 
 Sys.setenv(RENV_CONFIG_EXTERNAL_LIBRARIES = paste(.libPaths(), collapse = ","))
 if (file.exists(file.path(r_project, "renv.lock"))) {
