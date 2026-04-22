@@ -551,7 +551,7 @@ class DynamicData(BenchSingleData):
             Q, _ = np.linalg.qr(random_matrix)
             cols = rng.choice(target_dim, size=source_dim, replace=False)
             Q_sub = Q[:, cols]
-            return X @ Q_sub.T
+            return X @ Q_sub.T, Q_sub
 
         def _latin_hypercube_time_sampling(
             n_samples: int,
@@ -613,7 +613,7 @@ class DynamicData(BenchSingleData):
         X_low = X_clean
         if self.low_dim_noise_std > 0:
             X_low = X_low + rng.normal(0.0, self.low_dim_noise_std, X_low.shape)
-        X_high = _embedding_isometric(X_low, self.embedding_dim)
+        X_high, embedding_basis = _embedding_isometric(X_low, self.embedding_dim)
         if self.high_dim_noise_std > 0:
             X_high = X_high + rng.normal(0.0, self.high_dim_noise_std, X_high.shape)
 
@@ -622,6 +622,7 @@ class DynamicData(BenchSingleData):
         self.data.obs["trajectory_id"] = np.asarray(traj_ids)
         self.data.obs["config_id"] = np.asarray(config_ids)
         self.data.obs["t"] = np.concatenate(t_trajectories)
+        self.data.uns["embedding_basis"] = embedding_basis
         self.meta.true_trajectories = [traj.tolist() for traj in trajectories]
 
 
