@@ -1141,13 +1141,13 @@ class HomologyData:
             return
 
         if presence_test_method == "fisher":
-            self.bootstrap_data.fisher_presence_results = (
+            self.bootstrap_data.presence_test_result = (
                 self.bootstrap_data.fisher_test_presence(
                     method_pval_correction=method_pval_correction
                 )
             )
         elif presence_test_method == "chi2":
-            self.bootstrap_data.fisher_presence_results = (
+            self.bootstrap_data.presence_test_result = (
                 self.bootstrap_data.chi2_test_presence(
                     method_pval_correction=method_pval_correction
                 )
@@ -1155,7 +1155,7 @@ class HomologyData:
         else:
             raise ValueError(f"Unknown presence_test_method: {presence_test_method!r}")
 
-        self.bootstrap_data.gamma_persistence_results = (
+        self.bootstrap_data.persistence_test_result = (
             self.bootstrap_data.gamma_test_persistence(
                 self.selected_loop_classes, method_pval_correction
             )

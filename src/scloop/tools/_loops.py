@@ -30,7 +30,6 @@ from ..data.types import (
     NonZeroCount_t,
     Percent_t,
     PositiveFloat,
-    PresenceTestMethod,
     Size_t,
 )
 from ..preprocessing.downsample import sample
@@ -73,7 +72,6 @@ def find_loops(
     auto_shrink_factor: Percent_t = 0.9,
     n_max_workers: NonZeroCount_t = DEFAULT_N_MAX_WORKERS,
     use_parallel: bool = True,
-    presence_test_method: PresenceTestMethod = "fisher",
     verbose: bool = False,
     max_log_messages: int | None = None,
     kwargs_bootstrap: dict[str, Any] | None = None,
@@ -235,9 +233,7 @@ def find_loops(
         ====================================
         """
         assert hd.bootstrap_data is not None
-        kwargs_loop_test = kwargs_loop_test or {}
-        kwargs_loop_test.setdefault("presence_test_method", presence_test_method)
-        hd._test_loops(**kwargs_loop_test)
+        hd._test_loops(**(kwargs_loop_test or {}))
         adata.uns[SCLOOP_UNS_KEY] = hd
 
 

@@ -146,8 +146,8 @@ class BootstrapAnalysis:
     cocycles: list[list] = Field(default_factory=list)
     selected_loop_classes: list[list[LoopClass | None]] = Field(default_factory=list)
     loop_tracks: dict[Index_t, LoopTrack] = Field(default_factory=dict)
-    fisher_presence_results: PresenceTestResult | None = None
-    gamma_persistence_results: PersistenceTestResult | None = None
+    presence_test_result: PresenceTestResult | None = None
+    persistence_test_result: PersistenceTestResult | None = None
 
     def _get_track_embedding(
         self, idx_track: Index_t, embedding_alt: np.ndarray | None = None
@@ -307,10 +307,10 @@ class BootstrapAnalysis:
             probs_presence.append(
                 float(tbl[0][0]) / (float(tbl[0][0]) + float(tbl[1][0]))
             )
-            arr = np.array(tbl, dtype=np.float64)
-            or_val = odds_ratio(arr).statistic
+            or_val = odds_ratio(np.array(tbl)).statistic
             odds_ratio_presence.append(or_val if np.isfinite(or_val) else 0.0)
 
+            arr = np.array(tbl, dtype=np.float64)
             total = arr.sum()
             if (
                 total <= 0
@@ -397,12 +397,12 @@ class BootstrapAnalysis:
             float(params[1]),
             float(params[2]),
         )
-        self.gamma_persistence_results = PersistenceTestResult(
+        self.persistence_test_result = PersistenceTestResult(
             pvalues_raw=pvalues_raw_persistence,
             pvalues_corrected=pvalues_corrected_persistence,
             gamma_null_params=self.gamma_null_params,
         )
-        return self.gamma_persistence_results
+        return self.persistence_test_result
 
     def to_hdf5_group(self, group: h5py.Group, compress: bool = True) -> None:
         group.attrs["_type"] = "BootstrapAnalysis"
@@ -428,13 +428,15 @@ class BootstrapAnalysis:
             track.to_hdf5_group(track_grp, compress=compress)
 
         # test results
-        if self.fisher_presence_results is not None:
-            fisher_grp = group.create_group("fisher_presence_results")
-            self.fisher_presence_results.to_hdf5_group(fisher_grp, compress=compress)
+        if self.presence_test_result is not None:
+            presence_grp = group.create_group("presence_test_result")
+            self.presence_test_result.to_hdf5_group(presence_grp, compress=compress)
 
-        if self.gamma_persistence_results is not None:
-            gamma_grp = group.create_group("gamma_persistence_results")
-            self.gamma_persistence_results.to_hdf5_group(gamma_grp, compress=compress)
+        if self.persistence_test_result is not None:
+            persistence_grp = group.create_group("persistence_test_result")
+            self.persistence_test_result.to_hdf5_group(
+                persistence_grp, compress=compress
+            )
 
     @classmethod
     def from_hdf5_group(cls, group: h5py.Group) -> BootstrapAnalysis:
@@ -464,15 +466,17 @@ class BootstrapAnalysis:
             loop_tracks[int(track_id_str)] = LoopTrack.from_hdf5_group(track_grp)
 
         # test results
-        fisher_presence_results = None
-        if "fisher_presence_results" in group:
-            fisher_grp: h5py.Group = group["fisher_presence_results"]  # type: ignore[assignment]
-            fisher_presence_results = PresenceTestResult.from_hdf5_group(fisher_grp)
+        presence_test_result = None
+        if "presence_test_result" in group:
+            presence_grp: h5py.Group = group["presence_test_result"]  # type: ignore[assignment]
+            presence_test_result = PresenceTestResult.from_hdf5_group(presence_grp)
 
-        gamma_persistence_results = None
-        if "gamma_persistence_results" in group:
-            gamma_grp: h5py.Group = group["gamma_persistence_results"]  # type: ignore[assignment]
-            gamma_persistence_results = PersistenceTestResult.from_hdf5_group(gamma_grp)
+        persistence_test_result = None
+        if "persistence_test_result" in group:
+            persistence_grp: h5py.Group = group["persistence_test_result"]  # type: ignore[assignment]
+            persistence_test_result = PersistenceTestResult.from_hdf5_group(
+                persistence_grp
+            )
 
         return cls(
             num_bootstraps=num_bootstraps,
@@ -480,8 +484,8 @@ class BootstrapAnalysis:
             cocycles=[],
             selected_loop_classes=selected_loop_classes,
             loop_tracks=loop_tracks,
-            fisher_presence_results=fisher_presence_results,
-            gamma_persistence_results=gamma_persistence_results,
+            presence_test_result=presence_test_result,
+            persistence_test_result=persistence_test_result,
         )
 
 
