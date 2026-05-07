@@ -7,7 +7,7 @@ import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.dataclasses import dataclass
 from pynndescent import NNDescent
-from scipy.stats import fisher_exact, gamma
+from scipy.stats import chi2_contingency, fisher_exact, gamma
 from scipy.stats.contingency import odds_ratio
 
 from ..computing import compute_weighted_hodge_embedding
@@ -284,6 +284,50 @@ class BootstrapAnalysis:
             odds_ratio_presence.append(or_val if np.isfinite(or_val) else 0.0)
             res = fisher_exact(table=tbl, alternative="greater")
             pvalues_raw_presence.append(res.pvalue)  # type: ignore[attr-defined]
+        pvalues_corrected_presence = correct_pvalues(
+            pvalues_raw_presence, method=method_pval_correction
+        )
+
+        return PresenceTestResult(
+            probabilities=probs_presence,
+            odds_ratios=odds_ratio_presence,
+            pvalues_raw=pvalues_raw_presence,
+            pvalues_corrected=pvalues_corrected_presence,
+        )
+
+    def chi2_test_presence(
+        self, method_pval_correction: MultipleTestCorrectionMethod
+    ) -> PresenceTestResult:
+        assert self.num_bootstraps > 0
+        probs_presence = []
+        odds_ratio_presence = []
+        pvalues_raw_presence = []
+        for tid in self.loop_tracks.keys():
+            tbl = self._contingency_table_track_to_rest(tid)
+            probs_presence.append(
+                float(tbl[0][0]) / (float(tbl[0][0]) + float(tbl[1][0]))
+            )
+            arr = np.array(tbl, dtype=np.float64)
+            or_val = odds_ratio(arr).statistic
+            odds_ratio_presence.append(or_val if np.isfinite(or_val) else 0.0)
+
+            total = arr.sum()
+            if (
+                total <= 0
+                or np.any(arr.sum(axis=0) == 0)
+                or np.any(arr.sum(axis=1) == 0)
+            ):
+                pvalues_raw_presence.append(1.0)
+                continue
+
+            expected_00 = arr[0].sum() * arr[:, 0].sum() / total
+            res = chi2_contingency(arr, correction=False)
+            p_two = float(res.pvalue)  # type: ignore[attr-defined]
+            if arr[0, 0] >= expected_00:
+                p_one = p_two / 2.0
+            else:
+                p_one = 1.0 - p_two / 2.0
+            pvalues_raw_presence.append(p_one)
         pvalues_corrected_presence = correct_pvalues(
             pvalues_raw_presence, method=method_pval_correction
         )

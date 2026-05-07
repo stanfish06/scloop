@@ -25,7 +25,14 @@ from ..data.constants import (
 )
 from ..data.containers import HomologyData
 from ..data.metadata import ScloopMeta
-from ..data.types import Index_t, NonZeroCount_t, Percent_t, PositiveFloat, Size_t
+from ..data.types import (
+    Index_t,
+    NonZeroCount_t,
+    Percent_t,
+    PositiveFloat,
+    PresenceTestMethod,
+    Size_t,
+)
 from ..preprocessing.downsample import sample
 from ..utils.logging import (
     LogDisplay,
@@ -66,6 +73,7 @@ def find_loops(
     auto_shrink_factor: Percent_t = 0.9,
     n_max_workers: NonZeroCount_t = DEFAULT_N_MAX_WORKERS,
     use_parallel: bool = True,
+    presence_test_method: PresenceTestMethod = "fisher",
     verbose: bool = False,
     max_log_messages: int | None = None,
     kwargs_bootstrap: dict[str, Any] | None = None,
@@ -227,7 +235,9 @@ def find_loops(
         ====================================
         """
         assert hd.bootstrap_data is not None
-        hd._test_loops(**(kwargs_loop_test or {}))
+        kwargs_loop_test = kwargs_loop_test or {}
+        kwargs_loop_test.setdefault("presence_test_method", presence_test_method)
+        hd._test_loops(**kwargs_loop_test)
         adata.uns[SCLOOP_UNS_KEY] = hd
 
 

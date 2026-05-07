@@ -8,6 +8,7 @@ EmbeddingMethod = Literal["pca", "diffmap", "scvi"]
 EmbeddingNeighbors = Literal["pca", "scvi"]
 LoopDistMethod = Literal["hausdorff", "frechet"]
 MultipleTestCorrectionMethod = Literal["bonferroni", "benjamini-hochberg"]
+PresenceTestMethod = Literal["fisher", "chi2"]
 CrossMatchModelTypes = Literal["mlp", "nf"]
 LogLevel = Literal[
     "TRACE",

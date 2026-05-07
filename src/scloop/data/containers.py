@@ -74,6 +74,7 @@ from .types import (
     MultipleTestCorrectionMethod,
     Percent_t,
     PositiveFloat,
+    PresenceTestMethod,
 )
 from .utils import (
     loops_to_coords,
@@ -1132,17 +1133,27 @@ class HomologyData:
     def _test_loops(
         self,
         method_pval_correction: MultipleTestCorrectionMethod = "benjamini-hochberg",
+        presence_test_method: PresenceTestMethod = "fisher",
     ) -> None:
         if self.bootstrap_data is None:
             return
         if self.bootstrap_data.num_bootstraps == 0:
             return
 
-        self.bootstrap_data.fisher_presence_results = (
-            self.bootstrap_data.fisher_test_presence(
-                method_pval_correction=method_pval_correction
+        if presence_test_method == "fisher":
+            self.bootstrap_data.fisher_presence_results = (
+                self.bootstrap_data.fisher_test_presence(
+                    method_pval_correction=method_pval_correction
+                )
             )
-        )
+        elif presence_test_method == "chi2":
+            self.bootstrap_data.fisher_presence_results = (
+                self.bootstrap_data.chi2_test_presence(
+                    method_pval_correction=method_pval_correction
+                )
+            )
+        else:
+            raise ValueError(f"Unknown presence_test_method: {presence_test_method!r}")
 
         self.bootstrap_data.gamma_persistence_results = (
             self.bootstrap_data.gamma_test_persistence(
