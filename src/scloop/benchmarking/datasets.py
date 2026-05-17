@@ -1,4 +1,6 @@
 from abc import ABC, abstractmethod
+from collections import deque
+from dataclasses import dataclass
 from typing import Any, Callable, Iterator, Literal, NamedTuple
 
 import numpy as np
@@ -527,10 +529,6 @@ class LoopEnsembleSpec(DynEnsembleSpec):
         return configs
 
 
-class TreeEnsembleSpec(DynEnsembleSpec):
-    pass
-
-
 class DynamicData(BenchSingleData):
     ensemble: EnsembleSpec
     t0: float = 0.0
@@ -542,35 +540,94 @@ class DynamicData(BenchSingleData):
     low_dim_noise_std: float = 0.0
     high_dim_noise_std: float = 0.0
 
+    @staticmethod
+    def _embedding_isometric(X: np.ndarray, target_dim: int, rng):
+        source_dim = X.shape[1]
+        random_matrix = rng.standard_normal((target_dim, target_dim))
+        Q, _ = np.linalg.qr(random_matrix)
+        cols = rng.choice(target_dim, size=source_dim, replace=False)
+        Q_sub = Q[:, cols]
+        return X @ Q_sub.T, Q_sub
+
+    @staticmethod
+    def _latin_hypercube_time_sampling(
+        n_samples: int,
+        rng,
+        n_t_bins_fine_ratio: int = 100,
+        noise_const: float = 1.0,
+        evenness_const: float = 0.1,
+    ):
+        n_t_bins_fine = n_samples * n_t_bins_fine_ratio
+        random_probs = (
+            np.tanh(rng.normal(scale=noise_const, size=n_t_bins_fine)) + 1
+        ) + evenness_const
+        random_probs = random_probs / np.sum(random_probs)
+        empirical_cdf = np.concatenate([[0.0], np.cumsum(random_probs)])
+        grid = np.arange(n_t_bins_fine + 1) / n_t_bins_fine
+        bin_width = 1.0 / n_samples
+        offsets = np.arange(n_samples) * bin_width
+        t_vals = rng.uniform(size=n_samples) * bin_width + offsets
+        return np.interp(t_vals, empirical_cdf, grid)
+
+    def _simulate(
+        self,
+        diffeq: BenchDiffEq,
+        ic,
+        t_span: tuple[float, float],
+        *,
+        t_eval=None,
+        dense_output: bool = False,
+        method: Literal["RK45", "RK23", "DOP853", "Radau", "BDF", "LSODA"] = "BDF",
+        **integrator_kwargs,
+    ):
+        t0, t1 = t_span
+        if t_eval is None and not dense_output:
+            n_eval = int(np.round((t1 - t0) / self.dt)) + 1
+            t_eval = np.linspace(t0, t1, n_eval)
+        return diffeq.solve(
+            t0=t0,
+            t1=t1,
+            dt=self.dt,
+            y0=ic,
+            t_eval=t_eval,
+            method=method,
+            dense_output=dense_output,
+            **integrator_kwargs,
+        )
+
+    def _sample_trajectories(
+        self,
+        configs: list[TrajectoryConfig],
+        t_span: tuple[float, float],
+        rng,
+        **integrator_kwargs,
+    ) -> tuple[list[np.ndarray], list[np.ndarray]]:
+        t0, t1 = t_span
+        trajectories: list[np.ndarray] = []
+        t_trajectories: list[np.ndarray] = []
+        for config in configs:
+            for _ in range(config.n_trajectories):
+                if self.uneven_trajectory_sampling:
+                    t_evals = t0 + (t1 - t0) * self._latin_hypercube_time_sampling(
+                        int((t1 - t0) / self.dt), rng
+                    )
+                else:
+                    t_evals = None
+                diffeq = config.model.build()
+                sol = self._simulate(
+                    diffeq,
+                    config.initial_condition,
+                    (t0, t1),
+                    t_eval=t_evals,
+                    **integrator_kwargs,
+                )
+                assert sol is not None
+                trajectories.append(np.asarray(sol.y).T)
+                t_trajectories.append(np.asarray(sol.t))
+        return trajectories, t_trajectories
+
     def generate_data(self, **integrator_kwargs):
         rng = np.random.default_rng(self.seed)
-
-        def _embedding_isometric(X: np.ndarray, target_dim: int):
-            source_dim = X.shape[1]
-            random_matrix = rng.standard_normal((target_dim, target_dim))
-            Q, _ = np.linalg.qr(random_matrix)
-            cols = rng.choice(target_dim, size=source_dim, replace=False)
-            Q_sub = Q[:, cols]
-            return X @ Q_sub.T, Q_sub
-
-        def _latin_hypercube_time_sampling(
-            n_samples: int,
-            n_t_bins_fine_ratio: int = 100,
-            noise_const: float = 1.0,
-            evenness_const: float = 0.1,
-        ):
-            n_t_bins_fine = n_samples * n_t_bins_fine_ratio
-            random_probs = (
-                np.tanh(rng.normal(scale=noise_const, size=n_t_bins_fine)) + 1
-            ) + evenness_const
-            random_probs = random_probs / np.sum(random_probs)
-            empirical_cdf = np.concatenate([[0.0], np.cumsum(random_probs)])
-            grid = np.arange(n_t_bins_fine + 1) / n_t_bins_fine
-            bin_width = 1.0 / n_samples
-            offsets = np.arange(n_samples) * bin_width
-            t_vals = rng.uniform(size=n_samples) * bin_width + offsets
-            return np.interp(t_vals, empirical_cdf, grid)
-
         ensemble_t_domain = getattr(
             self.ensemble, "solve_t_domain", getattr(self.ensemble, "t_domain", None)
         )
@@ -579,41 +636,26 @@ class DynamicData(BenchSingleData):
         )
 
         configs = self.ensemble.sample()
-        trajectories = []
-        t_trajectories = []
-        traj_ids = []
-        config_ids = []
+        trajectories, t_trajectories = self._sample_trajectories(
+            configs, (t0, t1), rng, **integrator_kwargs
+        )
+
+        traj_ids: list[int] = []
+        config_ids: list[int] = []
         tid = 0
         for cid, config in enumerate(configs):
             for _ in range(config.n_trajectories):
-                if self.uneven_trajectory_sampling:
-                    t_evals = t0 + (t1 - t0) * (
-                        _latin_hypercube_time_sampling(int((t1 - t0) / self.dt))
-                    )
-                else:
-                    t_evals = None
-                diffeq = config.model.build()
-                sol = diffeq.solve(
-                    t0=t0,
-                    t1=t1,
-                    dt=self.dt,
-                    y0=config.initial_condition,
-                    t_eval=t_evals,
-                    **integrator_kwargs,
-                )
-                assert sol is not None
-                traj = np.asarray(sol.y).T
-                trajectories.append(traj)
-                t_trajectories.append(np.asarray(sol.t))
-                traj_ids.extend([tid] * traj.shape[0])
-                config_ids.extend([cid] * traj.shape[0])
+                n_points = trajectories[tid].shape[0]
+                traj_ids.extend([tid] * n_points)
+                config_ids.extend([cid] * n_points)
                 tid += 1
 
-        X_clean = np.vstack(trajectories)
-        X_low = X_clean
+        X_low = np.vstack(trajectories)
         if self.low_dim_noise_std > 0:
             X_low = X_low + rng.normal(0.0, self.low_dim_noise_std, X_low.shape)
-        X_high, embedding_basis = _embedding_isometric(X_low, self.embedding_dim)
+        X_high, embedding_basis = self._embedding_isometric(
+            X_low, self.embedding_dim, rng
+        )
         if self.high_dim_noise_std > 0:
             X_high = X_high + rng.normal(0.0, self.high_dim_noise_std, X_high.shape)
 
