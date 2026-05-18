@@ -14,10 +14,10 @@ def test_loops_significance(
     if bootstrap_data.num_bootstraps == 0:
         return
 
-    bootstrap_data.fisher_presence_results = bootstrap_data.fisher_test_presence(
+    bootstrap_data.presence_test_result = bootstrap_data.fisher_test_presence(
         method_pval_correction=method_pval_correction
     )
 
-    bootstrap_data.gamma_persistence_results = bootstrap_data.gamma_test_persistence(
+    bootstrap_data.persistence_test_result = bootstrap_data.gamma_test_persistence(
         selected_loop_classes, method_pval_correction
     )

@@ -1,9 +1,11 @@
 from abc import ABC, abstractmethod
+from collections import deque
 from typing import Any, Callable, Iterator, Literal, NamedTuple
 
 import numpy as np
 from anndata import AnnData
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic.dataclasses import dataclass
 
 """
 ============================== Dataset generation ==============================
@@ -527,10 +529,6 @@ class LoopEnsembleSpec(DynEnsembleSpec):
         return configs
 
 
-class TreeEnsembleSpec(DynEnsembleSpec):
-    pass
-
-
 class DynamicData(BenchSingleData):
     ensemble: EnsembleSpec
     t0: float = 0.0
@@ -542,35 +540,94 @@ class DynamicData(BenchSingleData):
     low_dim_noise_std: float = 0.0
     high_dim_noise_std: float = 0.0
 
+    @staticmethod
+    def _embedding_isometric(X: np.ndarray, target_dim: int, rng):
+        source_dim = X.shape[1]
+        random_matrix = rng.standard_normal((target_dim, target_dim))
+        Q, _ = np.linalg.qr(random_matrix)
+        cols = rng.choice(target_dim, size=source_dim, replace=False)
+        Q_sub = Q[:, cols]
+        return X @ Q_sub.T, Q_sub
+
+    @staticmethod
+    def _latin_hypercube_time_sampling(
+        n_samples: int,
+        rng,
+        n_t_bins_fine_ratio: int = 100,
+        noise_const: float = 1.0,
+        evenness_const: float = 0.1,
+    ):
+        n_t_bins_fine = n_samples * n_t_bins_fine_ratio
+        random_probs = (
+            np.tanh(rng.normal(scale=noise_const, size=n_t_bins_fine)) + 1
+        ) + evenness_const
+        random_probs = random_probs / np.sum(random_probs)
+        empirical_cdf = np.concatenate([[0.0], np.cumsum(random_probs)])
+        grid = np.arange(n_t_bins_fine + 1) / n_t_bins_fine
+        bin_width = 1.0 / n_samples
+        offsets = np.arange(n_samples) * bin_width
+        t_vals = rng.uniform(size=n_samples) * bin_width + offsets
+        return np.interp(t_vals, empirical_cdf, grid)
+
+    def _simulate(
+        self,
+        diffeq: BenchDiffEq,
+        ic,
+        t_span: tuple[float, float],
+        *,
+        t_eval=None,
+        dense_output: bool = False,
+        method: Literal["RK45", "RK23", "DOP853", "Radau", "BDF", "LSODA"] = "BDF",
+        **integrator_kwargs,
+    ) -> Any:
+        t0, t1 = t_span
+        if t_eval is None and not dense_output:
+            n_eval = int(np.round((t1 - t0) / self.dt)) + 1
+            t_eval = np.linspace(t0, t1, n_eval)
+        return diffeq.solve(
+            t0=t0,
+            t1=t1,
+            dt=self.dt,
+            y0=ic,
+            t_eval=t_eval,
+            method=method,
+            dense_output=dense_output,
+            **integrator_kwargs,
+        )
+
+    def _sample_trajectories(
+        self,
+        configs: list[TrajectoryConfig],
+        t_span: tuple[float, float],
+        rng,
+        **integrator_kwargs,
+    ) -> tuple[list[np.ndarray], list[np.ndarray]]:
+        t0, t1 = t_span
+        trajectories: list[np.ndarray] = []
+        t_trajectories: list[np.ndarray] = []
+        for config in configs:
+            for _ in range(config.n_trajectories):
+                if self.uneven_trajectory_sampling:
+                    t_evals = t0 + (t1 - t0) * self._latin_hypercube_time_sampling(
+                        int((t1 - t0) / self.dt), rng
+                    )
+                else:
+                    t_evals = None
+                diffeq = config.model.build()
+                sol = self._simulate(
+                    diffeq,
+                    config.initial_condition,
+                    (t0, t1),
+                    t_eval=t_evals,
+                    **integrator_kwargs,
+                )
+                assert sol is not None
+                trajectories.append(np.asarray(sol.y).T)
+                t_trajectories.append(np.asarray(sol.t))
+        return trajectories, t_trajectories
+
     def generate_data(self, **integrator_kwargs):
         rng = np.random.default_rng(self.seed)
-
-        def _embedding_isometric(X: np.ndarray, target_dim: int):
-            source_dim = X.shape[1]
-            random_matrix = rng.standard_normal((target_dim, target_dim))
-            Q, _ = np.linalg.qr(random_matrix)
-            cols = rng.choice(target_dim, size=source_dim, replace=False)
-            Q_sub = Q[:, cols]
-            return X @ Q_sub.T
-
-        def _latin_hypercube_time_sampling(
-            n_samples: int,
-            n_t_bins_fine_ratio: int = 100,
-            noise_const: float = 1.0,
-            evenness_const: float = 0.1,
-        ):
-            n_t_bins_fine = n_samples * n_t_bins_fine_ratio
-            random_probs = (
-                np.tanh(rng.normal(scale=noise_const, size=n_t_bins_fine)) + 1
-            ) + evenness_const
-            random_probs = random_probs / np.sum(random_probs)
-            empirical_cdf = np.concatenate([[0.0], np.cumsum(random_probs)])
-            grid = np.arange(n_t_bins_fine + 1) / n_t_bins_fine
-            bin_width = 1.0 / n_samples
-            offsets = np.arange(n_samples) * bin_width
-            t_vals = rng.uniform(size=n_samples) * bin_width + offsets
-            return np.interp(t_vals, empirical_cdf, grid)
-
         ensemble_t_domain = getattr(
             self.ensemble, "solve_t_domain", getattr(self.ensemble, "t_domain", None)
         )
@@ -579,41 +636,26 @@ class DynamicData(BenchSingleData):
         )
 
         configs = self.ensemble.sample()
-        trajectories = []
-        t_trajectories = []
-        traj_ids = []
-        config_ids = []
+        trajectories, t_trajectories = self._sample_trajectories(
+            configs, (t0, t1), rng, **integrator_kwargs
+        )
+
+        traj_ids: list[int] = []
+        config_ids: list[int] = []
         tid = 0
         for cid, config in enumerate(configs):
             for _ in range(config.n_trajectories):
-                if self.uneven_trajectory_sampling:
-                    t_evals = t0 + (t1 - t0) * (
-                        _latin_hypercube_time_sampling(int((t1 - t0) / self.dt))
-                    )
-                else:
-                    t_evals = None
-                diffeq = config.model.build()
-                sol = diffeq.solve(
-                    t0=t0,
-                    t1=t1,
-                    dt=self.dt,
-                    y0=config.initial_condition,
-                    t_eval=t_evals,
-                    **integrator_kwargs,
-                )
-                assert sol is not None
-                traj = np.asarray(sol.y).T
-                trajectories.append(traj)
-                t_trajectories.append(np.asarray(sol.t))
-                traj_ids.extend([tid] * traj.shape[0])
-                config_ids.extend([cid] * traj.shape[0])
+                n_points = trajectories[tid].shape[0]
+                traj_ids.extend([tid] * n_points)
+                config_ids.extend([cid] * n_points)
                 tid += 1
 
-        X_clean = np.vstack(trajectories)
-        X_low = X_clean
+        X_low = np.vstack(trajectories)
         if self.low_dim_noise_std > 0:
             X_low = X_low + rng.normal(0.0, self.low_dim_noise_std, X_low.shape)
-        X_high = _embedding_isometric(X_low, self.embedding_dim)
+        X_high, embedding_basis = self._embedding_isometric(
+            X_low, self.embedding_dim, rng
+        )
         if self.high_dim_noise_std > 0:
             X_high = X_high + rng.normal(0.0, self.high_dim_noise_std, X_high.shape)
 
@@ -622,7 +664,248 @@ class DynamicData(BenchSingleData):
         self.data.obs["trajectory_id"] = np.asarray(traj_ids)
         self.data.obs["config_id"] = np.asarray(config_ids)
         self.data.obs["t"] = np.concatenate(t_trajectories)
+        self.data.uns["embedding_basis"] = embedding_basis
         self.meta.true_trajectories = [traj.tolist() for traj in trajectories]
+
+
+@dataclass(config=ConfigDict(arbitrary_types_allowed=True))
+class TreeNode:
+    solution: Any
+    y0: list[float]
+    t_start: float
+    t_end: float
+    global_t: float
+    depth: int
+    lift_basis: np.ndarray | None = None
+
+
+# make a compound data class alongside BenchSingleData?
+class TreeData(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    line_spec: LinearEnsembleSpec
+    loop_spec: LoopEnsembleSpec
+    initial_condition: list[float]
+
+    p_bisect: float
+    p_add: float
+    p_stop: float
+    p_loop: float
+    min_branch: int
+    target_branches: int
+    max_segments: int
+
+    dt: float = 0.01
+    embedding_dim: int = 200
+    seed: int = 1
+    low_dim_noise_std: float = 0.0
+    high_dim_noise_std: float = 0.0
+    uneven_trajectory_sampling: bool = True
+
+    data: AnnData | None = None
+    meta: BenchDataMeta = Field(default_factory=DynamicDataMeta)
+    runners: list[MethodRunner] = Field(default_factory=list)
+    results: list[BenchResult] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _validate_dims(self):
+        if self.line_spec.ndims < 2:
+            raise ValueError("line_spec.ndims must be >= 2")
+        if len(self.initial_condition) != self.line_spec.ndims:
+            raise ValueError(
+                f"initial_condition length {len(self.initial_condition)} "
+                f"!= line_spec.ndims {self.line_spec.ndims}"
+            )
+        return self
+
+    def _resolve(self, node: TreeNode, t: float) -> np.ndarray:
+        local = np.asarray(node.solution(t))
+        if node.lift_basis is not None:
+            local = local @ node.lift_basis
+        return local + np.asarray(node.y0)
+
+    def _select_action(self, depth: int, branch_count: int, rng) -> str:
+        can_extend = (
+            depth + 1 <= self.max_segments and branch_count + 1 <= self.target_branches
+        )
+        can_stop = branch_count >= self.min_branch
+        actions: list[str] = []
+        weights: list[float] = []
+        if can_extend:
+            actions.extend(["add", "bisect", "loop"])
+            weights.extend([self.p_add, self.p_bisect, self.p_loop])
+        if can_stop:
+            actions.append("stop")
+            weights.append(self.p_stop)
+        if not actions:
+            return "stop"
+        weights_arr = np.asarray(weights, dtype=float)
+        weights_arr = weights_arr / weights_arr.sum()
+        return str(rng.choice(actions, p=weights_arr))
+
+    def _spawn_segment(
+        self,
+        ic,
+        segment_type: Literal["line", "loop"],
+        parent_global_t: float,
+        depth: int,
+        forcing_seed: int,
+        rng,
+        integrator_kwargs: dict,
+    ) -> tuple[TreeNode, np.ndarray, np.ndarray]:
+        parent_end = np.asarray(ic, dtype=float)
+        spec = (
+            self.line_spec if segment_type == "line" else self.loop_spec
+        ).model_copy(
+            update={
+                "n_configs": 1,
+                "n_trajectories_per_config": 1,
+                "forcing_seed": forcing_seed,
+            }
+        )
+        t_span = getattr(spec, "solve_t_domain", spec.t_domain)
+        segment_dd = DynamicData(
+            data=None,
+            ensemble=spec,
+            dt=self.dt,
+            uneven_trajectory_sampling=self.uneven_trajectory_sampling,
+            embedding_dim=self.embedding_dim,
+            seed=int(rng.integers(0, 2**31 - 1)),
+            low_dim_noise_std=0.0,
+            high_dim_noise_std=0.0,
+            meta=DynamicDataMeta(),
+        )
+        configs = spec.sample()
+        config = configs[0]
+        local_ic = np.asarray(config.initial_condition, dtype=float)
+        if segment_type == "loop":
+            ndims = self.line_spec.ndims
+            M = rng.standard_normal((ndims, 2))
+            Q, _ = np.linalg.qr(M)
+            lift_basis: np.ndarray | None = Q.T
+            local_ic_high = local_ic @ lift_basis
+        else:
+            lift_basis = None
+            local_ic_high = local_ic
+        y0 = parent_end - local_ic_high
+        diffeq = config.model.build()
+        sol_dense = segment_dd._simulate(
+            diffeq,
+            config.initial_condition,
+            t_span,
+            dense_output=True,
+            **integrator_kwargs,
+        )
+        assert sol_dense.sol is not None
+        trajectories, t_trajectories = segment_dd._sample_trajectories(
+            configs, t_span, rng, **integrator_kwargs
+        )
+        local_traj = trajectories[0]
+        if lift_basis is not None:
+            local_traj = local_traj @ lift_basis
+        traj = local_traj + y0
+        t_local = t_trajectories[0]
+        sim_t_start, sim_t_end = t_span
+        node_global_t = parent_global_t + (sim_t_end - sim_t_start)
+        t_global = parent_global_t + (t_local - sim_t_start)
+        node = TreeNode(
+            solution=sol_dense.sol,
+            y0=y0.tolist(),
+            t_start=sim_t_start,
+            t_end=sim_t_end,
+            global_t=node_global_t,
+            depth=depth,
+            lift_basis=lift_basis,
+        )
+        return node, traj, t_global
+
+    def generate_data(self, **integrator_kwargs):
+        rng = np.random.default_rng(self.seed)
+        forcing_seed_counter = 0
+        next_node_id = 0
+
+        all_trajectories: list[np.ndarray] = []
+        all_t_global: list[np.ndarray] = []
+        all_depths: list[np.ndarray] = []
+        all_node_ids: list[np.ndarray] = []
+
+        def spawn(ic, segment_type, parent_global_t, depth):
+            nonlocal forcing_seed_counter, next_node_id
+            node, traj, t_global = self._spawn_segment(
+                ic=ic,
+                segment_type=segment_type,
+                parent_global_t=parent_global_t,
+                depth=depth,
+                forcing_seed=forcing_seed_counter,
+                rng=rng,
+                integrator_kwargs=integrator_kwargs,
+            )
+            forcing_seed_counter += 1
+            n_points = traj.shape[0]
+            all_trajectories.append(traj)
+            all_t_global.append(t_global)
+            all_depths.append(np.full(n_points, depth, dtype=int))
+            all_node_ids.append(np.full(n_points, next_node_id, dtype=int))
+            next_node_id += 1
+            return node
+
+        root_node = spawn(
+            ic=np.asarray(self.initial_condition, dtype=float),
+            segment_type="line",
+            parent_global_t=0.0,
+            depth=0,
+        )
+
+        queue: deque[TreeNode] = deque([root_node])
+        branch_count = 1
+
+        while queue:
+            node = queue.popleft()
+            action = self._select_action(node.depth, branch_count, rng)
+            if action == "stop":
+                continue
+
+            if action == "bisect":
+                t_local = node.t_start + rng.uniform(0.25, 0.75) * (
+                    node.t_end - node.t_start
+                )
+                child_ic = self._resolve(node, t_local)
+                child_parent_global_t = node.global_t - (node.t_end - t_local)
+                child = spawn(child_ic, "line", child_parent_global_t, node.depth + 1)
+                queue.append(child)
+                branch_count += 1
+            elif action == "add":
+                child_ic = self._resolve(node, node.t_end)
+                for _ in range(2):
+                    child = spawn(child_ic, "line", node.global_t, node.depth + 1)
+                    queue.append(child)
+                branch_count += 1
+            elif action == "loop":
+                child_ic = self._resolve(node, node.t_end)
+                child = spawn(child_ic, "loop", node.global_t, node.depth + 1)
+                queue.append(child)
+                branch_count += 1
+
+        X_low = np.vstack(all_trajectories)
+        if self.low_dim_noise_std > 0:
+            X_low = X_low + rng.normal(0.0, self.low_dim_noise_std, X_low.shape)
+        X_high, embedding_basis = DynamicData._embedding_isometric(
+            X_low, self.embedding_dim, rng
+        )
+        if self.high_dim_noise_std > 0:
+            X_high = X_high + rng.normal(0.0, self.high_dim_noise_std, X_high.shape)
+
+        t_global_arr = np.concatenate(all_t_global)
+        depths_arr = np.concatenate(all_depths)
+        node_ids_arr = np.concatenate(all_node_ids)
+
+        self.data = AnnData(X=X_high)
+        self.data.obsm["X_true_manifold"] = X_low
+        self.data.obs["t"] = t_global_arr
+        self.data.obs["depth"] = depths_arr
+        self.data.obs["node_id"] = node_ids_arr
+        self.data.uns["embedding_basis"] = embedding_basis
+        self.meta.true_trajectories = [traj.tolist() for traj in all_trajectories]
 
 
 class SplatterData(BenchSingleData):

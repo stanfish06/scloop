@@ -80,6 +80,36 @@ indent = 2
 keep_full_version = false
 max_supported_python = "3.12"
 
+[tool.pyrefly]
+project-includes = [ "src" ]
+project-excludes = [
+  "**/__pycache__",
+  "examples",
+  "**/*.pyx",
+  "**/*.pxd",
+]
+python-platform = "linux"
+python-version = "3.12.0"
+infer-with-first-use = false
+# [tool.setuptools]
+# package-dir = { "" = "src" }
+# ext-modules = [
+#   { name = "scloop.data.ripser_lib", sources = [
+#     "./src/scloop/data/ripser_lib.pyx",
+#     "./src/scloop/data/ripser.cpp",
+#   ], language = "c++", optional = false },
+#   { name = "scloop.utils.linear_algebra_gf2.m4ri_lib", sources = [
+#     "./src/scloop/utils/linear_algebra_gf2/m4ri_lib.pyx",
+#   ], language = "c", optional = false, libraries = ["m4ri"], extra-objects = [
+#     "./src/scloop/utils/linear_algebra_gf2/libm4ri.a",
+#   ], include-dirs = [
+#     "./src/scloop/utils/linear_algebra_gf2/include",
+#   ] },
+# ]
+errors.untyped-import = "ignore"
+errors.missing-import = "error"
+sub-config = [ { matches = "src" } ]
+
 # use 1.1.406 pyright or a version after 1.1.407 (does not work well with pydantic dataclass)
 [tool.pyright]
 include = [ "src" ]
@@ -101,18 +131,3 @@ venv = ".venv"
 
 [tool.ty]
 src = { include = [ "src" ] }
-# [tool.setuptools]
-# package-dir = { "" = "src" }
-# ext-modules = [
-#   { name = "scloop.data.ripser_lib", sources = [
-#     "./src/scloop/data/ripser_lib.pyx",
-#     "./src/scloop/data/ripser.cpp",
-#   ], language = "c++", optional = false },
-#   { name = "scloop.utils.linear_algebra_gf2.m4ri_lib", sources = [
-#     "./src/scloop/utils/linear_algebra_gf2/m4ri_lib.pyx",
-#   ], language = "c", optional = false, libraries = ["m4ri"], extra-objects = [
-#     "./src/scloop/utils/linear_algebra_gf2/libm4ri.a",
-#   ], include-dirs = [
-#     "./src/scloop/utils/linear_algebra_gf2/include",
-#   ] },
-# ]

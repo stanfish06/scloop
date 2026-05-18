@@ -10,3 +10,12 @@
 [submodule "src/scloop/utils/denoise/Sanity"]
 	path = src/scloop/utils/denoise/Sanity
 	url = https://github.com/stanfish06/Sanity.git
+[submodule "src/scloop/benchmarking/SLICER"]
+	path = src/scloop/benchmarking/SLICER
+	url = https://github.com/stanfish06/SLICER.git
+[submodule "src/scloop/benchmarking/StemID"]
+	path = src/scloop/benchmarking/StemID
+	url = https://github.com/stanfish06/StemID.git
+[submodule "src/scloop/benchmarking/splatter"]
+	path = src/scloop/benchmarking/splatter
+	url = https://github.com/stanfish06/splatter.git

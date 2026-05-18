@@ -19,6 +19,7 @@ wheels/
 todo/
 *.ipynb
 .vscode/
+*.h5ad
 
 # Refactor planning
 REFACTOR_PLAN.md

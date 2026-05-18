@@ -25,7 +25,13 @@ from ..data.constants import (
 )
 from ..data.containers import HomologyData
 from ..data.metadata import ScloopMeta
-from ..data.types import Index_t, NonZeroCount_t, Percent_t, PositiveFloat, Size_t
+from ..data.types import (
+    Index_t,
+    NonZeroCount_t,
+    Percent_t,
+    PositiveFloat,
+    Size_t,
+)
 from ..preprocessing.downsample import sample
 from ..utils.logging import (
     LogDisplay,
