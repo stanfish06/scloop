@@ -682,12 +682,14 @@ class TreeNode:
 class TreeData(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    segment_spec: LinearEnsembleSpec
+    line_spec: LinearEnsembleSpec
+    loop_spec: LoopEnsembleSpec
     initial_condition: list[float]
 
     p_bisect: float
     p_add: float
     p_stop: float
+    p_loop: float
     min_branch: int
     target_branches: int
     max_segments: int
@@ -709,34 +711,41 @@ class TreeData(BaseModel):
             depth + 1 <= self.max_segments and branch_count + 1 <= self.target_branches
         )
         can_stop = branch_count >= self.min_branch
-        if not can_extend:
+        actions: list[str] = []
+        weights: list[float] = []
+        if can_extend:
+            actions.extend(["add", "bisect", "loop"])
+            weights.extend([self.p_add, self.p_bisect, self.p_loop])
+        if can_stop:
+            actions.append("stop")
+            weights.append(self.p_stop)
+        if not actions:
             return "stop"
-        if not can_stop:
-            actions = ["add", "bisect"]
-            weights = np.asarray([self.p_add, self.p_bisect], dtype=float)
-        else:
-            actions = ["add", "bisect", "stop"]
-            weights = np.asarray([self.p_add, self.p_bisect, self.p_stop], dtype=float)
-        weights = weights / weights.sum()
-        return str(rng.choice(actions, p=weights))
+        weights_arr = np.asarray(weights, dtype=float)
+        weights_arr = weights_arr / weights_arr.sum()
+        return str(rng.choice(actions, p=weights_arr))
 
     def _spawn_segment(
         self,
         ic,
+        segment_type: Literal["line", "loop"],
         parent_global_t: float,
         depth: int,
         forcing_seed: int,
         rng,
         integrator_kwargs: dict,
     ) -> tuple[TreeNode, np.ndarray, np.ndarray]:
-        ic_list = list(np.asarray(ic).tolist()) if hasattr(ic, "tolist") else list(ic)
-        spec = self.segment_spec.model_copy(
+        parent_end = np.asarray(ic, dtype=float)
+        spec = (
+            self.line_spec if segment_type == "line" else self.loop_spec
+        ).model_copy(
             update={
                 "n_configs": 1,
                 "n_trajectories_per_config": 1,
                 "forcing_seed": forcing_seed,
             }
         )
+        t_span = getattr(spec, "solve_t_domain", spec.t_domain)
         segment_dd = DynamicData(
             data=None,
             ensemble=spec,
@@ -750,8 +759,9 @@ class TreeData(BaseModel):
         )
         configs = spec.sample()
         config = configs[0]
+        local_ic = np.asarray(config.initial_condition, dtype=float)
+        y0 = parent_end - local_ic
         diffeq = config.model.build()
-        t_span = spec.t_domain
         sol_dense = segment_dd._simulate(
             diffeq,
             config.initial_condition,
@@ -763,14 +773,14 @@ class TreeData(BaseModel):
         trajectories, t_trajectories = segment_dd._sample_trajectories(
             configs, t_span, rng, **integrator_kwargs
         )
-        traj = trajectories[0] + np.array(ic_list)
+        traj = trajectories[0] + y0
         t_local = t_trajectories[0]
         sim_t_start, sim_t_end = t_span
         node_global_t = parent_global_t + (sim_t_end - sim_t_start)
         t_global = parent_global_t + (t_local - sim_t_start)
         node = TreeNode(
             solution=sol_dense.sol,
-            y0=ic_list,
+            y0=y0.tolist(),
             t_start=sim_t_start,
             t_end=sim_t_end,
             global_t=node_global_t,
@@ -788,16 +798,32 @@ class TreeData(BaseModel):
         all_depths: list[np.ndarray] = []
         all_node_ids: list[np.ndarray] = []
 
-        root_ic = np.asarray(self.initial_condition, dtype=float)
-        root_node, root_traj, root_t = self._spawn_segment(
-            root_ic, 0.0, 0, forcing_seed_counter, rng, integrator_kwargs
+        def spawn(ic, segment_type, parent_global_t, depth):
+            nonlocal forcing_seed_counter, next_node_id
+            node, traj, t_global = self._spawn_segment(
+                ic=ic,
+                segment_type=segment_type,
+                parent_global_t=parent_global_t,
+                depth=depth,
+                forcing_seed=forcing_seed_counter,
+                rng=rng,
+                integrator_kwargs=integrator_kwargs,
+            )
+            forcing_seed_counter += 1
+            n_points = traj.shape[0]
+            all_trajectories.append(traj)
+            all_t_global.append(t_global)
+            all_depths.append(np.full(n_points, depth, dtype=int))
+            all_node_ids.append(np.full(n_points, next_node_id, dtype=int))
+            next_node_id += 1
+            return node
+
+        root_node = spawn(
+            ic=np.asarray(self.initial_condition, dtype=float),
+            segment_type="line",
+            parent_global_t=0.0,
+            depth=0,
         )
-        forcing_seed_counter += 1
-        all_trajectories.append(root_traj)
-        all_t_global.append(root_t)
-        all_depths.append(np.full(root_traj.shape[0], 0, dtype=int))
-        all_node_ids.append(np.full(root_traj.shape[0], next_node_id, dtype=int))
-        next_node_id += 1
 
         queue: deque[TreeNode] = deque([root_node])
         branch_count = 1
@@ -805,58 +831,29 @@ class TreeData(BaseModel):
         while queue:
             node = queue.popleft()
             action = self._select_action(node.depth, branch_count, rng)
-
             if action == "stop":
                 continue
 
+            parent_y0 = np.asarray(node.y0)
             if action == "bisect":
                 t_local = node.t_start + rng.uniform(0.25, 0.75) * (
                     node.t_end - node.t_start
                 )
-                child_ic = np.asarray(node.solution(t_local)) + np.array(node.y0)
+                child_ic = np.asarray(node.solution(t_local)) + parent_y0
                 child_parent_global_t = node.global_t - (node.t_end - t_local)
-                child_node, child_traj, child_t = self._spawn_segment(
-                    child_ic,
-                    child_parent_global_t,
-                    node.depth + 1,
-                    forcing_seed_counter,
-                    rng,
-                    integrator_kwargs,
-                )
-                forcing_seed_counter += 1
-                all_trajectories.append(child_traj)
-                all_t_global.append(child_t)
-                all_depths.append(
-                    np.full(child_traj.shape[0], node.depth + 1, dtype=int)
-                )
-                all_node_ids.append(
-                    np.full(child_traj.shape[0], next_node_id, dtype=int)
-                )
-                next_node_id += 1
-                queue.append(child_node)
+                child = spawn(child_ic, "line", child_parent_global_t, node.depth + 1)
+                queue.append(child)
                 branch_count += 1
             elif action == "add":
-                child_ic = np.asarray(node.solution(node.t_end)) + np.array(node.y0)
+                child_ic = np.asarray(node.solution(node.t_end)) + parent_y0
                 for _ in range(2):
-                    child_node, child_traj, child_t = self._spawn_segment(
-                        child_ic,
-                        node.global_t,
-                        node.depth + 1,
-                        forcing_seed_counter,
-                        rng,
-                        integrator_kwargs,
-                    )
-                    forcing_seed_counter += 1
-                    all_trajectories.append(child_traj)
-                    all_t_global.append(child_t)
-                    all_depths.append(
-                        np.full(child_traj.shape[0], node.depth + 1, dtype=int)
-                    )
-                    all_node_ids.append(
-                        np.full(child_traj.shape[0], next_node_id, dtype=int)
-                    )
-                    next_node_id += 1
-                    queue.append(child_node)
+                    child = spawn(child_ic, "line", node.global_t, node.depth + 1)
+                    queue.append(child)
+                branch_count += 1
+            elif action == "loop":
+                child_ic = np.asarray(node.solution(node.t_end)) + parent_y0
+                child = spawn(child_ic, "loop", node.global_t, node.depth + 1)
+                queue.append(child)
                 branch_count += 1
 
         X_low = np.vstack(all_trajectories)
