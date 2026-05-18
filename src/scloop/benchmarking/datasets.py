@@ -668,7 +668,7 @@ class DynamicData(BenchSingleData):
         self.meta.true_trajectories = [traj.tolist() for traj in trajectories]
 
 
-@dataclass
+@dataclass(config=ConfigDict(arbitrary_types_allowed=True))
 class TreeNode:
     solution: Any
     y0: list[float]
@@ -676,6 +676,7 @@ class TreeNode:
     t_end: float
     global_t: float
     depth: int
+    lift_basis: np.ndarray | None = None
 
 
 # make a compound data class alongside BenchSingleData?
@@ -705,6 +706,23 @@ class TreeData(BaseModel):
     meta: BenchDataMeta = Field(default_factory=DynamicDataMeta)
     runners: list[MethodRunner] = Field(default_factory=list)
     results: list[BenchResult] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _validate_dims(self):
+        if self.line_spec.ndims < 2:
+            raise ValueError("line_spec.ndims must be >= 2")
+        if len(self.initial_condition) != self.line_spec.ndims:
+            raise ValueError(
+                f"initial_condition length {len(self.initial_condition)} "
+                f"!= line_spec.ndims {self.line_spec.ndims}"
+            )
+        return self
+
+    def _resolve(self, node: TreeNode, t: float) -> np.ndarray:
+        local = np.asarray(node.solution(t))
+        if node.lift_basis is not None:
+            local = local @ node.lift_basis
+        return local + np.asarray(node.y0)
 
     def _select_action(self, depth: int, branch_count: int, rng) -> str:
         can_extend = (
@@ -760,7 +778,16 @@ class TreeData(BaseModel):
         configs = spec.sample()
         config = configs[0]
         local_ic = np.asarray(config.initial_condition, dtype=float)
-        y0 = parent_end - local_ic
+        if segment_type == "loop":
+            ndims = self.line_spec.ndims
+            M = rng.standard_normal((ndims, 2))
+            Q, _ = np.linalg.qr(M)
+            lift_basis: np.ndarray | None = Q.T
+            local_ic_high = local_ic @ lift_basis
+        else:
+            lift_basis = None
+            local_ic_high = local_ic
+        y0 = parent_end - local_ic_high
         diffeq = config.model.build()
         sol_dense = segment_dd._simulate(
             diffeq,
@@ -773,7 +800,10 @@ class TreeData(BaseModel):
         trajectories, t_trajectories = segment_dd._sample_trajectories(
             configs, t_span, rng, **integrator_kwargs
         )
-        traj = trajectories[0] + y0
+        local_traj = trajectories[0]
+        if lift_basis is not None:
+            local_traj = local_traj @ lift_basis
+        traj = local_traj + y0
         t_local = t_trajectories[0]
         sim_t_start, sim_t_end = t_span
         node_global_t = parent_global_t + (sim_t_end - sim_t_start)
@@ -785,6 +815,7 @@ class TreeData(BaseModel):
             t_end=sim_t_end,
             global_t=node_global_t,
             depth=depth,
+            lift_basis=lift_basis,
         )
         return node, traj, t_global
 
@@ -834,24 +865,23 @@ class TreeData(BaseModel):
             if action == "stop":
                 continue
 
-            parent_y0 = np.asarray(node.y0)
             if action == "bisect":
                 t_local = node.t_start + rng.uniform(0.25, 0.75) * (
                     node.t_end - node.t_start
                 )
-                child_ic = np.asarray(node.solution(t_local)) + parent_y0
+                child_ic = self._resolve(node, t_local)
                 child_parent_global_t = node.global_t - (node.t_end - t_local)
                 child = spawn(child_ic, "line", child_parent_global_t, node.depth + 1)
                 queue.append(child)
                 branch_count += 1
             elif action == "add":
-                child_ic = np.asarray(node.solution(node.t_end)) + parent_y0
+                child_ic = self._resolve(node, node.t_end)
                 for _ in range(2):
                     child = spawn(child_ic, "line", node.global_t, node.depth + 1)
                     queue.append(child)
                 branch_count += 1
             elif action == "loop":
-                child_ic = np.asarray(node.solution(node.t_end)) + parent_y0
+                child_ic = self._resolve(node, node.t_end)
                 child = spawn(child_ic, "loop", node.global_t, node.depth + 1)
                 queue.append(child)
                 branch_count += 1
