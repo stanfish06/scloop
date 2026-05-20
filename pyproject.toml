@@ -19,6 +19,7 @@ classifiers = [
 dependencies = [
   "cython>=3.0.12",
   "glasbey==0.3",
+  "huggingface-hub",
   "igraph>=0.11",
   "loguru==0.7.3",
   "numba>=0.62.1",
@@ -29,6 +30,7 @@ dependencies = [
   "pygam>=0.12",
   "pynndescent>=0.5.13",
   "pytest>=8.4",
+  "pyyaml",
   "rich==14.2",
   "scanpy[leiden]>=1.11.2",
   "scikit-misc>=0.5.2",
