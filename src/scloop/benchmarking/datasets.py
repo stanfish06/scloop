@@ -680,6 +680,7 @@ class TreeNode:
     global_t: float
     depth: int
     lift_basis: np.ndarray | None = None
+    segment_type: Literal["line", "loop"] = "line"
 
 
 # make a compound data class alongside BenchSingleData?
@@ -819,6 +820,7 @@ class TreeData(BaseModel):
             global_t=node_global_t,
             depth=depth,
             lift_basis=lift_basis,
+            segment_type=segment_type,
         )
         return node, traj, t_global
 
@@ -831,6 +833,7 @@ class TreeData(BaseModel):
         all_t_global: list[np.ndarray] = []
         all_depths: list[np.ndarray] = []
         all_node_ids: list[np.ndarray] = []
+        all_segment_types: list[str] = []
 
         def spawn(ic, segment_type, parent_global_t, depth):
             nonlocal forcing_seed_counter, next_node_id
@@ -849,6 +852,7 @@ class TreeData(BaseModel):
             all_t_global.append(t_global)
             all_depths.append(np.full(n_points, depth, dtype=int))
             all_node_ids.append(np.full(n_points, next_node_id, dtype=int))
+            all_segment_types.append(segment_type)
             next_node_id += 1
             return node
 
@@ -902,11 +906,17 @@ class TreeData(BaseModel):
         depths_arr = np.concatenate(all_depths)
         node_ids_arr = np.concatenate(all_node_ids)
 
+        n_points_per_node = [len(t) for t in all_t_global]
+        segment_types_arr = np.concatenate(
+            [np.full(n, st) for n, st in zip(n_points_per_node, all_segment_types)]
+        )
+
         self.data = AnnData(X=X_high)
         self.data.obsm["X_true_manifold"] = X_low
         self.data.obs["t"] = t_global_arr
         self.data.obs["depth"] = depths_arr
         self.data.obs["node_id"] = node_ids_arr
+        self.data.obs["segment_type"] = segment_types_arr.astype(object)
         self.data.uns["embedding_basis"] = embedding_basis
         self.meta.true_trajectories = [traj.tolist() for traj in all_trajectories]
 
