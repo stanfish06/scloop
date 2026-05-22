@@ -38,11 +38,11 @@ build: build-m4ri build-sanity
 fresh-sync: build-m4ri
 	CPLUS_INCLUDE_PATH=$(PROJECT_ROOT)/src/scloop/data:$(DM_PREFIX)/discrete-frechet-distance uv sync
 
-sync: clean build-m4ri
+sync: clean build-m4ri build-sanity
 	python setup.py build_ext --inplace
 	CPLUS_INCLUDE_PATH=$(PROJECT_ROOT)/src/scloop/data:$(DM_PREFIX)/discrete-frechet-distance uv sync
 
-full-sync: build-m4ri
+full-sync: build-m4ri build-sanity
 	uv cache clean
 	uv cache prune
 	rm -rf .venv
