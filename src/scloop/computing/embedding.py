@@ -30,7 +30,7 @@ def compute_diffmap(
     alpha_kernel_diffusion: PositiveFloat = 10.0,
     use_multistep_eigenvalues: bool = True,
     use_potential_embedding: bool = False,
-    potential_t: PositiveFloat = 3.0,
+    potential_t: PositiveFloat | list[PositiveFloat] = 3.0,
     potential_kind: Literal["log", "sqrt"] = "sqrt",
 ) -> DiffusionMap:
     diffmap = DiffusionMap(
@@ -82,7 +82,7 @@ def compute_diffmap(
     if use_potential_embedding:
         if flavor != "custom":
             raise ValueError("use_potential_embedding requires flavor='custom'")
-        coords = diffmap.compute_potential_space(
+        coords = diffmap.compute_multi_step_potential_space(
             n_comps=n_comps,
             t=potential_t,
             kind=potential_kind,
@@ -240,10 +240,10 @@ class DiffusionMap:
         else:
             self.eigenvalues_multistep = eigvals
 
-    def compute_potential_space(
+    def compute_multi_step_potential_space(
         self,
         n_comps: Count_t,
-        t: PositiveFloat,
+        t: PositiveFloat | list[PositiveFloat],
         kind: Literal["log", "sqrt"] = "sqrt",
         random_state: int = 0,
     ) -> np.ndarray:
@@ -258,15 +258,20 @@ class DiffusionMap:
         d_inv_sqrt_safe = np.clip(d_inv_sqrt, NUMERIC_EPSILON, None)
         d_sqrt = (1.0 / d_inv_sqrt_safe).astype(np.float32)
         V_sym = d_sqrt[:, np.newaxis] * eigvecs
-        eigvals_t = np.clip(eigvals, 0.0, None) ** np.float32(t)
-        A_sym_t = (V_sym * eigvals_t) @ V_sym.T
-        P_t = (d_inv_sqrt_safe[:, np.newaxis] * A_sym_t) * d_sqrt[np.newaxis, :]
-        match kind:
-            case "log":
-                U = -np.log(np.clip(P_t, NUMERIC_EPSILON, None))
-            case "sqrt":
-                U = np.sqrt(np.clip(P_t, 0.0, None))
-        U_c = U - U.mean(axis=0, keepdims=True)
+        eigvals_clipped = np.clip(eigvals, 0.0, None)
+        ts = np.atleast_1d(np.asarray(t, dtype=np.float32))
+        Us = []
+        for t_i in ts:
+            eigvals_t = eigvals_clipped**t_i
+            A_sym_t = (V_sym * eigvals_t) @ V_sym.T
+            P_t = (d_inv_sqrt_safe[:, np.newaxis] * A_sym_t) * d_sqrt[np.newaxis, :]
+            match kind:
+                case "log":
+                    Us.append(-np.log(np.clip(P_t, NUMERIC_EPSILON, None)))
+                case "sqrt":
+                    Us.append(np.sqrt(np.clip(P_t, 0.0, None)))
+        U_all = np.concatenate(Us, axis=1) if len(Us) > 1 else Us[0]
+        U_c = U_all - U_all.mean(axis=0, keepdims=True)
         n = U_c.shape[0]
         k = min(n_comps, n - 1)
         U_left, S, _ = randomized_svd(U_c, n_components=k, random_state=random_state)
