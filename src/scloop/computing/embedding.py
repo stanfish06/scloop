@@ -82,8 +82,7 @@ def compute_diffmap(
     if use_potential_embedding:
         if flavor != "custom":
             raise ValueError("use_potential_embedding requires flavor='custom'")
-        coords = _compute_potential_embedding(
-            diffmap=diffmap,
+        coords = diffmap.compute_potential_space(
             n_comps=n_comps,
             t=potential_t,
             kind=potential_kind,
@@ -91,38 +90,6 @@ def compute_diffmap(
         adata.obsm["X_diffmap"] = coords
         diffmap.diffmap_coords = coords
     return diffmap
-
-
-def _compute_potential_embedding(
-    diffmap: DiffusionMap,
-    n_comps: Count_t,
-    t: PositiveFloat,
-    kind: Literal["log", "sqrt"] = "sqrt",
-    random_state: int = 0,
-) -> np.ndarray:
-    eigvecs = diffmap.eigenvectors
-    eigvals = diffmap.eigenvalues
-    d_inv_sqrt = diffmap._d_inv_sqrt
-    assert eigvecs is not None and eigvals is not None and d_inv_sqrt is not None
-    eigvecs = eigvecs.astype(np.float32)
-    eigvals = eigvals.astype(np.float32)
-    d_inv_sqrt = d_inv_sqrt.astype(np.float32)
-    d_inv_sqrt_safe = np.clip(d_inv_sqrt, NUMERIC_EPSILON, None)
-    d_sqrt = (1.0 / d_inv_sqrt_safe).astype(np.float32)
-    V_sym = d_sqrt[:, np.newaxis] * eigvecs
-    eigvals_t = np.clip(eigvals, 0.0, None) ** np.float32(t)
-    A_sym_t = (V_sym * eigvals_t) @ V_sym.T
-    P_t = (d_inv_sqrt_safe[:, np.newaxis] * A_sym_t) * d_sqrt[np.newaxis, :]
-    match kind:
-        case "log":
-            U = -np.log(np.clip(P_t, NUMERIC_EPSILON, None))
-        case "sqrt":
-            U = np.sqrt(np.clip(P_t, 0.0, None))
-    U_c = U - U.mean(axis=0, keepdims=True)
-    n = U_c.shape[0]
-    k = min(n_comps, n - 1)
-    U_left, S, _ = randomized_svd(U_c, n_components=k, random_state=random_state)
-    return (U_left * S).astype(np.float32)
 
 
 @jit(nopython=True, cache=True)
@@ -272,6 +239,38 @@ class DiffusionMap:
             self.eigenvalues_multistep = eigvals / (1 - self.damp_multistep * eigvals)
         else:
             self.eigenvalues_multistep = eigvals
+
+    def compute_potential_space(
+        self,
+        n_comps: Count_t,
+        t: PositiveFloat,
+        kind: Literal["log", "sqrt"] = "sqrt",
+        random_state: int = 0,
+    ) -> np.ndarray:
+        assert (
+            self.eigenvectors is not None
+            and self.eigenvalues is not None
+            and self._d_inv_sqrt is not None
+        )
+        eigvecs = self.eigenvectors.astype(np.float32)
+        eigvals = self.eigenvalues.astype(np.float32)
+        d_inv_sqrt = self._d_inv_sqrt.astype(np.float32)
+        d_inv_sqrt_safe = np.clip(d_inv_sqrt, NUMERIC_EPSILON, None)
+        d_sqrt = (1.0 / d_inv_sqrt_safe).astype(np.float32)
+        V_sym = d_sqrt[:, np.newaxis] * eigvecs
+        eigvals_t = np.clip(eigvals, 0.0, None) ** np.float32(t)
+        A_sym_t = (V_sym * eigvals_t) @ V_sym.T
+        P_t = (d_inv_sqrt_safe[:, np.newaxis] * A_sym_t) * d_sqrt[np.newaxis, :]
+        match kind:
+            case "log":
+                U = -np.log(np.clip(P_t, NUMERIC_EPSILON, None))
+            case "sqrt":
+                U = np.sqrt(np.clip(P_t, 0.0, None))
+        U_c = U - U.mean(axis=0, keepdims=True)
+        n = U_c.shape[0]
+        k = min(n_comps, n - 1)
+        U_left, S, _ = randomized_svd(U_c, n_components=k, random_state=random_state)
+        return (U_left * S).astype(np.float32)
 
     def project_query_data(
         self,
