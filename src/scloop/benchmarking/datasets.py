@@ -104,8 +104,8 @@ class RawPHRunner(MethodRunner):
 class BenchContainer(BaseModel, ABC):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    data: AnnData | list[AnnData] | None
-    meta: BenchDataMeta
+    data: AnnData | list[AnnData] | None = None
+    meta: BenchDataMeta | None = None
     runners: list[MethodRunner] = Field(default_factory=list)
     results: list[BenchResult] = Field(default_factory=list)
 
@@ -934,8 +934,9 @@ class RealData(BenchSingleData):
 
     @staticmethod
     def _load_registry() -> dict:
-        import yaml
         from importlib.resources import files
+
+        import yaml
 
         text = (files("scloop.benchmarking") / "hf_registry.yaml").read_text()
         return yaml.safe_load(text) or {}

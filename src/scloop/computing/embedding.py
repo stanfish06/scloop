@@ -10,9 +10,10 @@ from numba import jit
 from pydantic.dataclasses import dataclass
 from pynndescent import NNDescent
 from scipy.sparse import csr_matrix, diags
+from sklearn.utils.extmath import randomized_svd
 
 from ..data.constants import NUMERIC_EPSILON
-from ..data.types import Count_t, Percent_t
+from ..data.types import Count_t, Percent_t, PositiveFloat
 from .utils import compute_sparse_eigendecomposition
 
 
@@ -26,10 +27,16 @@ def compute_diffmap(
     random_state: int = 0,
     *,
     damp_multistep_diffusion: Percent_t = 1.0,
+    alpha_kernel_diffusion: PositiveFloat = 10.0,
     use_multistep_eigenvalues: bool = True,
+    use_potential_embedding: bool = False,
+    potential_t: PositiveFloat = 3.0,
+    potential_kind: Literal["log", "sqrt"] = "sqrt",
 ) -> DiffusionMap:
     diffmap = DiffusionMap(
-        n_neighbors=n_neighbors, damp_multistep=damp_multistep_diffusion
+        n_neighbors=n_neighbors,
+        damp_multistep=damp_multistep_diffusion,
+        alpha_kernel=alpha_kernel_diffusion,
     )
     match flavor:
         case "scanpy":
@@ -72,7 +79,50 @@ def compute_diffmap(
             adata.obsm["X_diffmap_original"] = diffusion_coords_full.copy()
             adata.obsm["X_diffmap"] = diffusion_coords_full[:, 1:]
             diffmap.diffmap_coords = diffusion_coords_full[:, 1:]
+    if use_potential_embedding:
+        if flavor != "custom":
+            raise ValueError("use_potential_embedding requires flavor='custom'")
+        coords = _compute_potential_embedding(
+            diffmap=diffmap,
+            n_comps=n_comps,
+            t=potential_t,
+            kind=potential_kind,
+        )
+        adata.obsm["X_diffmap"] = coords
+        diffmap.diffmap_coords = coords
     return diffmap
+
+
+def _compute_potential_embedding(
+    diffmap: DiffusionMap,
+    n_comps: Count_t,
+    t: PositiveFloat,
+    kind: Literal["log", "sqrt"] = "sqrt",
+    random_state: int = 0,
+) -> np.ndarray:
+    eigvecs = diffmap.eigenvectors
+    eigvals = diffmap.eigenvalues
+    d_inv_sqrt = diffmap._d_inv_sqrt
+    assert eigvecs is not None and eigvals is not None and d_inv_sqrt is not None
+    eigvecs = eigvecs.astype(np.float32)
+    eigvals = eigvals.astype(np.float32)
+    d_inv_sqrt = d_inv_sqrt.astype(np.float32)
+    d_inv_sqrt_safe = np.clip(d_inv_sqrt, NUMERIC_EPSILON, None)
+    d_sqrt = (1.0 / d_inv_sqrt_safe).astype(np.float32)
+    V_sym = d_sqrt[:, np.newaxis] * eigvecs
+    eigvals_t = np.clip(eigvals, 0.0, None) ** np.float32(t)
+    A_sym_t = (V_sym * eigvals_t) @ V_sym.T
+    P_t = (d_inv_sqrt_safe[:, np.newaxis] * A_sym_t) * d_sqrt[np.newaxis, :]
+    match kind:
+        case "log":
+            U = -np.log(np.clip(P_t, NUMERIC_EPSILON, None))
+        case "sqrt":
+            U = np.sqrt(np.clip(P_t, 0.0, None))
+    U_c = U - U.mean(axis=0, keepdims=True)
+    n = U_c.shape[0]
+    k = min(n_comps, n - 1)
+    U_left, S, _ = randomized_svd(U_c, n_components=k, random_state=random_state)
+    return (U_left * S).astype(np.float32)
 
 
 @jit(nopython=True, cache=True)
@@ -101,7 +151,7 @@ def compute_knn_diffusion_projection(
 
 @jit(nopython=True)
 def compute_pairwise_adaptive_kernel_similarity(
-    idx_nei: np.ndarray, dist_nei: np.ndarray
+    idx_nei: np.ndarray, dist_nei: np.ndarray, alpha: float = 10
 ) -> np.ndarray:
     """Adaptive bandwidth Guassian kernel with density normalization
     Returns
@@ -126,7 +176,9 @@ def compute_pairwise_adaptive_kernel_similarity(
             lo, hi = (i, j) if i < j else (j, i)
             k = n * lo + hi - ((lo + 2) * (lo + 1)) // 2
             sum_var = vars_local[i] + vars_local[j]
-            new_val = (1.0 / np.sqrt(sum_var * 0.5)) * np.exp(-(dist**2) / sum_var)
+            new_val = (1.0 / np.sqrt(sum_var * 0.5)) * np.exp(
+                -(((dist**2) / sum_var) ** alpha)
+            )
             if new_val > kernel_sim_raw[k]:
                 kernel_sim_raw[k] = new_val
 
@@ -161,6 +213,7 @@ def compute_pairwise_adaptive_kernel_similarity(
 class DiffusionMap:
     n_neighbors: Count_t
     damp_multistep: Percent_t = 1.0
+    alpha_kernel: PositiveFloat = 10.0
     eigenvalues: np.ndarray | None = None
     eigenvalues_multistep: np.ndarray | None = None
     eigenvectors: np.ndarray | None = None
@@ -193,6 +246,7 @@ class DiffusionMap:
         _rows, _cols, _vals = compute_pairwise_adaptive_kernel_similarity(
             idx_nei=knn_index.neighbor_graph[0][:, 1:],
             dist_nei=dist_nei,
+            alpha=self.alpha_kernel,
         )
         K = csr_matrix((_vals, (_rows, _cols)), shape=(n, n))
         K = K + K.T

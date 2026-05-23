@@ -22,12 +22,20 @@ def compute_posterior_gene_noise_model(
     X = X.T
     # make sure numpy is row-major (each row (gene) is contiguous in memory)
     X = X.toarray(order="C") if issparse(X) else np.ascontiguousarray(X)
+    X = np.ascontiguousarray(X, dtype=np.float64)
     library_size = X.sum(axis=0)
     gene_total = X.sum(axis=1)
     # if use_max_v:
     #     print("[DEBUG] Use max-like posterior Gaussian bin")
     log_mean, log_var = run_sanity(
-        X, library_size, gene_total, nbins, vmin, vmax, use_max_v
+        X,
+        library_size,
+        gene_total,
+        nbins,
+        vmin,
+        vmax,
+        verbose=True,
+        use_max_v=use_max_v,
     )
     adata.layers["sanity_log_mean"] = log_mean.T
     adata.layers["sanity_log_var"] = log_var.T
