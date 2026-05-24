@@ -260,21 +260,25 @@ class DiffusionMap:
         V_sym = d_sqrt[:, np.newaxis] * eigvecs
         eigvals_clipped = np.clip(eigvals, 0.0, None)
         ts = np.atleast_1d(np.asarray(t, dtype=np.float32))
-        Us = []
-        for t_i in ts:
+        n = V_sym.shape[0]
+        U_all = np.empty((n, n * len(ts)), dtype=np.float32)
+        for i, t_i in enumerate(ts):
             eigvals_t = eigvals_clipped**t_i
-            A_sym_t = (V_sym * eigvals_t) @ V_sym.T
-            P_t = (d_inv_sqrt_safe[:, np.newaxis] * A_sym_t) * d_sqrt[np.newaxis, :]
+            P_t = (V_sym * eigvals_t) @ V_sym.T
+            P_t *= d_inv_sqrt_safe[:, np.newaxis]
+            P_t *= d_sqrt[np.newaxis, :]
+            block = U_all[:, i * n : (i + 1) * n]
             match kind:
                 case "log":
-                    Us.append(-np.log(np.clip(P_t, NUMERIC_EPSILON, None)))
+                    np.clip(P_t, NUMERIC_EPSILON, None, out=P_t)
+                    np.log(P_t, out=block)
+                    block *= -1.0
                 case "sqrt":
-                    Us.append(np.sqrt(np.clip(P_t, 0.0, None)))
-        U_all = np.concatenate(Us, axis=1) if len(Us) > 1 else Us[0]
-        U_c = U_all - U_all.mean(axis=0, keepdims=True)
-        n = U_c.shape[0]
+                    np.clip(P_t, 0.0, None, out=P_t)
+                    np.sqrt(P_t, out=block)
+        U_all -= U_all.mean(axis=0, keepdims=True)
         k = min(n_comps, n - 1)
-        U_left, S, _ = randomized_svd(U_c, n_components=k, random_state=random_state)
+        U_left, S, _ = randomized_svd(U_all, n_components=k, random_state=random_state)
         return (U_left * S).astype(np.float32)
 
     def project_query_data(
