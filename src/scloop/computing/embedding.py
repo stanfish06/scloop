@@ -131,7 +131,8 @@ def compute_pairwise_adaptive_kernel_similarity(
 
     vars_local = np.empty(n, dtype=np.float64)
     for i in range(n):
-        vars_local[i] = np.square(np.median(dist_nei[i]))
+        v = np.square(np.median(dist_nei[i]))
+        vars_local[i] = NUMERIC_EPSILON if v == 0.0 else v
 
     kernel_sim_raw = np.zeros(n * (n - 1) // 2)
     kernel_density = np.ones(n) * NUMERIC_EPSILON
@@ -142,7 +143,7 @@ def compute_pairwise_adaptive_kernel_similarity(
             dist = dist_nei[i, ni]
             lo, hi = (i, j) if i < j else (j, i)
             k = n * lo + hi - ((lo + 2) * (lo + 1)) // 2
-            sum_var = vars_local[i] + vars_local[j]
+            sum_var = vars_local[i] + vars_local[j] + NUMERIC_EPSILON
             new_val = (1.0 / np.sqrt(sum_var * 0.5)) * np.exp(
                 -(((dist**2) / sum_var) ** alpha)
             )
@@ -154,7 +155,9 @@ def compute_pairwise_adaptive_kernel_similarity(
             j = idx_nei[i, ni]
             lo, hi = (i, j) if i < j else (j, i)
             k = n * lo + hi - ((lo + 2) * (lo + 1)) // 2
-            kernel_density[i] += kernel_sim_raw[k] * np.sqrt(vars_local[j])
+            kernel_density[i] += kernel_sim_raw[k] * np.sqrt(
+                vars_local[j] + NUMERIC_EPSILON
+            )
 
     emitted = np.zeros(len(kernel_sim_raw), dtype=np.bool_)
     rows = np.empty(n * nn, dtype=np.int64)
@@ -171,7 +174,8 @@ def compute_pairwise_adaptive_kernel_similarity(
             emitted[k] = True
             rows[count] = lo
             cols[count] = hi
-            vals[count] = kernel_sim_raw[k] / (kernel_density[lo] * kernel_density[hi])
+            denom = kernel_density[lo] * kernel_density[hi] + NUMERIC_EPSILON
+            vals[count] = kernel_sim_raw[k] / denom
             count += 1
     return rows[:count], cols[:count], vals[:count]
 
@@ -209,7 +213,9 @@ class DiffusionMap:
             emb=emb, cache=False, query=False, **nn_kwargs
         )
         dist_nei = knn_index.neighbor_graph[1][:, 1:]
-        self._vars_local = np.array([np.median(dist_nei[i]) ** 2 for i in range(n)])
+        self._vars_local = np.array(
+            [max(np.median(dist_nei[i]) ** 2, NUMERIC_EPSILON) for i in range(n)]
+        )
         _rows, _cols, _vals = compute_pairwise_adaptive_kernel_similarity(
             idx_nei=knn_index.neighbor_graph[0][:, 1:],
             dist_nei=dist_nei,
@@ -218,7 +224,7 @@ class DiffusionMap:
         K = csr_matrix((_vals, (_rows, _cols)), shape=(n, n))
         K = K + K.T
         D = np.asarray(K.sum(axis=1)).flatten()
-        D[D == 0] = 1.0
+        D = np.maximum(D, NUMERIC_EPSILON)
         D_inv_sqrt = 1.0 / np.sqrt(D)
         self._d_inv_sqrt = D_inv_sqrt
         D_inv_sqrt_diag = diags(D_inv_sqrt)
