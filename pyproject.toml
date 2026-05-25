@@ -53,6 +53,7 @@ dev = [
   "phate>=2",
   "pyright==1.1.406",
   "ruff>=0.15.5",
+  "sctda>=0.97",
   "scvi-tools>=1.4.1",
   "ty>=0.0.1a34",
 ]
