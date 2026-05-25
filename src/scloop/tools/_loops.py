@@ -105,10 +105,12 @@ def find_loops(
         meta.bootstrap.life_pct = tightness_loops
         hd: HomologyData = HomologyData(meta=meta)
         """
-        ============ Auto-choose PH threshold ============
+        =============== Auto-choose PH threshold ===============
         - upper bound would be the max pw dist
         - choose a value such that all 1-loop dies
-        ==================================================
+        - todo: sometimes this approach is affected by outliers
+            - try percentile/truncated max over max_h1_death?
+        ========================================================
         """
         if threshold_homology is None:
             assert meta.preprocess is not None

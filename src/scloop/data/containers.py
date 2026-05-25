@@ -1133,7 +1133,7 @@ class HomologyData:
     def _test_loops(
         self,
         method_pval_correction: MultipleTestCorrectionMethod = "benjamini-hochberg",
-        presence_test_method: PresenceTestMethod = "fisher",
+        presence_test_method: PresenceTestMethod = "chi2",
     ) -> None:
         if self.bootstrap_data is None:
             return

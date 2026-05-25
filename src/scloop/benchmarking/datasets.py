@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from collections import deque
+from pathlib import Path
 from typing import Any, Callable, Iterator, Literal, NamedTuple
 
 import numpy as np
@@ -51,7 +52,9 @@ class SplatterDataMeta(BenchDataMeta):
 
 
 class RealDataMeta(BenchDataMeta):
-    pass
+    dataset_name: str = ""
+    doi: str | None = None
+    paper_title: str | None = None
 
 
 class BenchResult(BaseModel):
@@ -101,13 +104,13 @@ class RawPHRunner(MethodRunner):
 class BenchContainer(BaseModel, ABC):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    data: AnnData | list[AnnData] | None
-    meta: BenchDataMeta
+    data: AnnData | list[AnnData] | None = None
+    meta: BenchDataMeta | None = None
     runners: list[MethodRunner] = Field(default_factory=list)
     results: list[BenchResult] = Field(default_factory=list)
 
     @abstractmethod
-    def generate_data(self, **kwargs):
+    def hydrate(self, **kwargs):
         pass
 
     @abstractmethod
@@ -129,7 +132,7 @@ class BenchSingleData(BenchContainer, ABC):
 
     def run_methods(self):
         if self.data is None:
-            raise RuntimeError("Data not generated. Call generate_data() first.")
+            raise RuntimeError("Data not loaded. Call hydrate() first.")
         self.results = []
         for runner in self.runners:
             runner.prepare_adata(self.data)
@@ -626,7 +629,7 @@ class DynamicData(BenchSingleData):
                 t_trajectories.append(np.asarray(sol.t))
         return trajectories, t_trajectories
 
-    def generate_data(self, **integrator_kwargs):
+    def hydrate(self, **integrator_kwargs):
         rng = np.random.default_rng(self.seed)
         ensemble_t_domain = getattr(
             self.ensemble, "solve_t_domain", getattr(self.ensemble, "t_domain", None)
@@ -677,6 +680,7 @@ class TreeNode:
     global_t: float
     depth: int
     lift_basis: np.ndarray | None = None
+    segment_type: Literal["line", "loop"] = "line"
 
 
 # make a compound data class alongside BenchSingleData?
@@ -816,10 +820,11 @@ class TreeData(BaseModel):
             global_t=node_global_t,
             depth=depth,
             lift_basis=lift_basis,
+            segment_type=segment_type,
         )
         return node, traj, t_global
 
-    def generate_data(self, **integrator_kwargs):
+    def hydrate(self, **integrator_kwargs):
         rng = np.random.default_rng(self.seed)
         forcing_seed_counter = 0
         next_node_id = 0
@@ -828,6 +833,7 @@ class TreeData(BaseModel):
         all_t_global: list[np.ndarray] = []
         all_depths: list[np.ndarray] = []
         all_node_ids: list[np.ndarray] = []
+        all_segment_types: list[str] = []
 
         def spawn(ic, segment_type, parent_global_t, depth):
             nonlocal forcing_seed_counter, next_node_id
@@ -846,6 +852,7 @@ class TreeData(BaseModel):
             all_t_global.append(t_global)
             all_depths.append(np.full(n_points, depth, dtype=int))
             all_node_ids.append(np.full(n_points, next_node_id, dtype=int))
+            all_segment_types.append(segment_type)
             next_node_id += 1
             return node
 
@@ -899,11 +906,17 @@ class TreeData(BaseModel):
         depths_arr = np.concatenate(all_depths)
         node_ids_arr = np.concatenate(all_node_ids)
 
+        n_points_per_node = [len(t) for t in all_t_global]
+        segment_types_arr = np.concatenate(
+            [np.full(n, st) for n, st in zip(n_points_per_node, all_segment_types)]
+        )
+
         self.data = AnnData(X=X_high)
         self.data.obsm["X_true_manifold"] = X_low
         self.data.obs["t"] = t_global_arr
         self.data.obs["depth"] = depths_arr
         self.data.obs["node_id"] = node_ids_arr
+        self.data.obs["segment_type"] = segment_types_arr.astype(object)
         self.data.uns["embedding_basis"] = embedding_basis
         self.meta.true_trajectories = [traj.tolist() for traj in all_trajectories]
 
@@ -913,7 +926,71 @@ class SplatterData(BenchSingleData):
 
 
 class RealData(BenchSingleData):
-    pass
+    name: str
+    repo_id: str = "stanfish06/scloop-benchmarks"
+    revision: str = "main"
+    cache_dir: str | None = None
+    local_override: str | None = None
+
+    @staticmethod
+    def _load_registry() -> dict:
+        from importlib.resources import files
+
+        import yaml
+
+        text = (files("scloop.benchmarking") / "hf_registry.yaml").read_text()
+        return yaml.safe_load(text) or {}
+
+    @classmethod
+    def list_available(cls) -> list[str]:
+        return sorted(cls._load_registry().keys())
+
+    def _registry_entry(self) -> dict:
+        registry = self._load_registry()
+        if self.name not in registry:
+            raise KeyError(
+                f"Dataset {self.name!r} not in hf_registry.yaml. "
+                f"Available: {sorted(registry.keys())}"
+            )
+        return registry[self.name]
+
+    def _fetch(self) -> tuple[Path, Path]:
+        entry = self._registry_entry()
+        subdir = entry.get("subdir", self.name)
+        if self.local_override is not None:
+            base = Path(self.local_override)
+        else:
+            from huggingface_hub import snapshot_download
+
+            local = snapshot_download(
+                repo_id=self.repo_id,
+                repo_type="dataset",
+                revision=self.revision,
+                allow_patterns=[f"{subdir}/*"],
+                cache_dir=self.cache_dir,
+            )
+            base = Path(local) / subdir
+        h5ad_path = base / "data.h5ad"
+        yaml_path = base / "meta.yaml"
+        if not h5ad_path.is_file():
+            raise FileNotFoundError(f"Missing data.h5ad at {h5ad_path}")
+        if not yaml_path.is_file():
+            raise FileNotFoundError(f"Missing meta.yaml at {yaml_path}")
+        return h5ad_path, yaml_path
+
+    def _load_meta(self, yaml_path: Path) -> RealDataMeta:
+        import yaml
+
+        with yaml_path.open() as f:
+            payload = yaml.safe_load(f) or {}
+        return RealDataMeta(**payload)
+
+    def hydrate(self, **_):
+        from anndata import read_h5ad
+
+        h5ad_path, yaml_path = self._fetch()
+        self.data = read_h5ad(h5ad_path)
+        self.meta = self._load_meta(yaml_path)
 
 
 class BenchDataCollection(BenchContainer, ABC):

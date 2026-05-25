@@ -195,7 +195,7 @@ def prepare_adata(
         embedding_method,
         embedding_neighbors,
     )
-    needs_diffmap = "X_diffmap" not in adata.obsm and embedding_method == "diffmap"
+    needs_diffmap = embedding_method == "diffmap"
     needs_hvg = feature_selection_method in ("hvg", "hvg_delve")
     needs_delve = feature_selection_method == "hvg_delve"
     needs_scvi = embedding_method == "scvi" or embedding_neighbors == "scvi"
@@ -263,8 +263,9 @@ def prepare_adata(
                 raise ValueError("counts layer is required for Sanity noise model")
             if verbose:
                 logger.info("Step 2/5: Computing Sanity noise model")
-            # TODO: need to handle data type here (assume sparse matrix for now)
-            adata.obs["library_size_sanity"] = adata.layers["counts"].sum(axis=1).A1
+            adata.obs["library_size_sanity"] = np.asarray(
+                adata.layers["counts"].sum(axis=1)
+            ).ravel()
             compute_posterior_gene_noise_model(
                 adata=adata, use_layer="counts", **kwargs_sanity
             )
@@ -298,6 +299,7 @@ def prepare_adata(
             if verbose:
                 logger.info("Step 3/5: PCA not needed, skipping")
 
+        # TODO: need to support externally computed embedding and bypass some of the steps here
         diffmap = None
         if needs_diffmap:
             if verbose:
@@ -313,9 +315,6 @@ def prepare_adata(
                 random_state=random_state,
                 **kwargs_diffmap,
             )
-        elif "X_diffmap" in adata.obsm:
-            if verbose:
-                logger.info("Step 4/5: Diffusion map already computed, skipping")
         else:
             if verbose:
                 logger.info("Step 4/5: Diffusion map not needed, skipping")
