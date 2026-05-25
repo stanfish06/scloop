@@ -74,7 +74,43 @@ src/scloop/
 │   ├── __init__.py
 │   └── stats.py
 ├── benchmarking
-│   └── __init__.py
+│   ├── benchmarking_slicer.R
+│   ├── datasets.py
+│   ├── hf_registry.yaml
+│   ├── __init__.py
+│   ├── install_r_packages.R
+│   ├── lle_1.1.tar.gz
+│   ├── renv
+│   │   ├── activate.R
+│   │   ├── library
+│   │   ├── settings.json
+│   │   └── staging
+│   ├── renv.lock
+│   ├── SLICER
+│   │   ├── data
+│   │   ├── DESCRIPTION
+│   │   ├── man
+│   │   ├── NAMESPACE
+│   │   ├── R
+│   │   ├── README.md
+│   │   ├── SLICER.Rproj
+│   │   └── vignettes
+│   ├── slicer_results.csv
+│   └── splatter
+│       ├── codecov.yml
+│       ├── DESCRIPTION
+│       ├── index.md
+│       ├── inst
+│       ├── LICENSE
+│       ├── man
+│       ├── NAMESPACE
+│       ├── NEWS.md
+│       ├── pkgdown
+│       ├── _pkgdown.yml
+│       ├── R
+│       ├── README.md
+│       ├── tests
+│       └── vignettes
 ├── computing
 │   ├── boundary.py
 │   ├── divergence.py
