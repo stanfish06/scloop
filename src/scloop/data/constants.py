@@ -13,7 +13,7 @@ CROSS_MATCH_RESULT_KEY = "scloop_cross_match"
 DEFAULT_FIGSIZE: tuple[PositiveFloat, PositiveFloat] = (5, 5)
 DEFAULT_DPI: PositiveFloat = 300
 
-DEFAULT_N_MAX_WORKERS: int = 8
+DEFAULT_N_MAX_WORKERS: int = os.cpu_count() or 8
 DEFAULT_N_HODGE_COMPONENTS: int = 10
 DEFAULT_N_NEIGHBORS_EDGE_EMBEDDING: int = 10
 DEFAULT_LOOP_DIST_METHOD: LoopDistMethod = "frechet"
