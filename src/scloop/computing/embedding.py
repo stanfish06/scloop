@@ -32,6 +32,8 @@ def compute_diffmap(
     use_potential_embedding: bool = False,
     potential_t: PositiveFloat | list[PositiveFloat] = 3.0,
     potential_kind: Literal["log", "sqrt"] = "sqrt",
+    auto_t: bool = True,
+    pct_lower_bound_potential_t: Percent_t = 0.75,
 ) -> DiffusionMap:
     diffmap = DiffusionMap(
         n_neighbors=n_neighbors,
@@ -86,6 +88,8 @@ def compute_diffmap(
             n_comps=n_comps,
             t=potential_t,
             kind=potential_kind,
+            auto_t=auto_t,
+            pct_lower_bound_potential_t=pct_lower_bound_potential_t,
         )
         adata.obsm["X_diffmap"] = coords
         diffmap.diffmap_coords = coords
@@ -292,6 +296,7 @@ class DiffusionMap:
         t: PositiveFloat | list[PositiveFloat],
         kind: Literal["log", "sqrt"] = "sqrt",
         auto_t: bool = True,
+        pct_lower_bound_potential_t: Percent_t = 0.75,
         random_state: int = 0,
     ) -> np.ndarray:
         assert (
@@ -308,7 +313,11 @@ class DiffusionMap:
         eigvals_clipped = np.clip(eigvals, 0.0, None)
         ts = np.atleast_1d(np.asarray(t, dtype=np.float32))
         if auto_t:
-            ts = select_potential_ts(eigvals=eigvals_clipped, tvals=ts, lb_pct=0.75)
+            ts = select_potential_ts(
+                eigvals=eigvals_clipped,
+                tvals=ts,
+                lb_pct=pct_lower_bound_potential_t,
+            )
         n = V_sym.shape[0]
         U_all = np.empty((n, n * len(ts)), dtype=np.float32)
         for i, t_i in enumerate(ts):
