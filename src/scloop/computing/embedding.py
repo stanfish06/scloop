@@ -92,6 +92,46 @@ def compute_diffmap(
     return diffmap
 
 
+def von_neumann_entropy(eigvals: np.ndarray, t: PositiveFloat) -> float:
+    p = np.clip(np.asarray(eigvals, dtype=np.float64), 0.0, None) ** float(t)
+    total = p.sum()
+    if total <= NUMERIC_EPSILON:
+        return 0.0
+    p = p / total
+    p = p[p > 0.0]
+    return float(-np.sum(p * np.log(p)))
+
+
+def select_potential_ts(
+    eigvals: np.ndarray,
+    tvals: np.ndarray,
+    lb_pct: Percent_t = 0.95,
+) -> np.ndarray:
+    eigvals = np.asarray(eigvals, dtype=np.float64)
+    tvals = np.asarray(tvals, dtype=np.float64).ravel()
+    tvals = np.sort(tvals)
+    if tvals.size == 1:
+        return tvals.copy()
+
+    H = np.array([von_neumann_entropy(eigvals, t) for t in tvals])
+
+    h_range = float(np.ptp(H))
+
+    x = (tvals - tvals[0]) / (np.ptp(tvals) + NUMERIC_EPSILON)
+    y = (H - H.min()) / h_range
+    dx, dy = x[-1] - x[0], y[-1] - y[0]
+    denom = np.hypot(dx, dy) + NUMERIC_EPSILON
+    dist = np.abs(dy * (x - x[0]) - dx * (y - y[0])) / denom
+    knee_idx = int(np.argmax(dist))
+
+    threshold = lb_pct * float(H.max())
+    below = np.flatnonzero(H <= threshold)
+    lb_idx = int(below[0]) if below.size > 0 else 0
+    lb_idx = min(lb_idx, knee_idx)
+
+    return tvals[lb_idx : knee_idx + 1].copy()
+
+
 @jit(nopython=True, cache=True)
 def compute_knn_diffusion_projection(
     idx_nei: np.ndarray,
@@ -251,6 +291,7 @@ class DiffusionMap:
         n_comps: Count_t,
         t: PositiveFloat | list[PositiveFloat],
         kind: Literal["log", "sqrt"] = "sqrt",
+        auto_t: bool = True,
         random_state: int = 0,
     ) -> np.ndarray:
         assert (
@@ -266,6 +307,8 @@ class DiffusionMap:
         V_sym = d_sqrt[:, np.newaxis] * eigvecs
         eigvals_clipped = np.clip(eigvals, 0.0, None)
         ts = np.atleast_1d(np.asarray(t, dtype=np.float32))
+        if auto_t:
+            ts = select_potential_ts(eigvals=eigvals_clipped, tvals=ts, lb_pct=0.75)
         n = V_sym.shape[0]
         U_all = np.empty((n, n * len(ts)), dtype=np.float32)
         for i, t_i in enumerate(ts):
