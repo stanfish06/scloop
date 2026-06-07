@@ -24,10 +24,18 @@ build-m4ri:
 		$(MAKE) && \
 		$(MAKE) install
 
+SANITY_CFLAGS := -I. -O2 -ffast-math -O3 -std=c++11 -fPIC -D_USE_MATH_DEFINES
+ifeq ($(shell uname -s),Darwin)
+SANITY_LIBOMP := $(shell brew --prefix libomp 2>/dev/null || echo /opt/homebrew/opt/libomp)
+SANITY_CFLAGS += -Xpreprocessor -fopenmp -I$(SANITY_LIBOMP)/include
+else
+SANITY_CFLAGS += -fopenmp
+endif
+
 build-sanity:
 	cd $(SANITY_SRC) && \
 		$(MAKE) clean || true && \
-		$(MAKE) Sanity_lib
+		$(MAKE) Sanity_lib CFLAGS="$(SANITY_CFLAGS)"
 
 build: build-m4ri build-sanity
 	CFLAGS="-I$(M4RI_PREFIX)/include" \
