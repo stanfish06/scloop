@@ -478,6 +478,8 @@ class HomologyData:
         noise_random_walk: PositiveFloat = 1.0,
         seed_random_walk: int = 1,
         do_force_deviate_random_walk: bool = False,
+        n_random_background_loops: int = 0,
+        seed_random_background: int | None = None,
     ):
         assert pairwise_distance_matrix.shape is not None
         assert self.meta.preprocess is not None
@@ -524,6 +526,8 @@ class HomologyData:
             noise_random_walk=noise_random_walk,
             seed_random_walk=seed_random_walk,
             do_force_deviate_random_walk=do_force_deviate_random_walk,
+            n_random_background_loops=n_random_background_loops,
+            seed_random_background=seed_random_background,
             bootstrap=bootstrap,
             rank_offset=0,
         )

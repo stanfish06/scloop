@@ -129,6 +129,8 @@ def compute_loop_representatives(
     noise_random_walk: PositiveFloat = 1.0,
     seed_random_walk: int = 1,
     do_force_deviate_random_walk: bool = False,
+    n_random_background_loops: int = 0,
+    seed_random_background: int | None = None,
     bootstrap: bool = False,
     rank_offset: int = 0,
     do_clean_cocycle_region: bool = False,
@@ -147,7 +149,16 @@ def compute_loop_representatives(
     top_k = min(top_k, loop_births.size)
 
     persistence = loop_deaths - loop_births
-    indices_top_k = np.argsort(persistence)[::-1][:top_k]
+    ranked_indices = np.argsort(persistence)[::-1]
+    indices_top_k = ranked_indices[:top_k]
+
+    if n_random_background_loops > 0:
+        background_pool = ranked_indices[top_k:]
+        if len(background_pool) > 0:
+            rng = np.random.default_rng(seed_random_background)
+            n_bg = min(n_random_background_loops, len(background_pool))
+            indices_background = rng.choice(background_pool, size=n_bg, replace=False)
+            indices_top_k = np.concatenate([indices_top_k, indices_background])
 
     dm_upper = triu(pairwise_distance_matrix, k=1).tocoo()
     edges_array, edge_diameters = extract_edges_from_coo(
