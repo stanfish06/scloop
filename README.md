@@ -69,7 +69,7 @@ pip install scloop
 ```
 
 ## Contribution
-Open to any contributions.
+Feel free to contribute (prs, issues, discussions, ...)
 
 ## Project Structure
 ```
