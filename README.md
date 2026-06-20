@@ -68,6 +68,9 @@ to prevent partial compilation of some modules
 pip install scloop
 ```
 
+## Contribution
+Open to any contributions.
+
 ## Project Structure
 ```
 src/scloop/
