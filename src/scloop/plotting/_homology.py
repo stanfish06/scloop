@@ -59,6 +59,10 @@ def _get_track_loop(
     return tracked_pairs
 
 
+def _compute_loop_hyperplane(data: HomologyData, track_id: int):
+    pass
+
+
 @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def hist_lifetimes(
     adata: AnnData,
