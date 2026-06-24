@@ -8,6 +8,7 @@ import numpy as np
 from anndata import AnnData
 from matplotlib.axes import Axes
 from pydantic import ConfigDict, validate_call
+from scipy.linalg import svd
 
 from ..data.analysis_containers import BootstrapAnalysis
 from ..data.constants import DEFAULT_DPI, DEFAULT_FIGSIZE, SCLOOP_UNS_KEY
@@ -59,8 +60,37 @@ def _get_track_loop(
     return tracked_pairs
 
 
-def _compute_loop_hyperplane(data: HomologyData, track_id: int):
-    pass
+def _compute_loop_decomposition(
+    adata: AnnData,
+    basis: str,
+    track_ids: int | list[int],
+    key_homology: str = SCLOOP_UNS_KEY,
+):
+    hdata: HomologyData = adata.uns[key_homology]
+    emb = adata.obsm[basis]
+    assert emb is np.ndarray
+    Us = []
+    match track_ids:
+        case int():
+            X = np.concatenate(
+                hdata._get_loop_embedding(
+                    selector=track_ids, embedding_alt=emb, include_bootstrap=True
+                ),
+                axis=0,
+            )
+            U, _, _ = svd(X.T, full_matrices=False)
+            Us.append(U)
+        case list():
+            for tid in track_ids:
+                X = np.concatenate(
+                    hdata._get_loop_embedding(
+                        selector=tid, embedding_alt=emb, include_bootstrap=True
+                    ),
+                    axis=0,
+                )
+                U, _, _ = svd(X.T, full_matrices=False)
+                Us.append(U)
+    return Us
 
 
 @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
