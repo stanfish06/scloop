@@ -20,6 +20,7 @@ __all__ = [
     "hist_lifetimes",
     "bar_lifetimes",
     "persistence_diagram",
+    "loop_embedding",
     "loops",
 ]
 
@@ -62,37 +63,50 @@ def _get_track_loop(
     return tracked_pairs
 
 
-def _compute_loop_decomposition(
+def loop_embedding(
     adata: AnnData,
     basis: str,
     track_ids: int | list[int],
+    ndims: int = 2,
+    key_added: str = "loops",
     key_homology: str = SCLOOP_UNS_KEY,
-):
+) -> None:
     hdata: HomologyData = adata.uns[key_homology]
-    emb = adata.obsm[basis]
-    assert emb is np.ndarray
-    Us = []
-    match track_ids:
-        case int():
-            X = np.concatenate(
-                hdata._get_loop_embedding(
-                    selector=track_ids, embedding_alt=emb, include_bootstrap=True
-                ),
-                axis=0,
-            )
-            U, _, _ = svd(X.T, full_matrices=False)
-            Us.append(U)
-        case list():
-            for tid in track_ids:
-                X = np.concatenate(
-                    hdata._get_loop_embedding(
-                        selector=tid, embedding_alt=emb, include_bootstrap=True
-                    ),
-                    axis=0,
-                )
-                U, _, _ = svd(X.T, full_matrices=False)
-                Us.append(U)
-    return Us
+    emb = np.asarray(adata.obsm[basis])
+    track_list = [track_ids] if isinstance(track_ids, int) else list(track_ids)
+
+    planes = []
+    for tid in track_list:
+        X = np.concatenate(
+            hdata._get_loop_embedding(
+                selector=tid, embedding_alt=emb, include_bootstrap=True
+            ),
+            axis=0,
+        )
+        X = X - X.mean(axis=0, keepdims=True)
+        U, _, _ = svd(X.T, full_matrices=False)
+        planes.append(U[:, :ndims])
+
+    if len(planes) == 1:
+        plane = planes[0]
+        score = 1.0
+    else:
+        """
+        Steps to figure out a consensus plane:
+           1. Given per-loop diffusion planes Us, the projection matricies (to the target diffusion plane) are U^t. We want to figure out a consensus plane P.
+           2. The goal is max sum_k(tr(P^t Uk Uk^t P)) such that the projection of P to all diffusion planes are maximized.
+               - max sum_k(tr(P^t Uk Uk^t P))
+               - max tr(P^t sum_k(Uk Uk^t) P)
+           3. Let P = [ v1 v2 ], where v1 and v2 are top eigenvecs of sum_k(Uk Uk^t)
+           4. tr(P^t sum_k(Uk Uk^t) P) = tr([ [ l1 0 ] [ 0 l2 ] ]) = l1 + l2
+        """
+        M = sum(U @ U.T for U in planes)
+        evals, evecs = np.linalg.eigh(M)  # ascending
+        plane = evecs[:, ::-1][:, :ndims]  # top ndims, descending
+        score = float(evals[::-1][:ndims].sum() / (ndims * len(planes)))
+
+    adata.obsm[f"X_{key_added}"] = (emb - emb.mean(axis=0, keepdims=True)) @ plane
+    adata.uns[f"{key_added}_loop_embedding"] = {"plane": plane, "score": score}
 
 
 @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
