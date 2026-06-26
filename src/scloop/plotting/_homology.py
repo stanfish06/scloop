@@ -23,6 +23,8 @@ __all__ = [
     "loops",
 ]
 
+DEFAULT_GLASBEY_BLOCK_SIZE = 5
+
 
 # ugly function, fix that
 def _get_track_loop(
@@ -242,7 +244,7 @@ def bar_lifetimes(
     track_ids = track_ids or []
     n_tracks = len(track_ids)
     if n_tracks > 0:
-        block_size = 5
+        block_size = DEFAULT_GLASBEY_BLOCK_SIZE
         cmap = glasbey.create_block_palette(block_sizes=[block_size] * n_tracks)
         cmap = [cmap[i : i + block_size] for i in range(0, len(cmap), block_size)]
         for i, src_tid in enumerate(track_ids):
@@ -355,7 +357,7 @@ def persistence_diagram(
     track_ids = track_ids or []
     n_tracks = len(track_ids)
     if n_tracks > 0:
-        block_size = 5
+        block_size = DEFAULT_GLASBEY_BLOCK_SIZE
         cmap = glasbey.create_block_palette(block_sizes=[block_size] * n_tracks)
         cmap = [cmap[i : i + block_size] for i in range(0, len(cmap), block_size)]
         for i, src_tid in enumerate(track_ids):
@@ -465,7 +467,7 @@ def loops(
 
     n_selectors = len(selectors)
     if n_selectors > 0:
-        block_size = 5
+        block_size = DEFAULT_GLASBEY_BLOCK_SIZE
         cmap = glasbey.create_block_palette(block_sizes=[block_size] * n_selectors)
         cmap = [cmap[i : i + block_size] for i in range(0, len(cmap), block_size)]
     else:
@@ -556,7 +558,7 @@ def loops(
             ax.plot(
                 loop[:, components[0]],
                 loop[:, components[1]],
-                color=cmap[i][j % block_size],
+                color=cmap[i][(block_size - 1) - j % block_size],
                 **(kwargs_scatter or {}),
             )
 
