@@ -4,6 +4,7 @@ from ._hodge import loop_edge_embedding, loop_edge_overlay
 from ._homology import (
     bar_lifetimes,
     hist_lifetimes,
+    loop_embedding,
     loops,
     persistence_diagram,
 )
@@ -12,6 +13,7 @@ from ._trajectory import plot_gene_trends, plot_trajectory
 __all__ = [
     "bar_lifetimes",
     "hist_lifetimes",
+    "loop_embedding",
     "loops",
     "loop_edge_embedding",
     "loop_edge_overlay",
