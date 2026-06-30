@@ -5,9 +5,14 @@ import numpy as np
 from pynndescent import NNDescent
 
 
+# compute density for energy landscape calculation
 def compute_density(
-    adata, basis, n_neighbors, flavor: Literal["custom", "mellon"]
-) -> np.ndarray:
+    adata,
+    basis: str = "X_diffmap",
+    n_neighbors: int = 10,
+    flavor: Literal["custom", "mellon"] = "custom",
+    density_key="scloop_log_density",
+) -> None:
     density_embedding = adata.obsm[basis]
     match flavor:
         case "custom":
@@ -23,12 +28,19 @@ def compute_density(
 
             model = mellon.DensityEstimator()
             log_density = model.fit_predict(density_embedding)
-    return log_density
+    adata.obs[density_key] = log_density
 
 
-def compute_drift_and_diffusion_tensors(adata) -> tuple[np.ndarray, np.ndarray]:
+# compute drift and diffusion tensors by using knn graph and pseudotime
+def compute_drift_and_diffusion_tensors(
+    adata,
+    basis: str = "X_diffmap",
+    n_neighbors: int = 10,
+    pseudotime_key: str = "dpt_pseudotime",
+) -> tuple[np.ndarray, np.ndarray]:
     pass
 
 
-def compute_drift_decomposition(adata):
+# decompose drift into gradient and rotational part
+def compute_drift_decomposition(adata) -> None:
     pass
