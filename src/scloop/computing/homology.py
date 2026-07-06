@@ -134,6 +134,19 @@ def compute_sparse_pairwise_distance(
                 noise_scale=noise_scale,
                 sanity_n_posterior=sanity_n_posterior,
             )
+        if bootstrap_sampling == "downsample":
+            sample_idx = np.random.choice(
+                len(selected_indices), size=int(len(selected_indices) * bootstrap_downsample_fraction), replace=False
+            )
+            X, boot_idx = _sample_bootstrap_embedding(
+                adata=adata,
+                meta=meta,
+                selected_indices=selected_indices,
+                sample_idx=np.asarray(sample_idx, dtype=np.int64),
+                bootstrap_noise_model=bootstrap_noise_model,
+                noise_scale=noise_scale,
+                sanity_n_posterior=sanity_n_posterior,
+            )
         elif bootstrap_sampling == "fps":
             n_keep = max(
                 2, int(round(len(selected_indices) * bootstrap_downsample_fraction))
