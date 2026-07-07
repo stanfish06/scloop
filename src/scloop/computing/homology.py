@@ -121,80 +121,56 @@ def compute_sparse_pairwise_distance(
     X = emb[selected_indices]
     boot_idx = None
     if bootstrap:
-        if bootstrap_sampling == "resample":
-            sample_idx = np.random.choice(
-                len(selected_indices), size=len(selected_indices), replace=True
-            )
-            X, boot_idx = _sample_bootstrap_embedding(
-                adata=adata,
-                meta=meta,
-                selected_indices=selected_indices,
-                sample_idx=np.asarray(sample_idx, dtype=np.int64),
-                bootstrap_noise_model=bootstrap_noise_model,
-                noise_scale=noise_scale,
-                sanity_n_posterior=sanity_n_posterior,
-            )
-        elif bootstrap_sampling == "fps":
-            n_keep = max(
-                2, int(round(len(selected_indices) * bootstrap_downsample_fraction))
-            )
-            n_keep = min(n_keep, len(selected_indices))
-            sample_idx = sample_farthest_points(X, n_keep)
-            X, boot_idx = _sample_bootstrap_embedding(
-                adata=adata,
-                meta=meta,
-                selected_indices=selected_indices,
-                sample_idx=np.asarray(sample_idx, dtype=np.int64),
-                bootstrap_noise_model=bootstrap_noise_model,
-                noise_scale=noise_scale,
-                sanity_n_posterior=sanity_n_posterior,
-            )
-        elif bootstrap_sampling == "fps_random":
-            if bootstrap_fps_top_k <= 0:
-                raise ValueError("bootstrap_fps_top_k must be > 0.")
-            if bootstrap_fps_alpha < 0:
-                raise ValueError("bootstrap_fps_alpha must be >= 0.")
-            n_keep = max(
-                2, int(round(len(selected_indices) * bootstrap_downsample_fraction))
-            )
-            n_keep = min(n_keep, len(selected_indices))
-            sample_idx = sample_farthest_points_randomized(
-                X, n_keep, top_k=bootstrap_fps_top_k, alpha=bootstrap_fps_alpha
-            )
-            X, boot_idx = _sample_bootstrap_embedding(
-                adata=adata,
-                meta=meta,
-                selected_indices=selected_indices,
-                sample_idx=np.asarray(sample_idx, dtype=np.int64),
-                bootstrap_noise_model=bootstrap_noise_model,
-                noise_scale=noise_scale,
-                sanity_n_posterior=sanity_n_posterior,
-            )
-        elif (
-            bootstrap_sampling == "herding"
-        ):  # TODO: increase randomness of thsi approach
-            n_keep = max(
-                2, int(round(len(selected_indices) * bootstrap_downsample_fraction))
-            )
-            n_keep = min(n_keep, len(selected_indices))
-            if bootstrap_herding_seed is None:
-                bootstrap_herding_seed = int(np.random.randint(0, 1_000_000))
-            sample_idx = kernel_herding_main(
-                sample_set_ind=np.arange(len(selected_indices)),
-                X=X,
-                num_subsamples=n_keep,
-                frequency_seed=bootstrap_herding_seed,
-                n_features=int(bootstrap_herding_n_features),
-            )
-            X, boot_idx = _sample_bootstrap_embedding(
-                adata=adata,
-                meta=meta,
-                selected_indices=selected_indices,
-                sample_idx=np.asarray(sample_idx, dtype=np.int64),
-                bootstrap_noise_model=bootstrap_noise_model,
-                noise_scale=noise_scale,
-                sanity_n_posterior=sanity_n_posterior,
-            )
+        match bootstrap_sampling:
+            case "resample" | "downsample":
+                sample_idx = np.random.choice(
+                    len(selected_indices),
+                    size=len(selected_indices)
+                    if bootstrap_sampling == "resample"
+                    else int(len(selected_indices) * bootstrap_downsample_fraction),
+                    replace=True,
+                )
+            case "fps":
+                n_keep = max(
+                    2, int(round(len(selected_indices) * bootstrap_downsample_fraction))
+                )
+                n_keep = min(n_keep, len(selected_indices))
+                sample_idx = sample_farthest_points(X, n_keep)
+            case "fps_random":
+                if bootstrap_fps_top_k <= 0:
+                    raise ValueError("bootstrap_fps_top_k must be > 0.")
+                if bootstrap_fps_alpha < 0:
+                    raise ValueError("bootstrap_fps_alpha must be >= 0.")
+                n_keep = max(
+                    2, int(round(len(selected_indices) * bootstrap_downsample_fraction))
+                )
+                n_keep = min(n_keep, len(selected_indices))
+                sample_idx = sample_farthest_points_randomized(
+                    X, n_keep, top_k=bootstrap_fps_top_k, alpha=bootstrap_fps_alpha
+                )
+            case "herding":
+                n_keep = max(
+                    2, int(round(len(selected_indices) * bootstrap_downsample_fraction))
+                )
+                n_keep = min(n_keep, len(selected_indices))
+                if bootstrap_herding_seed is None:
+                    bootstrap_herding_seed = int(np.random.randint(0, 1_000_000))
+                sample_idx = kernel_herding_main(
+                    sample_set_ind=np.arange(len(selected_indices)),
+                    X=X,
+                    num_subsamples=n_keep,
+                    frequency_seed=bootstrap_herding_seed,
+                    n_features=int(bootstrap_herding_n_features),
+                )
+        X, boot_idx = _sample_bootstrap_embedding(
+            adata=adata,
+            meta=meta,
+            selected_indices=selected_indices,
+            sample_idx=np.asarray(sample_idx, dtype=np.int64),
+            bootstrap_noise_model=bootstrap_noise_model,
+            noise_scale=noise_scale,
+            sanity_n_posterior=sanity_n_posterior,
+        )
     else:
         boot_idx = selected_indices
     return (
