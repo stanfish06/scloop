@@ -34,7 +34,7 @@ run = [
 
 [tasks.sync]
 run = [
-    "uv sync",
+    "uv sync --dev",
 ]
 
 [tasks.format]
