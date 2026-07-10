@@ -373,7 +373,7 @@ def compute_image_bootstrap_homology(
         modulus=2,
         dim_max=1,
         threshold=thresh,
-        do_cocycles=False,
+        do_subfiltration_cocycles=False,
     )
     bootstrap_image_result = ripser_image(
         distance_matrix=union_distance_matrix.tocoo(copy=False),
@@ -381,7 +381,7 @@ def compute_image_bootstrap_homology(
         modulus=2,
         dim_max=1,
         threshold=thresh,
-        do_cocycles=True,
+        do_subfiltration_cocycles=True,
     )
     bootstrap_subfiltration = bootstrap_image_result.subfiltration
     persistence_pair_simplices = _remap_subfiltration_simplices_to_local(

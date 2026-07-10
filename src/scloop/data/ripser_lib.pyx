@@ -21,7 +21,7 @@ cdef extern from "ripser.hpp":
         vector[vector[index_t]] triangle_vertices
         vector[value_t] triangle_diameters
     cdef ripserResults rips_dm_sparse(int* I, int* J, float* V, int NEdges, int N, int modulus, int dim_max, float threshold, int do_cocycles) nogil
-    cdef imageRipserResults rips_image_sparse(int* I, int* J, float* V, int NEdges, int N, int* sub_indices, int n_sub_indices, int modulus, int dim_max, float threshold, int do_cocycles) nogil
+    cdef imageRipserResults rips_image_sparse(int* I, int* J, float* V, int NEdges, int N, int* sub_indices, int n_sub_indices, int modulus, int dim_max, float threshold, int do_subfiltration_cocycles, int do_image_cocycles) nogil
     cdef boundaryMatrixResults get_boundary_matrix_sparse(int* I, int* J, float* V, int NEdges, int N, float threshold) nogil
 
 @dataclasses.dataclass
@@ -148,7 +148,8 @@ def ripser_image(
     int modulus,
     int dim_max,
     float threshold,
-    bool do_cocycles,
+    bool do_subfiltration_cocycles,
+    bool do_image_cocycles=False,
 ) -> ImageRipserResults:
     """Compute PH of an induced subfiltration and its image in the ambient complex."""
     sub_indices_array = np.ascontiguousarray(sub_indices, dtype=np.intc)
@@ -173,13 +174,15 @@ def ripser_image(
     cdef int NEdges = distance_matrix.nnz
     cdef int N = distance_matrix.shape[0]
     cdef int n_sub_indices = _sub_indices.shape[0]
-    cdef int do_cocycles_int = int(do_cocycles)
+    cdef int do_subfiltration_cocycles_int = int(do_subfiltration_cocycles)
+    cdef int do_image_cocycles_int = int(do_image_cocycles)
     cdef imageRipserResults res
 
     with nogil:
         res = rips_image_sparse(
             I, J, V, NEdges, N, sub_indices_ptr, n_sub_indices,
-            modulus, dim_max, threshold, do_cocycles_int
+            modulus, dim_max, threshold, do_subfiltration_cocycles_int,
+            do_image_cocycles_int
         )
 
     return ImageRipserResults(

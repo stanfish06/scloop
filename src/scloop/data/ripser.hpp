@@ -150,6 +150,7 @@ class ripser {
     const coefficient_t modulus;
     mutable std::vector<diameter_entry_t> cofacet_entries;
     const int do_cocycles;
+    const int do_image_cocycles;
     std::vector<uint8_t> sub_vertex_mask;
 public:
     mutable std::vector<std::vector<value_t>> births_and_deaths_by_dim;
@@ -167,6 +168,7 @@ public:
 
     ripser(DistanceMatrix&& _dist, index_t _dim_max, value_t _threshold,
            float _ratio, coefficient_t _modulus, int _do_cocycles,
+           int _do_image_cocycles = 0,
            std::vector<uint8_t> _sub_vertex_mask = {});
 
     bool is_sub_vertex(index_t i) const;
@@ -270,7 +272,7 @@ ripserResults rips_dm_sparse(int* I, int* J, float* V, int NEdges, int N,
 imageRipserResults rips_image_sparse(
     int* I, int* J, float* V, int NEdges, int N, int* sub_indices,
     int n_sub_indices, int modulus, int dim_max, float threshold,
-    int do_cocycles);
+    int do_subfiltration_cocycles, int do_image_cocycles = 0);
 
 /**
  * @brief Compute dimension 2 boundary matrix without redundant columns

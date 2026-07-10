@@ -620,6 +620,7 @@ class ripser
     // If this flag is off, don't extract the representative cocycles to save
     // time
     const int do_cocycles;
+    const int do_image_cocycles;
     std::vector<uint8_t> sub_vertex_mask;
 
     struct entry_hash {
@@ -649,12 +650,14 @@ public:
 
     ripser(DistanceMatrix&& _dist, index_t _dim_max, value_t _threshold,
            float _ratio, coefficient_t _modulus, int _do_cocycles,
+           int _do_image_cocycles = 0,
            std::vector<uint8_t> _sub_vertex_mask = {})
         : dist(std::move(_dist)), n(dist.size()), dim_max(_dim_max),
           threshold(_threshold), ratio(_ratio), modulus(_modulus),
           binomial_coeff(n, dim_max + 2),
           multiplicative_inverse(multiplicative_inverse_vector(_modulus)),
           do_cocycles(_do_cocycles),
+          do_image_cocycles(_do_image_cocycles),
           sub_vertex_mask(std::move(_sub_vertex_mask))
     {
         if (sub_vertex_mask.empty())
@@ -1150,6 +1153,8 @@ public:
     {
         compressed_sparse_matrix<diameter_entry_t> reduction_matrix;
         size_t index_column_to_add;
+        const bool extract_cocycles =
+            mode == reduction_mode::image ? do_image_cocycles : do_cocycles;
 
 #ifdef INDICATE_PROGRESS
         std::chrono::steady_clock::time_point next =
@@ -1210,7 +1215,7 @@ public:
                         if (death > diameter * ratio) {
                             result_intervals[dim].push_back(diameter);
                             result_intervals[dim].push_back(death);
-                            if (do_cocycles) {
+                            if (extract_cocycles) {
                                 // Representative cocycle
                                 compute_cocycles(working_reduction_column, dim,
                                                  result_cocycles);
@@ -1257,7 +1262,7 @@ public:
                             birth_simplex_vertices);
                         result_simplices[dim].push_back({});
 
-                        if (do_cocycles) {
+                        if (extract_cocycles) {
                             // Representative cocycle
                             compute_cocycles(working_reduction_column, dim,
                                              result_cocycles);
@@ -1643,7 +1648,7 @@ ripserResults rips_dm_sparse(int* I, int* J, float* V, int NEdges, int N,
 imageRipserResults rips_image_sparse(
     int* I, int* J, float* V, int NEdges, int N, int* sub_indices,
     int n_sub_indices, int modulus, int dim_max, float threshold,
-    int do_cocycles)
+    int do_subfiltration_cocycles, int do_image_cocycles)
 {
     std::vector<uint8_t> sub_vertex_mask(N, 0);
     for (int i = 0; i < n_sub_indices; ++i) {
@@ -1654,7 +1659,8 @@ imageRipserResults rips_image_sparse(
     float ratio = 1.0;
     ripser<sparse_distance_matrix> r(
         sparse_distance_matrix(I, J, V, NEdges, N, threshold), dim_max,
-        threshold, ratio, modulus, do_cocycles, sub_vertex_mask);
+        threshold, ratio, modulus, do_subfiltration_cocycles,
+        do_image_cocycles, sub_vertex_mask);
     imageRipserResults results = r.compute_image_barcodes();
 
     int ambient_edges = 0;
