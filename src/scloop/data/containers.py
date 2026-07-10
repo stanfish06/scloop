@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 from anndata import AnnData
@@ -94,6 +94,7 @@ class HomologyData:
 
     meta: ScloopMeta
     persistence_diagram: list | None = None
+    persistence_pair_simplices: list | None = None
     cocycles: list | None = None
     selected_loop_classes: list[LoopClass | None] = Field(default_factory=list)
     boundary_matrix_d1: BoundaryMatrixD1 | None = None
@@ -290,6 +291,7 @@ class HomologyData:
     ) -> csr_matrix:
         (
             persistence_diagram,
+            persistence_pair_simplices,
             cocycles,
             indices_resample,
             sparse_pairwise_distance_matrix,
@@ -302,6 +304,7 @@ class HomologyData:
         )
         if not bootstrap:
             self.persistence_diagram = persistence_diagram
+            self.persistence_pair_simplices = persistence_pair_simplices
             self.cocycles = cocycles
         else:
             assert self.bootstrap_data is not None
@@ -310,6 +313,9 @@ class HomologyData:
             assert self.meta.bootstrap.indices_resample is not None
 
             self.bootstrap_data.persistence_diagrams.append(persistence_diagram)
+            self.bootstrap_data.persistence_pair_simplices.append(
+                persistence_pair_simplices
+            )
             self.bootstrap_data.cocycles.append(cocycles)
             self.meta.bootstrap.indices_resample.append(indices_resample)
         return sparse_pairwise_distance_matrix
@@ -486,20 +492,28 @@ class HomologyData:
         # Extract data from self based on bootstrap flag
         if not bootstrap:
             assert self.persistence_diagram is not None
+            assert self.persistence_pair_simplices is not None
             assert self.cocycles is not None
             persistence_diagram = self.persistence_diagram[1]
+            persistence_pair_simplices = self.persistence_pair_simplices[1]
             cocycles = self.cocycles[1]
             vertex_ids = self._original_vertex_ids
         else:
             assert self.bootstrap_data is not None
             assert len(self.bootstrap_data.persistence_diagrams) > idx_bootstrap
             assert len(self.bootstrap_data.cocycles) > idx_bootstrap
+            assert (
+                len(self.bootstrap_data.persistence_pair_simplices) > idx_bootstrap
+            )
             assert self.meta.bootstrap is not None
             assert self.meta.bootstrap.indices_resample is not None
             assert len(self.meta.bootstrap.indices_resample) > idx_bootstrap
             persistence_diagram = self.bootstrap_data.persistence_diagrams[
                 idx_bootstrap
             ][1]
+            persistence_pair_simplices = (
+                self.bootstrap_data.persistence_pair_simplices[idx_bootstrap][1]
+            )
             cocycles = self.bootstrap_data.cocycles[idx_bootstrap][1]
             vertex_ids = self.meta.bootstrap.indices_resample[idx_bootstrap]
 
@@ -507,6 +521,7 @@ class HomologyData:
             embedding=embedding,
             pairwise_distance_matrix=pairwise_distance_matrix,
             persistence_diagram=persistence_diagram,
+            persistence_pair_simplices=persistence_pair_simplices,
             cocycles=cocycles,
             boundary_matrix_d1=self.boundary_matrix_d1,
             vertex_ids=vertex_ids,
@@ -814,6 +829,8 @@ class HomologyData:
         n_max_workers: Count_t = DEFAULT_N_MAX_WORKERS,
         k_neighbors_check_equivalence: Count_t = DEFAULT_K_NEIGHBORS_CHECK_EQUIVALENCE,
         method_geometric_equivalence: LoopDistMethod = DEFAULT_LOOP_DIST_METHOD,
+        candidate_method: Literal["geometric", "image"] = "geometric",
+        require_homological_equivalence: bool = True,
         reconstruct_on_full_data: bool = False,
         verbose: bool = False,
         progress_main: Progress | None = None,
@@ -830,7 +847,11 @@ class HomologyData:
             else:
                 self.meta.bootstrap.indices_resample.clear()
 
-        if use_parallel:
+        if (
+            use_parallel
+            or candidate_method == "image"
+            or not require_homological_equivalence
+        ):
             self._bootstrap_parallel(
                 adata=adata,
                 n_bootstrap=n_bootstrap,
@@ -856,9 +877,11 @@ class HomologyData:
                 max_n_edges_relaxation_equivalence=max_n_edges_relaxation_equivalence,
                 extra_diameter_homology_equivalence=extra_diameter_homology_equivalence,
                 filter_column_homology_equivalence=filter_column_homology_equivalence,
-                n_max_workers=n_max_workers,
+                n_max_workers=n_max_workers if use_parallel else 1,
                 k_neighbors_check_equivalence=k_neighbors_check_equivalence,
                 method_geometric_equivalence=method_geometric_equivalence,
+                candidate_method=candidate_method,
+                require_homological_equivalence=require_homological_equivalence,
                 reconstruct_on_full_data=reconstruct_on_full_data,
                 verbose=verbose,
                 progress_main=progress_main,
@@ -1063,6 +1086,8 @@ class HomologyData:
         n_max_workers: int = DEFAULT_N_MAX_WORKERS,
         k_neighbors_check_equivalence: int = DEFAULT_K_NEIGHBORS_CHECK_EQUIVALENCE,
         method_geometric_equivalence: LoopDistMethod = DEFAULT_LOOP_DIST_METHOD,
+        candidate_method: Literal["geometric", "image"] = "geometric",
+        require_homological_equivalence: bool = True,
         reconstruct_on_full_data: bool = False,
         verbose: bool = False,
         progress_main: Progress | None = None,
@@ -1098,6 +1123,8 @@ class HomologyData:
             do_force_deviate_random_walk=do_force_deviate_random_walk,
             k_neighbors_check_equivalence=k_neighbors_check_equivalence,
             method_geometric_equivalence=method_geometric_equivalence,
+            candidate_method=candidate_method,
+            require_homological_equivalence=require_homological_equivalence,
             n_pairs_check_equivalence=n_pairs_check_equivalence,
             with_relaxation_equivalence=with_relaxation_equivalence,
             n_hubs_relaxation_equivalence=n_hubs_relaxation_equivalence,
@@ -1117,8 +1144,18 @@ class HomologyData:
                 self.bootstrap_data.persistence_diagrams.append(
                     result.persistence_diagram  # type: ignore[arg-type]
                 )
+            if result.persistence_pair_simplices is not None:
+                self.bootstrap_data.persistence_pair_simplices.append(
+                    result.persistence_pair_simplices
+                )
             if result.cocycles is not None:
                 self.bootstrap_data.cocycles.append(result.cocycles)  # type: ignore[arg-type]
+            self.bootstrap_data.reference_image_pairs.append(
+                result.reference_image_pairs
+            )
+            self.bootstrap_data.bootstrap_image_pairs.append(
+                result.bootstrap_image_pairs
+            )
             self.bootstrap_data.selected_loop_classes.append(result.loop_classes)
 
             for source_idx, matches in result.matches.items():

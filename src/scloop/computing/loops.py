@@ -115,6 +115,7 @@ def compute_loop_representatives(
     cocycles: list,
     boundary_matrix_d1: BoundaryMatrixD1,
     vertex_ids: list[int],
+    persistence_pair_simplices: tuple[list, list] | list | None = None,
     top_k: Count_t | None = None,
     n_reps_per_loop: int = DEFAULT_N_REPS_PER_LOOP,
     life_pct: Percent_t = DEFAULT_LIFE_PCT,
@@ -164,6 +165,14 @@ def compute_loop_representatives(
     for i, loop_idx in enumerate(indices_top_k):
         loop_birth = loop_births[loop_idx].item()
         loop_death = loop_deaths[loop_idx].item()
+        birth_simplex: list[int] = []
+        death_simplex: list[int] = []
+        if persistence_pair_simplices is not None:
+            births, deaths = persistence_pair_simplices
+            if loop_idx < len(births):
+                birth_simplex = list(births[loop_idx])
+            if loop_idx < len(deaths):
+                death_simplex = list(deaths[loop_idx])
 
         valid_cocycles = []
         n_cocycles_original = len(cocycles[loop_idx])
@@ -241,8 +250,11 @@ def compute_loop_representatives(
 
         results[i] = LoopClass(
             rank=i + rank_offset,
+            persistence_index=int(loop_idx),
             birth=loop_birth,
             death=loop_death,
+            birth_simplex=birth_simplex,
+            death_simplex=death_simplex,
             cocycles=cocycles[loop_idx],
             representatives=loops,
             coordinates_vertices_representatives=loops_coords,

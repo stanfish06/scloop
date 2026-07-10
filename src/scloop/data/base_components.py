@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 from pydantic.dataclasses import dataclass
 from typing_extensions import Self
 
@@ -14,12 +14,75 @@ if TYPE_CHECKING:
     import h5py
 
 
-class LoopClass(BaseModel):
-    rank: Index_t
-    birth: Diameter_t = 0.0
-    death: Diameter_t = 0.0
+class PersistencePair(BaseModel):
+    birth: Diameter_t
+    death: Diameter_t
     birth_simplex: list[Index_t]
     death_simplex: list[Index_t]
+
+    @model_validator(mode="after")
+    def check_birth_death(self) -> Self:
+        if self.birth > self.death:
+            raise ValueError("loop dies before its birth")
+        return self
+
+    def to_hdf5_group(self, group: h5py.Group, compress: bool = True) -> None:
+        group.attrs["birth"] = self.birth
+        group.attrs["death"] = self.death
+        kw = {"compression": "gzip"} if compress else {}
+        group.create_dataset(
+            "birth_simplex", data=np.asarray(self.birth_simplex, dtype=np.int64), **kw
+        )
+        group.create_dataset(
+            "death_simplex", data=np.asarray(self.death_simplex, dtype=np.int64), **kw
+        )
+
+    @classmethod
+    def from_hdf5_group(cls, group: h5py.Group) -> PersistencePair:
+        return cls(
+            birth=float(group.attrs["birth"]),
+            death=float(group.attrs["death"]),
+            birth_simplex=np.asarray(group["birth_simplex"]).tolist(),
+            death_simplex=np.asarray(group["death_simplex"]).tolist(),
+        )
+
+
+class ImagePairRecord(BaseModel):
+    source_class_idx: Index_t
+    source_pair: PersistencePair
+    image_pair: PersistencePair | None = None
+
+    def to_hdf5_group(self, group: h5py.Group, compress: bool = True) -> None:
+        group.attrs["source_class_idx"] = self.source_class_idx
+        self.source_pair.to_hdf5_group(
+            group.create_group("source_pair"), compress=compress
+        )
+        if self.image_pair is not None:
+            self.image_pair.to_hdf5_group(
+                group.create_group("image_pair"), compress=compress
+            )
+
+    @classmethod
+    def from_hdf5_group(cls, group: h5py.Group) -> ImagePairRecord:
+        image_pair = (
+            PersistencePair.from_hdf5_group(group["image_pair"])
+            if "image_pair" in group
+            else None
+        )
+        return cls(
+            source_class_idx=int(group.attrs["source_class_idx"]),
+            source_pair=PersistencePair.from_hdf5_group(group["source_pair"]),
+            image_pair=image_pair,
+        )
+
+
+class LoopClass(BaseModel):
+    rank: Index_t
+    persistence_index: Index_t | None = None
+    birth: Diameter_t = 0.0
+    death: Diameter_t = 0.0
+    birth_simplex: list[Index_t] = Field(default_factory=list)
+    death_simplex: list[Index_t] = Field(default_factory=list)
     cocycles: list | None = None
     representatives: list[list[Index_t]] | None = None
     coordinates_vertices_representatives: list[list[list[float]]] | None = None
@@ -36,13 +99,31 @@ class LoopClass(BaseModel):
     def lifetime(self):
         return self.death - self.birth
 
+    @property
+    def persistence_pair(self) -> PersistencePair:
+        return PersistencePair(
+            birth=self.birth,
+            death=self.death,
+            birth_simplex=self.birth_simplex,
+            death_simplex=self.death_simplex,
+        )
+
     def to_hdf5_group(self, group: h5py.Group, compress: bool = True) -> None:
         group.attrs["_type"] = "LoopClass"
         group.attrs["rank"] = self.rank
+        group.attrs["persistence_index"] = (
+            self.rank if self.persistence_index is None else self.persistence_index
+        )
         group.attrs["birth"] = self.birth
         group.attrs["death"] = self.death
 
         kw = {"compression": "gzip"} if compress else {}
+        group.create_dataset(
+            "birth_simplex", data=np.asarray(self.birth_simplex, dtype=np.int64), **kw
+        )
+        group.create_dataset(
+            "death_simplex", data=np.asarray(self.death_simplex, dtype=np.int64), **kw
+        )
 
         if self.cocycles is not None and len(self.cocycles) > 0:
             verts_list = []
@@ -82,8 +163,19 @@ class LoopClass(BaseModel):
     @classmethod
     def from_hdf5_group(cls, group: h5py.Group) -> LoopClass:
         rank = int(group.attrs["rank"])  # type: ignore[arg-type]
+        persistence_index = int(group.attrs.get("persistence_index", rank))
         birth = float(group.attrs["birth"])  # type: ignore[arg-type]
         death = float(group.attrs["death"])  # type: ignore[arg-type]
+        birth_simplex = (
+            np.asarray(group["birth_simplex"], dtype=np.int64).tolist()
+            if "birth_simplex" in group
+            else []
+        )
+        death_simplex = (
+            np.asarray(group["death_simplex"], dtype=np.int64).tolist()
+            if "death_simplex" in group
+            else []
+        )
 
         cocycles = None
         if "cocycles" in group:
@@ -114,8 +206,11 @@ class LoopClass(BaseModel):
 
         return cls(
             rank=rank,
+            persistence_index=persistence_index,
             birth=birth,
             death=death,
+            birth_simplex=birth_simplex,
+            death_simplex=death_simplex,
             cocycles=cocycles,
             representatives=representatives,
             coordinates_vertices_representatives=coordinates_vertices_representatives,

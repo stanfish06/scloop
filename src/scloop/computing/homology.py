@@ -1,7 +1,8 @@
 # Copyright 2025 Zhiyuan Yu (Heemskerk's lab, University of Michigan)
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 from anndata import AnnData
@@ -10,11 +11,13 @@ from scipy.sparse import csr_matrix
 from scipy.spatial.distance import directed_hausdorff
 from sklearn.neighbors import radius_neighbors_graph
 
+from ..data.base_components import PersistencePair
 from ..data.constants import DEFAULT_LOOP_DIST_METHOD, DEFAULT_N_MAX_WORKERS
 from ..data.metadata import ScloopMeta
 from ..data.ripser_lib import (  # type: ignore[import-not-found]
     get_boundary_matrix,
     ripser,
+    ripser_image,
 )
 from ..data.types import (
     Count_t,
@@ -39,27 +42,80 @@ if TYPE_CHECKING:
     from ..data.containers import BoundaryMatrixD1
 
 
+@dataclass
+class ImageBootstrapHomologyResult:
+    persistence_diagram: list
+    persistence_pair_simplices: list
+    cocycles: list
+    indices_resample: list[int]
+    bootstrap_distance_matrix: csr_matrix
+    reference_image_result: object
+    bootstrap_image_result: object
+    n_reference_vertices: int
+
+
+def _cap_infinite_deaths(diagrams: list, cap: float | None) -> list:
+    if cap is None or not np.isfinite(cap):
+        return diagrams
+    capped = []
+    for dim_pd in diagrams:
+        if len(dim_pd) < 2:
+            capped.append(dim_pd)
+            continue
+        births = np.asarray(dim_pd[0])
+        deaths = np.asarray(dim_pd[1])
+        deaths = np.where(np.isinf(deaths), cap, deaths)
+        capped.append([births, deaths])
+    return capped
+
+
+def _persistence_pairs_from_ripser_result(
+    result: object, dim: int = 1
+) -> list[PersistencePair]:
+    births, deaths = result.births_and_deaths_by_dim[dim]
+    birth_simplices, death_simplices = result.births_and_deaths_simplex_by_dim[
+        dim
+    ]
+    if not (
+        len(births)
+        == len(deaths)
+        == len(birth_simplices)
+        == len(death_simplices)
+    ):
+        raise ValueError("Ripser persistence pairs and critical simplices are misaligned")
+    return [
+        PersistencePair(
+            birth=float(birth),
+            death=float(death),
+            birth_simplex=list(birth_simplex),
+            death_simplex=list(death_simplex),
+        )
+        for birth, death, birth_simplex, death_simplex in zip(
+            births, deaths, birth_simplices, death_simplices
+        )
+    ]
+
+
 def _sample_bootstrap_embedding(
     adata: AnnData,
     meta: ScloopMeta,
-    selected_indices: list[int],
-    sample_idx: np.ndarray,
+    source_indices: list[int],
+    bootstrap_indices: list[int],
     bootstrap_noise_model: str,
     noise_scale: float,
     sanity_n_posterior: int = 1000,
-) -> tuple[np.ndarray, list[int]]:
+) -> np.ndarray:
     assert meta.preprocess is not None
     assert meta.preprocess.embedding_method is not None
 
-    boot_idx = [selected_indices[int(i)] for i in sample_idx.tolist()]
     emb = np.asarray(adata.obsm[f"X_{meta.preprocess.embedding_method}"])
 
-    X = emb[selected_indices]
+    X = emb[source_indices]
     if bootstrap_noise_model == "sanity":
         if meta.preprocess.embedding_method == "pca":
             X = sample_posterior_predictive_counts(
                 adata=adata,
-                cell_idx=np.asarray(boot_idx, dtype=np.int64),
+                cell_idx=np.asarray(bootstrap_indices, dtype=np.int64),
                 scale_before_pca=meta.preprocess.scale_before_pca,
                 n_pca_comps=meta.preprocess.n_pca_comps,
                 n_posterior=sanity_n_posterior,
@@ -69,7 +125,7 @@ def _sample_bootstrap_embedding(
             if meta.preprocess.embedding_neighbors == "pca":
                 X = sample_posterior_predictive_counts(
                     adata=adata,
-                    cell_idx=np.asarray(boot_idx, dtype=np.int64),
+                    cell_idx=np.asarray(bootstrap_indices, dtype=np.int64),
                     scale_before_pca=meta.preprocess.scale_before_pca,
                     n_pca_comps=meta.preprocess.n_pca_comps,
                     n_posterior=sanity_n_posterior,
@@ -84,12 +140,71 @@ def _sample_bootstrap_embedding(
                     emb_reference=emb_reference, emb_query=X
                 )
     else:
-        X_ref = emb[selected_indices]
-        X = emb[boot_idx]
+        X_ref = emb[source_indices]
+        X = emb[bootstrap_indices]
         std_X = np.std(X_ref, axis=0)
         X = X + np.random.normal(scale=std_X * noise_scale, size=X.shape)
 
-    return X, boot_idx
+    return X
+
+
+def select_bootstrap_sample(
+    source_indices: list[int],
+    source_embedding: np.ndarray,
+    bootstrap_sampling: Literal[
+        "resample", "downsample", "fps", "fps_random", "herding"
+    ] = "resample",
+    bootstrap_downsample_fraction: Percent_t = 2 / 3,
+    bootstrap_fps_top_k: int = 5,
+    bootstrap_fps_alpha: float = 1.0,
+    bootstrap_herding_n_features: int = 1000,
+    bootstrap_herding_seed: int | None = None,
+):
+    match bootstrap_sampling:
+        case "resample" | "downsample":
+            sample_idx = np.random.choice(
+                len(source_indices),
+                size=len(source_indices)
+                if bootstrap_sampling == "resample"
+                else int(len(source_indices) * bootstrap_downsample_fraction),
+                replace=True if bootstrap_sampling == "resample" else False,
+            )
+        case "fps":
+            n_keep = max(
+                2, int(round(len(source_indices) * bootstrap_downsample_fraction))
+            )
+            n_keep = min(n_keep, len(source_indices))
+            sample_idx = sample_farthest_points(source_embedding, n_keep)
+        case "fps_random":
+            if bootstrap_fps_top_k <= 0:
+                raise ValueError("bootstrap_fps_top_k must be > 0.")
+            if bootstrap_fps_alpha < 0:
+                raise ValueError("bootstrap_fps_alpha must be >= 0.")
+            n_keep = max(
+                2, int(round(len(source_indices) * bootstrap_downsample_fraction))
+            )
+            n_keep = min(n_keep, len(source_indices))
+            sample_idx = sample_farthest_points_randomized(
+                source_embedding,
+                n_keep,
+                top_k=bootstrap_fps_top_k,
+                alpha=bootstrap_fps_alpha,
+            )
+        case "herding":
+            n_keep = max(
+                2, int(round(len(source_indices) * bootstrap_downsample_fraction))
+            )
+            n_keep = min(n_keep, len(source_indices))
+            if bootstrap_herding_seed is None:
+                bootstrap_herding_seed = int(np.random.randint(0, 1_000_000))
+            sample_idx = kernel_herding_main(
+                sample_set_ind=np.arange(len(source_indices)),
+                X=source_embedding,
+                num_subsamples=n_keep,
+                frequency_seed=bootstrap_herding_seed,
+                n_features=int(bootstrap_herding_n_features),
+            )
+    return [source_indices[int(i)] for i in sample_idx.tolist()]
 
 
 def compute_sparse_pairwise_distance(
@@ -100,7 +215,9 @@ def compute_sparse_pairwise_distance(
     sanity_n_posterior: int = 1000,
     bootstrap_noise_model: str = "gaussian",
     thresh: Diameter_t | None = None,
-    bootstrap_sampling: str = "resample",
+    bootstrap_sampling: Literal[
+        "resample", "downsample", "fps", "fps_random", "herding"
+    ] = "resample",
     bootstrap_downsample_fraction: Percent_t = 2 / 3,
     bootstrap_fps_top_k: int = 5,
     bootstrap_fps_alpha: float = 1.0,
@@ -121,52 +238,21 @@ def compute_sparse_pairwise_distance(
     X = emb[selected_indices]
     boot_idx = None
     if bootstrap:
-        match bootstrap_sampling:
-            case "resample" | "downsample":
-                sample_idx = np.random.choice(
-                    len(selected_indices),
-                    size=len(selected_indices)
-                    if bootstrap_sampling == "resample"
-                    else int(len(selected_indices) * bootstrap_downsample_fraction),
-                    replace=True if bootstrap_sampling == "resample" else False,
-                )
-            case "fps":
-                n_keep = max(
-                    2, int(round(len(selected_indices) * bootstrap_downsample_fraction))
-                )
-                n_keep = min(n_keep, len(selected_indices))
-                sample_idx = sample_farthest_points(X, n_keep)
-            case "fps_random":
-                if bootstrap_fps_top_k <= 0:
-                    raise ValueError("bootstrap_fps_top_k must be > 0.")
-                if bootstrap_fps_alpha < 0:
-                    raise ValueError("bootstrap_fps_alpha must be >= 0.")
-                n_keep = max(
-                    2, int(round(len(selected_indices) * bootstrap_downsample_fraction))
-                )
-                n_keep = min(n_keep, len(selected_indices))
-                sample_idx = sample_farthest_points_randomized(
-                    X, n_keep, top_k=bootstrap_fps_top_k, alpha=bootstrap_fps_alpha
-                )
-            case "herding":
-                n_keep = max(
-                    2, int(round(len(selected_indices) * bootstrap_downsample_fraction))
-                )
-                n_keep = min(n_keep, len(selected_indices))
-                if bootstrap_herding_seed is None:
-                    bootstrap_herding_seed = int(np.random.randint(0, 1_000_000))
-                sample_idx = kernel_herding_main(
-                    sample_set_ind=np.arange(len(selected_indices)),
-                    X=X,
-                    num_subsamples=n_keep,
-                    frequency_seed=bootstrap_herding_seed,
-                    n_features=int(bootstrap_herding_n_features),
-                )
-        X, boot_idx = _sample_bootstrap_embedding(
+        boot_idx = select_bootstrap_sample(
+            source_indices=selected_indices,
+            source_embedding=X,
+            bootstrap_sampling=bootstrap_sampling,
+            bootstrap_downsample_fraction=bootstrap_downsample_fraction,
+            bootstrap_fps_top_k=bootstrap_fps_top_k,
+            bootstrap_fps_alpha=bootstrap_fps_alpha,
+            bootstrap_herding_n_features=bootstrap_herding_n_features,
+            bootstrap_herding_seed=bootstrap_herding_seed,
+        )
+        X = _sample_bootstrap_embedding(
             adata=adata,
             meta=meta,
-            selected_indices=selected_indices,
-            sample_idx=np.asarray(sample_idx, dtype=np.int64),
+            source_indices=selected_indices,
+            bootstrap_indices=boot_idx,
             bootstrap_noise_model=bootstrap_noise_model,
             noise_scale=noise_scale,
             sanity_n_posterior=sanity_n_posterior,
@@ -183,6 +269,146 @@ def compute_sparse_pairwise_distance(
     )
 
 
+def _remap_subfiltration_simplices_to_local(
+    simplices_by_dim: list, vertex_offset: int
+) -> list:
+    remapped = []
+    for births, deaths in simplices_by_dim:
+        remapped.append(
+            [
+                [[int(v) - vertex_offset for v in simplex] for simplex in births],
+                [[int(v) - vertex_offset for v in simplex] for simplex in deaths],
+            ]
+        )
+    return remapped
+
+
+def _remap_subfiltration_cocycles_to_local(
+    cocycles_by_dim: list, vertex_offset: int
+) -> list:
+    remapped = []
+    for dim_cocycles in cocycles_by_dim:
+        remapped_dim = []
+        for cocycle in dim_cocycles:
+            remapped_dim.append(
+                [
+                    [
+                        [int(v) - vertex_offset for v in simplex_vertices],
+                        int(coefficient),
+                    ]
+                    for simplex_vertices, coefficient in cocycle
+                ]
+            )
+        remapped.append(remapped_dim)
+    return remapped
+
+
+def compute_image_bootstrap_homology(
+    adata: AnnData,
+    meta: ScloopMeta,
+    thresh: Diameter_t,
+    noise_scale: float = 1e-3,
+    sanity_n_posterior: int = 1000,
+    bootstrap_noise_model: str = "gaussian",
+    bootstrap_sampling: Literal[
+        "resample", "downsample", "fps", "fps_random", "herding"
+    ] = "resample",
+    bootstrap_downsample_fraction: Percent_t = 2 / 3,
+    bootstrap_fps_top_k: int = 5,
+    bootstrap_fps_alpha: float = 1.0,
+    bootstrap_herding_n_features: int = 1000,
+    bootstrap_herding_seed: int | None = None,
+    **nei_kwargs,
+) -> ImageBootstrapHomologyResult:
+    assert meta.preprocess is not None
+    assert meta.preprocess.embedding_method is not None
+
+    embedding = np.asarray(
+        adata.obsm[f"X_{meta.preprocess.embedding_method}"]
+    )
+    source_indices = (
+        meta.preprocess.indices_downsample
+        if meta.preprocess.indices_downsample is not None
+        else list(range(embedding.shape[0]))
+    )
+    source_embedding = embedding[source_indices]
+    bootstrap_indices = select_bootstrap_sample(
+        source_indices=source_indices,
+        source_embedding=source_embedding,
+        bootstrap_sampling=bootstrap_sampling,
+        bootstrap_downsample_fraction=bootstrap_downsample_fraction,
+        bootstrap_fps_top_k=bootstrap_fps_top_k,
+        bootstrap_fps_alpha=bootstrap_fps_alpha,
+        bootstrap_herding_n_features=bootstrap_herding_n_features,
+        bootstrap_herding_seed=bootstrap_herding_seed,
+    )
+    bootstrap_embedding = _sample_bootstrap_embedding(
+        adata=adata,
+        meta=meta,
+        source_indices=source_indices,
+        bootstrap_indices=bootstrap_indices,
+        bootstrap_noise_model=bootstrap_noise_model,
+        noise_scale=noise_scale,
+        sanity_n_posterior=sanity_n_posterior,
+    )
+
+    n_reference_vertices = len(source_indices)
+    union_embedding = np.vstack([source_embedding, bootstrap_embedding])
+    nei_kwargs.setdefault("mode", "distance")
+    union_distance_matrix = radius_neighbors_graph(
+        X=union_embedding,
+        radius=thresh,
+        **nei_kwargs,
+    ).tocsr()
+    bootstrap_offset = n_reference_vertices
+    bootstrap_union_indices = np.arange(
+        bootstrap_offset,
+        bootstrap_offset + len(bootstrap_indices),
+        dtype=np.intc,
+    )
+
+    reference_image_result = ripser_image(
+        distance_matrix=union_distance_matrix.tocoo(copy=False),
+        sub_indices=np.arange(n_reference_vertices, dtype=np.intc),
+        modulus=2,
+        dim_max=1,
+        threshold=thresh,
+        do_cocycles=False,
+    )
+    bootstrap_image_result = ripser_image(
+        distance_matrix=union_distance_matrix.tocoo(copy=False),
+        sub_indices=bootstrap_union_indices,
+        modulus=2,
+        dim_max=1,
+        threshold=thresh,
+        do_cocycles=True,
+    )
+    bootstrap_subfiltration = bootstrap_image_result.subfiltration
+    persistence_pair_simplices = _remap_subfiltration_simplices_to_local(
+        bootstrap_subfiltration.births_and_deaths_simplex_by_dim,
+        bootstrap_offset,
+    )
+    cocycles = _remap_subfiltration_cocycles_to_local(
+        bootstrap_subfiltration.cocycles_by_dim,
+        bootstrap_offset,
+    )
+
+    return ImageBootstrapHomologyResult(
+        persistence_diagram=_cap_infinite_deaths(
+            bootstrap_subfiltration.births_and_deaths_by_dim, thresh
+        ),
+        persistence_pair_simplices=persistence_pair_simplices,
+        cocycles=cocycles,
+        indices_resample=bootstrap_indices,
+        bootstrap_distance_matrix=union_distance_matrix[
+            bootstrap_offset:, bootstrap_offset:
+        ].tocsr(),
+        reference_image_result=reference_image_result,
+        bootstrap_image_result=bootstrap_image_result,
+        n_reference_vertices=n_reference_vertices,
+    )
+
+
 def compute_persistence_diagram_and_cocycles(
     adata: AnnData,
     meta: ScloopMeta,
@@ -190,21 +416,7 @@ def compute_persistence_diagram_and_cocycles(
     bootstrap: bool = False,
     noise_scale: float = 1e-3,
     **nei_kwargs,
-) -> tuple[list, list, IndexListDistMatrix | None, csr_matrix]:
-    def _cap_infinite_deaths(diagrams: list, cap: float | None) -> list:
-        if cap is None or not np.isfinite(cap):
-            return diagrams
-        capped = []
-        for dim_pd in diagrams:
-            if len(dim_pd) < 2:
-                capped.append(dim_pd)
-                continue
-            births = np.asarray(dim_pd[0])
-            deaths = np.asarray(dim_pd[1])
-            deaths = np.where(np.isinf(deaths), cap, deaths)
-            capped.append([births, deaths])
-        return capped
-
+) -> tuple[list, list, list, IndexListDistMatrix | None, csr_matrix]:
     sparse_pairwise_distance_matrix, boot_idx = compute_sparse_pairwise_distance(
         adata=adata,
         meta=meta,
@@ -222,6 +434,7 @@ def compute_persistence_diagram_and_cocycles(
     )
     return (
         _cap_infinite_deaths(result.births_and_deaths_by_dim, thresh),
+        result.births_and_deaths_simplex_by_dim,
         result.cocycles_by_dim,
         boot_idx,
         sparse_pairwise_distance_matrix,

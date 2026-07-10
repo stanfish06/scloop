@@ -1,7 +1,7 @@
 # Copyright 2025 Zhiyuan Yu (Heemskerk's lab, University of Michigan)
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Literal, Optional
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
@@ -12,7 +12,12 @@ from scipy.stats.contingency import odds_ratio
 
 from ..computing import compute_weighted_hodge_embedding
 from ..utils.pvalues import correct_pvalues
-from .base_components import LoopClass, PersistenceTestResult, PresenceTestResult
+from .base_components import (
+    ImagePairRecord,
+    LoopClass,
+    PersistenceTestResult,
+    PresenceTestResult,
+)
 from .constants import (
     DEFAULT_HALF_WINDOW,
     DEFAULT_N_NEIGHBORS_EDGE_EMBEDDING,
@@ -42,8 +47,10 @@ if TYPE_CHECKING:
 class LoopMatch:
     idx_bootstrap: int
     target_class_idx: int
+    candidate_method: Literal["geometric", "image"] = "geometric"
     geometric_distance: Optional[float] = None
     neighbor_rank: Optional[int] = None
+    image_death_simplex: list[int] | None = None
 
 
 def _serialize_loop_matches(
@@ -78,6 +85,23 @@ def _serialize_loop_matches(
     group.create_dataset(
         "neighbor_rank", data=np.array(neighbor_ranks, dtype=np.int64), **kw
     )
+    group.create_dataset(
+        "candidate_method",
+        data=np.array(
+            [0 if m.candidate_method == "geometric" else 1 for m in matches],
+            dtype=np.int8,
+        ),
+        **kw,
+    )
+    image_death_simplices = np.full((len(matches), 3), -1, dtype=np.int64)
+    for i, match in enumerate(matches):
+        if match.image_death_simplex is not None:
+            image_death_simplices[i, : len(match.image_death_simplex)] = (
+                match.image_death_simplex
+            )
+    group.create_dataset(
+        "image_death_simplex", data=image_death_simplices, **kw
+    )
 
 
 def _deserialize_loop_matches(group: h5py.Group) -> list[LoopMatch]:
@@ -89,6 +113,16 @@ def _deserialize_loop_matches(group: h5py.Group) -> list[LoopMatch]:
     target_class_idxs = np.asarray(group["target_class_idx"])
     geo_dists = np.asarray(group["geometric_distance"])
     neighbor_ranks = np.asarray(group["neighbor_rank"])
+    candidate_methods = (
+        np.asarray(group["candidate_method"])
+        if "candidate_method" in group
+        else np.zeros(count, dtype=np.int8)
+    )
+    image_death_simplices = (
+        np.asarray(group["image_death_simplex"])
+        if "image_death_simplex" in group
+        else np.full((count, 3), -1, dtype=np.int64)
+    )
 
     matches = []
     for i in range(count):
@@ -98,8 +132,15 @@ def _deserialize_loop_matches(group: h5py.Group) -> list[LoopMatch]:
             LoopMatch(
                 idx_bootstrap=int(idx_bootstraps[i]),
                 target_class_idx=int(target_class_idxs[i]),
+                candidate_method=(
+                    "geometric" if candidate_methods[i] == 0 else "image"
+                ),
                 geometric_distance=geo_dist,
                 neighbor_rank=rank,
+                image_death_simplex=[
+                    int(v) for v in image_death_simplices[i] if v >= 0
+                ]
+                or None,
             )
         )
     return matches
@@ -143,7 +184,10 @@ class LoopTrack:
 class BootstrapAnalysis:
     num_bootstraps: Size_t = 0
     persistence_diagrams: list[list] = Field(default_factory=list)
+    persistence_pair_simplices: list[list] = Field(default_factory=list)
     cocycles: list[list] = Field(default_factory=list)
+    reference_image_pairs: list[list[ImagePairRecord]] = Field(default_factory=list)
+    bootstrap_image_pairs: list[list[ImagePairRecord]] = Field(default_factory=list)
     selected_loop_classes: list[list[LoopClass | None]] = Field(default_factory=list)
     loop_tracks: dict[Index_t, LoopTrack] = Field(default_factory=dict)
     presence_test_result: PresenceTestResult | None = None
@@ -421,6 +465,20 @@ class BootstrapAnalysis:
                     lc_grp.attrs["_is_none"] = False
                     lc.to_hdf5_group(lc_grp, compress=compress)
 
+        for field_name, records_by_bootstrap in (
+            ("reference_image_pairs", self.reference_image_pairs),
+            ("bootstrap_image_pairs", self.bootstrap_image_pairs),
+        ):
+            records_grp = group.create_group(field_name)
+            records_grp.attrs["_count"] = len(records_by_bootstrap)
+            for boot_idx, records in enumerate(records_by_bootstrap):
+                boot_grp = records_grp.create_group(str(boot_idx))
+                boot_grp.attrs["_count"] = len(records)
+                for record_idx, record in enumerate(records):
+                    record.to_hdf5_group(
+                        boot_grp.create_group(str(record_idx)), compress=compress
+                    )
+
         # loop_tracks: dict[int, LoopTrack]
         tracks_grp = group.create_group("loop_tracks")
         for track_id, track in self.loop_tracks.items():
@@ -458,6 +516,22 @@ class BootstrapAnalysis:
                     loop_classes.append(LoopClass.from_hdf5_group(lc_grp))
             selected_loop_classes.append(loop_classes)
 
+        image_records: dict[str, list[list[ImagePairRecord]]] = {}
+        for field_name in ("reference_image_pairs", "bootstrap_image_pairs"):
+            records_by_bootstrap: list[list[ImagePairRecord]] = []
+            if field_name in group:
+                records_grp: h5py.Group = group[field_name]  # type: ignore[assignment]
+                n_record_bootstraps = int(records_grp.attrs["_count"])
+                for boot_idx in range(n_record_bootstraps):
+                    boot_grp: h5py.Group = records_grp[str(boot_idx)]  # type: ignore[assignment]
+                    records_by_bootstrap.append(
+                        [
+                            ImagePairRecord.from_hdf5_group(boot_grp[str(i)])
+                            for i in range(int(boot_grp.attrs["_count"]))
+                        ]
+                    )
+            image_records[field_name] = records_by_bootstrap
+
         # loop_tracks
         loop_tracks: dict[int, LoopTrack] = {}
         tracks_grp: h5py.Group = group["loop_tracks"]  # type: ignore[assignment]
@@ -481,7 +555,10 @@ class BootstrapAnalysis:
         return cls(
             num_bootstraps=num_bootstraps,
             persistence_diagrams=[],
+            persistence_pair_simplices=[],
             cocycles=[],
+            reference_image_pairs=image_records["reference_image_pairs"],
+            bootstrap_image_pairs=image_records["bootstrap_image_pairs"],
             selected_loop_classes=selected_loop_classes,
             loop_tracks=loop_tracks,
             presence_test_result=presence_test_result,
@@ -602,8 +679,11 @@ class LoopClassAnalysis(LoopClass):
 
         return cls(
             rank=super_obj.rank,
+            persistence_index=super_obj.persistence_index,
             birth=super_obj.birth,
             death=super_obj.death,
+            birth_simplex=super_obj.birth_simplex,
+            death_simplex=super_obj.death_simplex,
             cocycles=super_obj.cocycles,
             representatives=representatives,
             coordinates_vertices_representatives=[

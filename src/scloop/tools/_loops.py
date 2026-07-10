@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from contextlib import nullcontext
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 import numpy as np
 from anndata import AnnData
@@ -66,6 +66,8 @@ def find_loops(
     bootstrap_fps_alpha: float = 1.0,
     bootstrap_herding_n_features: int = 1000,
     bootstrap_herding_seed: int | None = None,
+    bootstrap_candidate_method: Literal["geometric", "image"] = "geometric",
+    require_bootstrap_homological_equivalence: bool = True,
     n_check_per_candidate: NonZeroCount_t = 1,
     max_columns_boundary_matrix: NonZeroCount_t = DEFAULT_MAX_COLUMNS_BOUNDARY_MATRIX,
     auto_shrink_boundary_matrix: bool = True,
@@ -206,6 +208,14 @@ def find_loops(
         - map loops to original loops
         =============================
         """
+        bootstrap_kwargs = dict(kwargs_bootstrap or {})
+        bootstrap_candidate_method = bootstrap_kwargs.pop(
+            "candidate_method", bootstrap_candidate_method
+        )
+        require_bootstrap_homological_equivalence = bootstrap_kwargs.pop(
+            "require_homological_equivalence",
+            require_bootstrap_homological_equivalence,
+        )
         hd._bootstrap(
             adata=adata,
             n_bootstrap=n_bootstrap,
@@ -221,11 +231,15 @@ def find_loops(
             bootstrap_fps_alpha=bootstrap_fps_alpha,
             bootstrap_herding_n_features=bootstrap_herding_n_features,
             bootstrap_herding_seed=bootstrap_herding_seed,
+            candidate_method=bootstrap_candidate_method,
+            require_homological_equivalence=(
+                require_bootstrap_homological_equivalence
+            ),
             verbose=verbose,
             progress_main=progress_main,
             use_log_display=use_log_display,
             use_parallel=use_parallel,
-            **(kwargs_bootstrap or {}),
+            **bootstrap_kwargs,
         )
 
         """
