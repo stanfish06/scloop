@@ -18,6 +18,8 @@ class LoopClass(BaseModel):
     rank: Index_t
     birth: Diameter_t = 0.0
     death: Diameter_t = 0.0
+    birth_simplex: list[Index_t]
+    death_simplex: list[Index_t]
     cocycles: list | None = None
     representatives: list[list[Index_t]] | None = None
     coordinates_vertices_representatives: list[list[list[float]]] | None = None

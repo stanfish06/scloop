@@ -128,7 +128,7 @@ def compute_sparse_pairwise_distance(
                     size=len(selected_indices)
                     if bootstrap_sampling == "resample"
                     else int(len(selected_indices) * bootstrap_downsample_fraction),
-                    replace=True,
+                    replace=True if bootstrap_sampling == "resample" else False,
                 )
             case "fps":
                 n_keep = max(
