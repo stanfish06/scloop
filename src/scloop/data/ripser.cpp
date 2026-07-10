@@ -593,6 +593,11 @@ typedef struct {
     int num_edges;
 } ripserResults;
 
+typedef struct {
+    ripserResults subfiltration;
+    ripserResults image;
+} imageRipserResults;
+
 /* This is the data structure for returning dimension 2 boundary matrix */
 typedef struct {
     /* Vector of triangles, where each triangle is represented by its 3 vertex indices */
@@ -615,6 +620,7 @@ class ripser
     // If this flag is off, don't extract the representative cocycles to save
     // time
     const int do_cocycles;
+    std::vector<uint8_t> sub_vertex_mask;
 
     struct entry_hash {
         std::size_t operator()(const entry_t& e) const
@@ -642,14 +648,21 @@ public:
     mutable std::vector<std::vector<std::vector<int>>> cocycles_by_dim;
 
     ripser(DistanceMatrix&& _dist, index_t _dim_max, value_t _threshold,
-           float _ratio, coefficient_t _modulus, int _do_cocycles)
+           float _ratio, coefficient_t _modulus, int _do_cocycles,
+           std::vector<uint8_t> _sub_vertex_mask = {})
         : dist(std::move(_dist)), n(dist.size()), dim_max(_dim_max),
           threshold(_threshold), ratio(_ratio), modulus(_modulus),
           binomial_coeff(n, dim_max + 2),
           multiplicative_inverse(multiplicative_inverse_vector(_modulus)),
-          do_cocycles(_do_cocycles)
+          do_cocycles(_do_cocycles),
+          sub_vertex_mask(std::move(_sub_vertex_mask))
     {
+        if (sub_vertex_mask.empty())
+            sub_vertex_mask.assign(n, 1);
+        assert(sub_vertex_mask.size() == static_cast<size_t>(n));
     }
+
+    bool is_sub_vertex(index_t i) const { return sub_vertex_mask[i] != 0; }
 
     void copy_results(ripserResults& res)
     {
@@ -781,7 +794,8 @@ public:
     void
     assemble_columns_to_reduce(std::vector<diameter_index_t>& simplices,
                                std::vector<diameter_index_t>& columns_to_reduce,
-                               entry_hash_map& pivot_column_index, index_t dim)
+                               entry_hash_map& pivot_column_index, index_t dim,
+                               reduction_mode mode = reduction_mode::ambient)
     {
 #ifdef INDICATE_PROGRESS
         std::cerr << clear_line << "assembling columns" << std::flush;
@@ -812,12 +826,14 @@ public:
                 if (get_diameter(cofacet) <= threshold) {
                     if (dim != dim_max)
                         next_simplices.push_back(
-                            {get_diameter(cofacet), get_index(cofacet)});
+                            {get_diameter(cofacet),
+                             get_diameter_sub(cofacet), get_index(cofacet)});
 
                     if (pivot_column_index.find(get_entry(cofacet)) ==
                         pivot_column_index.end())
                         columns_to_reduce.push_back(
-                            {get_diameter(cofacet), get_index(cofacet)});
+                            {get_diameter(cofacet),
+                             get_diameter_sub(cofacet), get_index(cofacet)});
                 }
             }
         }
@@ -830,7 +846,8 @@ public:
 #endif
 
         std::sort(columns_to_reduce.begin(), columns_to_reduce.end(),
-                  greater_diameter_or_smaller_index<diameter_index_t>());
+                  greater_diameter_or_smaller_index<diameter_index_t>(
+                      mode != reduction_mode::ambient));
 
 #ifdef INDICATE_PROGRESS
         std::cerr << clear_line << std::flush;
@@ -879,6 +896,118 @@ public:
                 births_and_deaths_by_dim[0].push_back(
                     std::numeric_limits<value_t>::infinity());
             }
+    }
+
+    void compute_image_dim_0_pairs(
+        std::vector<diameter_index_t>& edges,
+        std::vector<diameter_index_t>& columns_to_reduce,
+        imageRipserResults& results)
+    {
+        edges = get_edges();
+
+        std::vector<diameter_index_t> sub_edges = edges;
+        std::sort(
+            sub_edges.rbegin(), sub_edges.rend(),
+            greater_diameter_or_smaller_index<diameter_index_t>(true));
+
+        union_find sub_components(n);
+        for (index_t i = 0; i < n; ++i)
+            sub_components.set_birth(i, get_vertex_birth(i));
+
+        std::vector<index_t> vertices_of_edge(2);
+        for (const auto& edge : sub_edges) {
+            if (get_diameter_sub(edge) > threshold)
+                continue;
+
+            get_simplex_vertices(get_index(edge), 1, n,
+                                 vertices_of_edge.rbegin());
+            index_t u = sub_components.find(vertices_of_edge[0]);
+            index_t v = sub_components.find(vertices_of_edge[1]);
+            if (u != v) {
+                value_t birth = std::max(sub_components.get_birth(u),
+                                         sub_components.get_birth(v));
+                value_t death = get_diameter_sub(edge);
+                if (death > birth) {
+                    results.subfiltration.births_and_deaths_by_dim[0]
+                        .push_back(birth);
+                    results.subfiltration.births_and_deaths_by_dim[0]
+                        .push_back(death);
+                }
+                sub_components.link(u, v);
+            }
+        }
+
+        for (index_t i = 0; i < n; ++i) {
+            if (is_sub_vertex(i) && sub_components.find(i) == i) {
+                results.subfiltration.births_and_deaths_by_dim[0].push_back(
+                    sub_components.get_birth(i));
+                results.subfiltration.births_and_deaths_by_dim[0].push_back(
+                    std::numeric_limits<value_t>::infinity());
+            }
+        }
+
+        union_find ordering_components(n);
+        for (const auto& edge : sub_edges) {
+            get_simplex_vertices(get_index(edge), 1, n,
+                                 vertices_of_edge.rbegin());
+            index_t u = ordering_components.find(vertices_of_edge[0]);
+            index_t v = ordering_components.find(vertices_of_edge[1]);
+            if (u != v)
+                ordering_components.link(u, v);
+            else
+                columns_to_reduce.push_back(edge);
+        }
+        std::reverse(columns_to_reduce.begin(), columns_to_reduce.end());
+
+        std::vector<diameter_index_t> ambient_edges = edges;
+        std::sort(
+            ambient_edges.rbegin(), ambient_edges.rend(),
+            greater_diameter_or_smaller_index<diameter_index_t>(false));
+
+        union_find ambient_components(n);
+        std::vector<uint8_t> contains_sub_vertex(n, 0);
+        for (index_t i = 0; i < n; ++i) {
+            ambient_components.set_birth(
+                i, is_sub_vertex(i)
+                       ? get_vertex_birth(i)
+                       : std::numeric_limits<value_t>::infinity());
+            contains_sub_vertex[i] = is_sub_vertex(i);
+        }
+
+        for (const auto& edge : ambient_edges) {
+            get_simplex_vertices(get_index(edge), 1, n,
+                                 vertices_of_edge.rbegin());
+            index_t u = ambient_components.find(vertices_of_edge[0]);
+            index_t v = ambient_components.find(vertices_of_edge[1]);
+            if (u == v)
+                continue;
+
+            bool u_has_sub_vertex = contains_sub_vertex[u] != 0;
+            bool v_has_sub_vertex = contains_sub_vertex[v] != 0;
+            if (u_has_sub_vertex && v_has_sub_vertex) {
+                value_t birth = std::max(ambient_components.get_birth(u),
+                                         ambient_components.get_birth(v));
+                value_t death = get_diameter(edge);
+                if (death > birth) {
+                    results.image.births_and_deaths_by_dim[0].push_back(birth);
+                    results.image.births_and_deaths_by_dim[0].push_back(death);
+                }
+            }
+
+            ambient_components.link(u, v);
+            index_t root = ambient_components.find(u);
+            contains_sub_vertex[root] =
+                u_has_sub_vertex || v_has_sub_vertex;
+        }
+
+        for (index_t i = 0; i < n; ++i) {
+            if (ambient_components.find(i) == i && contains_sub_vertex[i]) {
+                results.image.births_and_deaths_by_dim[0].push_back(
+                    ambient_components.get_birth(i));
+                results.image.births_and_deaths_by_dim[0].push_back(
+                    std::numeric_limits<value_t>::infinity());
+            }
+        }
     }
 
     template <typename Column>
@@ -993,7 +1122,9 @@ public:
     diameter_entry_t cocycle_e;
     std::vector<index_t> cocycle_simplex;
     std::vector<int> thiscocycle;
-    inline void compute_cocycles(working_t cocycle, index_t dim)
+    inline void compute_cocycles(
+        working_t cocycle, index_t dim,
+        std::vector<std::vector<std::vector<int>>>& result_cocycles)
     {
         thiscocycle.clear();
         while (get_index(cocycle_e = get_pivot(cocycle)) != -1) {
@@ -1007,12 +1138,15 @@ public:
                 normalize(get_coefficient(cocycle_e), modulus));
             cocycle.pop();
         }
-        cocycles_by_dim[dim].push_back(thiscocycle);
+        result_cocycles[dim].push_back(thiscocycle);
     }
 
-    void compute_pairs(std::vector<diameter_index_t>& columns_to_reduce,
-                       entry_hash_map& pivot_column_index, index_t dim,
-                       reduction_mode mode)
+    void compute_pairs(
+        std::vector<diameter_index_t>& columns_to_reduce,
+        entry_hash_map& pivot_column_index, index_t dim, reduction_mode mode,
+        std::vector<std::vector<value_t>>& result_intervals,
+        std::vector<std::vector<std::vector<int>>>& result_simplices,
+        std::vector<std::vector<std::vector<int>>>& result_cocycles)
     {
         compressed_sparse_matrix<diameter_entry_t> reduction_matrix;
         size_t index_column_to_add;
@@ -1074,11 +1208,12 @@ public:
                     } else {
                         value_t death = get_coboundary_diameter(pivot, mode);
                         if (death > diameter * ratio) {
-                            births_and_deaths_by_dim[dim].push_back(diameter);
-                            births_and_deaths_by_dim[dim].push_back(death);
+                            result_intervals[dim].push_back(diameter);
+                            result_intervals[dim].push_back(death);
                             if (do_cocycles) {
                                 // Representative cocycle
-                                compute_cocycles(working_reduction_column, dim);
+                                compute_cocycles(working_reduction_column, dim,
+                                                 result_cocycles);
                             }
                             // TODO: add a flag here, skip if no need for cross match
                             index_t birth_simplex_i = get_index(column_to_reduce);
@@ -1089,8 +1224,8 @@ public:
                                                  std::back_inserter(birth_simplex_vertices));
                             get_simplex_vertices(death_simplex_i, dim + 1, n,
                                                  std::back_inserter(death_simplex_vertices));
-                            births_and_deaths_simplex_by_dim[dim].push_back(birth_simplex_vertices);
-                            births_and_deaths_simplex_by_dim[dim].push_back(death_simplex_vertices);
+                            result_simplices[dim].push_back(birth_simplex_vertices);
+                            result_simplices[dim].push_back(death_simplex_vertices);
                         }
 
                         pivot_column_index.insert(
@@ -1109,13 +1244,24 @@ public:
                         break;
                     }
                 } else {
-                    births_and_deaths_by_dim[dim].push_back(diameter);
-                    births_and_deaths_by_dim[dim].push_back(
-                        std::numeric_limits<value_t>::infinity());
+                    if (diameter <= threshold) {
+                        result_intervals[dim].push_back(diameter);
+                        result_intervals[dim].push_back(
+                            std::numeric_limits<value_t>::infinity());
 
-                    if (do_cocycles) {
-                        // Representative cocycle
-                        compute_cocycles(working_reduction_column, dim);
+                        std::vector<int> birth_simplex_vertices;
+                        get_simplex_vertices(
+                            get_index(column_to_reduce), dim, n,
+                            std::back_inserter(birth_simplex_vertices));
+                        result_simplices[dim].push_back(
+                            birth_simplex_vertices);
+                        result_simplices[dim].push_back({});
+
+                        if (do_cocycles) {
+                            // Representative cocycle
+                            compute_cocycles(working_reduction_column, dim,
+                                             result_cocycles);
+                        }
                     }
                     break;
                 }
@@ -1124,6 +1270,15 @@ public:
 #ifdef INDICATE_PROGRESS
         std::cerr << clear_line << std::flush;
 #endif
+    }
+
+    void compute_pairs(std::vector<diameter_index_t>& columns_to_reduce,
+                       entry_hash_map& pivot_column_index, index_t dim,
+                       reduction_mode mode)
+    {
+        compute_pairs(columns_to_reduce, pivot_column_index, dim, mode,
+                      births_and_deaths_by_dim,
+                      births_and_deaths_simplex_by_dim, cocycles_by_dim);
     }
 
     std::vector<diameter_index_t> get_edges();
@@ -1153,6 +1308,52 @@ public:
                                            pivot_column_index, dim + 1);
         }
     }
+
+    imageRipserResults compute_image_barcodes()
+    {
+        if (dim_max < 0)
+            dim_max = 0;
+
+        imageRipserResults results;
+        results.subfiltration.births_and_deaths_by_dim.resize(dim_max + 1);
+        results.subfiltration.births_and_deaths_simplex_by_dim.resize(
+            dim_max + 1);
+        results.subfiltration.cocycles_by_dim.resize(dim_max + 1);
+        results.image.births_and_deaths_by_dim.resize(dim_max + 1);
+        results.image.births_and_deaths_simplex_by_dim.resize(dim_max + 1);
+        results.image.cocycles_by_dim.resize(dim_max + 1);
+
+        std::vector<diameter_index_t> simplices, columns_to_reduce;
+        compute_image_dim_0_pairs(simplices, columns_to_reduce, results);
+
+        for (index_t dim = 1; dim <= dim_max; ++dim) {
+            entry_hash_map image_pivot_column_index;
+            image_pivot_column_index.reserve(columns_to_reduce.size());
+            compute_pairs(
+                columns_to_reduce, image_pivot_column_index, dim,
+                reduction_mode::image,
+                results.image.births_and_deaths_by_dim,
+                results.image.births_and_deaths_simplex_by_dim,
+                results.image.cocycles_by_dim);
+
+            entry_hash_map sub_pivot_column_index;
+            sub_pivot_column_index.reserve(columns_to_reduce.size());
+            compute_pairs(
+                columns_to_reduce, sub_pivot_column_index, dim,
+                reduction_mode::subfiltration,
+                results.subfiltration.births_and_deaths_by_dim,
+                results.subfiltration.births_and_deaths_simplex_by_dim,
+                results.subfiltration.cocycles_by_dim);
+
+            if (dim < dim_max) {
+                assemble_columns_to_reduce(
+                    simplices, columns_to_reduce, sub_pivot_column_index,
+                    dim + 1, reduction_mode::subfiltration);
+            }
+        }
+
+        return results;
+    }
 };
 
 template <>
@@ -1178,6 +1379,7 @@ private:
     const diameter_entry_t simplex;
     const coefficient_t modulus;
     const compressed_lower_distance_matrix& dist;
+    const std::vector<uint8_t>& sub_vertex_mask;
     const binomial_coeff_table& binomial_coeff;
 
 public:
@@ -1187,6 +1389,7 @@ public:
         : idx_below(get_index(_simplex)), idx_above(0), v(parent.n - 1),
           k(_dim + 1), vertices(_dim + 1), simplex(_simplex),
           modulus(parent.modulus), dist(parent.dist),
+          sub_vertex_mask(parent.sub_vertex_mask),
           binomial_coeff(parent.binomial_coeff)
     {
         parent.get_simplex_vertices(get_index(_simplex), _dim, parent.n,
@@ -1210,12 +1413,21 @@ public:
         value_t cofacet_diameter = get_diameter(simplex);
         for (index_t w : vertices)
             cofacet_diameter = std::max(cofacet_diameter, dist(v, w));
+        value_t cofacet_diameter_sub = get_diameter_sub(simplex);
+        if (!sub_vertex_mask[v]) {
+            cofacet_diameter_sub =
+                std::numeric_limits<value_t>::infinity();
+        } else {
+            for (index_t w : vertices)
+                cofacet_diameter_sub =
+                    std::max(cofacet_diameter_sub, dist(v, w));
+        }
         index_t cofacet_index =
             idx_above + binomial_coeff(v--, k + 1) + idx_below;
         coefficient_t cofacet_coefficient =
             (k & 1 ? modulus - 1 : 1) * get_coefficient(simplex) % modulus;
-        return diameter_entry_t(cofacet_diameter, cofacet_index,
-                                cofacet_coefficient);
+        return diameter_entry_t(cofacet_diameter, cofacet_diameter_sub,
+                                cofacet_index, cofacet_coefficient);
     }
 };
 
@@ -1227,6 +1439,7 @@ class ripser<sparse_distance_matrix>::simplex_coboundary_enumerator
     const diameter_entry_t simplex;
     const coefficient_t modulus;
     const sparse_distance_matrix& dist;
+    const std::vector<uint8_t>& sub_vertex_mask;
     const binomial_coeff_table& binomial_coeff;
     std::vector<std::vector<index_diameter_t>::const_reverse_iterator>&
         neighbor_it;
@@ -1240,7 +1453,8 @@ public:
                                   const ripser<sparse_distance_matrix>& parent)
         : idx_below(get_index(_simplex)), idx_above(0), k(_dim + 1),
           vertices(_dim + 1), simplex(_simplex), modulus(parent.modulus),
-          dist(parent.dist), binomial_coeff(parent.binomial_coeff),
+          dist(parent.dist), sub_vertex_mask(parent.sub_vertex_mask),
+          binomial_coeff(parent.binomial_coeff),
           neighbor_it(dist.neighbor_it), neighbor_end(dist.neighbor_end)
     {
         neighbor_it.clear();
@@ -1288,12 +1502,20 @@ public:
         ++neighbor_it[0];
         value_t cofacet_diameter =
             std::max(get_diameter(simplex), get_diameter(neighbor));
+        value_t cofacet_diameter_sub = get_diameter_sub(simplex);
+        if (!sub_vertex_mask[get_index(neighbor)]) {
+            cofacet_diameter_sub =
+                std::numeric_limits<value_t>::infinity();
+        } else {
+            cofacet_diameter_sub =
+                std::max(cofacet_diameter_sub, get_diameter(neighbor));
+        }
         index_t cofacet_index =
             idx_above + binomial_coeff(get_index(neighbor), k + 1) + idx_below;
         coefficient_t cofacet_coefficient =
             (k & 1 ? modulus - 1 : 1) * get_coefficient(simplex) % modulus;
-        return diameter_entry_t(cofacet_diameter, cofacet_index,
-                                cofacet_coefficient);
+        return diameter_entry_t(cofacet_diameter, cofacet_diameter_sub,
+                                cofacet_index, cofacet_coefficient);
     }
 };
 
@@ -1306,8 +1528,13 @@ ripser<compressed_lower_distance_matrix>::get_edges()
     for (index_t index = binomial_coeff(n, 2); index-- > 0;) {
         get_simplex_vertices(index, 1, dist.size(), vertices.rbegin());
         value_t length = dist(vertices[0], vertices[1]);
-        if (length <= threshold)
-            edges.push_back({length, index});
+        if (length <= threshold) {
+            value_t sub_length =
+                is_sub_vertex(vertices[0]) && is_sub_vertex(vertices[1])
+                    ? length
+                    : std::numeric_limits<value_t>::infinity();
+            edges.push_back({length, sub_length, index});
+        }
     }
     return edges;
 }
@@ -1319,8 +1546,15 @@ std::vector<diameter_index_t> ripser<sparse_distance_matrix>::get_edges()
     for (index_t i = 0; i < n; ++i)
         for (auto n : dist.neighbors[i]) {
             index_t j = get_index(n);
-            if (i > j)
-                edges.push_back({get_diameter(n), get_edge_index(i, j)});
+            if (i > j) {
+                value_t length = get_diameter(n);
+                value_t sub_length =
+                    is_sub_vertex(i) && is_sub_vertex(j)
+                        ? length
+                        : std::numeric_limits<value_t>::infinity();
+                edges.push_back(
+                    {length, sub_length, get_edge_index(i, j)});
+            }
         }
     return edges;
 }
@@ -1404,6 +1638,37 @@ ripserResults rips_dm_sparse(int* I, int* J, float* V, int NEdges, int N,
     r.copy_results(res);
     res.num_edges = num_edges;
     return res;
+}
+
+imageRipserResults rips_image_sparse(
+    int* I, int* J, float* V, int NEdges, int N, int* sub_indices,
+    int n_sub_indices, int modulus, int dim_max, float threshold,
+    int do_cocycles)
+{
+    std::vector<uint8_t> sub_vertex_mask(N, 0);
+    for (int i = 0; i < n_sub_indices; ++i) {
+        if (sub_indices[i] >= 0 && sub_indices[i] < N)
+            sub_vertex_mask[sub_indices[i]] = 1;
+    }
+
+    float ratio = 1.0;
+    ripser<sparse_distance_matrix> r(
+        sparse_distance_matrix(I, J, V, NEdges, N, threshold), dim_max,
+        threshold, ratio, modulus, do_cocycles, sub_vertex_mask);
+    imageRipserResults results = r.compute_image_barcodes();
+
+    int ambient_edges = 0;
+    int subfiltration_edges = 0;
+    for (int i = 0; i < NEdges; ++i) {
+        if (I[i] < J[i] && V[i] <= threshold) {
+            ++ambient_edges;
+            if (sub_vertex_mask[I[i]] && sub_vertex_mask[J[i]])
+                ++subfiltration_edges;
+        }
+    }
+    results.image.num_edges = ambient_edges;
+    results.subfiltration.num_edges = subfiltration_edges;
+    return results;
 }
 
 boundaryMatrixResults get_boundary_matrix_sparse(int* I, int* J, float* V,

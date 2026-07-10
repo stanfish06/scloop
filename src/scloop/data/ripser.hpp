@@ -4,6 +4,7 @@
 #include <vector>
 #include <queue>
 #include <cmath>
+#include <cstdint>
 #include <unordered_map>
 
 typedef float value_t;
@@ -124,6 +125,11 @@ typedef struct {
     int num_edges;
 } ripserResults;
 
+typedef struct {
+    ripserResults subfiltration;
+    ripserResults image;
+} imageRipserResults;
+
 /*
  Data structure for returning dimension 2 boundary matrix
 */
@@ -144,6 +150,7 @@ class ripser {
     const coefficient_t modulus;
     mutable std::vector<diameter_entry_t> cofacet_entries;
     const int do_cocycles;
+    std::vector<uint8_t> sub_vertex_mask;
 public:
     mutable std::vector<std::vector<value_t>> births_and_deaths_by_dim;
     mutable std::vector<std::vector<std::vector<int>>> cocycles_by_dim;
@@ -159,7 +166,10 @@ public:
     typedef hash_map<entry_t, size_t, entry_hash, equal_index> entry_hash_map;
 
     ripser(DistanceMatrix&& _dist, index_t _dim_max, value_t _threshold,
-           float _ratio, coefficient_t _modulus, int _do_cocycles);
+           float _ratio, coefficient_t _modulus, int _do_cocycles,
+           std::vector<uint8_t> _sub_vertex_mask = {});
+
+    bool is_sub_vertex(index_t i) const;
 
     index_t get_edge_index(const index_t i, const index_t j) const;
 
@@ -171,12 +181,18 @@ public:
 
     void assemble_columns_to_reduce(std::vector<diameter_index_t>& simplices,
                                     std::vector<diameter_index_t>& columns_to_reduce,
-                                    entry_hash_map& pivot_column_index, index_t dim);
+                                    entry_hash_map& pivot_column_index, index_t dim,
+                                    reduction_mode mode = reduction_mode::ambient);
 
     value_t get_vertex_birth(index_t i);
 
     void compute_dim_0_pairs(std::vector<diameter_index_t>& edges,
                              std::vector<diameter_index_t>& columns_to_reduce);
+
+    void compute_image_dim_0_pairs(
+        std::vector<diameter_index_t>& edges,
+        std::vector<diameter_index_t>& columns_to_reduce,
+        imageRipserResults& results);
 
     template <typename Column>
     diameter_entry_t init_coboundary_and_get_pivot(
@@ -212,9 +228,18 @@ public:
                        entry_hash_map& pivot_column_index, index_t dim,
                        reduction_mode mode);
 
+    void compute_pairs(
+        std::vector<diameter_index_t>& columns_to_reduce,
+        entry_hash_map& pivot_column_index, index_t dim, reduction_mode mode,
+        std::vector<std::vector<value_t>>& result_intervals,
+        std::vector<std::vector<std::vector<int>>>& result_simplices,
+        std::vector<std::vector<std::vector<int>>>& result_cocycles);
+
     std::vector<diameter_index_t> get_edges();
 
     void compute_barcodes();
+
+    imageRipserResults compute_image_barcodes();
 
     void copy_results(ripserResults& res);
 
@@ -241,6 +266,11 @@ ripserResults rips_dm(float* D, int N, int modulus, int dim_max,
 ripserResults rips_dm_sparse(int* I, int* J, float* V, int NEdges, int N,
                              int modulus, int dim_max, float threshold,
                              int do_cocycles);
+
+imageRipserResults rips_image_sparse(
+    int* I, int* J, float* V, int NEdges, int N, int* sub_indices,
+    int n_sub_indices, int modulus, int dim_max, float threshold,
+    int do_cocycles);
 
 /**
  * @brief Compute dimension 2 boundary matrix without redundant columns

@@ -14,10 +14,14 @@ cdef extern from "ripser.hpp":
         vector[vector[vector[int]]] births_and_deaths_simplex_by_dim
         vector[vector[vector[int]]] cocycles_by_dim
         int num_edges
+    cdef cppclass imageRipserResults:
+        ripserResults subfiltration
+        ripserResults image
     cdef cppclass boundaryMatrixResults:
         vector[vector[index_t]] triangle_vertices
         vector[value_t] triangle_diameters
     cdef ripserResults rips_dm_sparse(int* I, int* J, float* V, int NEdges, int N, int modulus, int dim_max, float threshold, int do_cocycles) nogil
+    cdef imageRipserResults rips_image_sparse(int* I, int* J, float* V, int NEdges, int N, int* sub_indices, int n_sub_indices, int modulus, int dim_max, float threshold, int do_cocycles) nogil
     cdef boundaryMatrixResults get_boundary_matrix_sparse(int* I, int* J, float* V, int NEdges, int N, float threshold) nogil
 
 @dataclasses.dataclass
@@ -26,6 +30,11 @@ class RipserResults:
     births_and_deaths_simplex_by_dim: list
     cocycles_by_dim: list
     num_edges: int
+
+@dataclasses.dataclass
+class ImageRipserResults:
+    subfiltration: RipserResults
+    image: RipserResults
 
 @dataclasses.dataclass
 class BoundaryMatrixResults:
@@ -133,6 +142,51 @@ def ripser(
         NEdges
     )
 
+def ripser_image(
+    distance_matrix: coo_matrix,
+    sub_indices,
+    int modulus,
+    int dim_max,
+    float threshold,
+    bool do_cocycles,
+) -> ImageRipserResults:
+    """Compute PH of an induced subfiltration and its image in the ambient complex."""
+    sub_indices_array = np.ascontiguousarray(sub_indices, dtype=np.intc)
+    if sub_indices_array.ndim != 1 or sub_indices_array.size == 0:
+        raise ValueError("sub_indices must be a non-empty one-dimensional array")
+    if np.any(sub_indices_array < 0) or np.any(
+        sub_indices_array >= distance_matrix.shape[0]
+    ):
+        raise ValueError("sub_indices contains a vertex outside the distance matrix")
+
+    cdef int[::1] _I = np.ascontiguousarray(distance_matrix.row, dtype=np.intc)
+    cdef int[::1] _J = np.ascontiguousarray(distance_matrix.col, dtype=np.intc)
+    cdef float[::1] _V = np.ascontiguousarray(
+        distance_matrix.data, dtype=np.float32
+    )
+    cdef int[::1] _sub_indices = sub_indices_array
+
+    cdef int* I = &_I[0]
+    cdef int* J = &_J[0]
+    cdef float* V = &_V[0]
+    cdef int* sub_indices_ptr = &_sub_indices[0]
+    cdef int NEdges = distance_matrix.nnz
+    cdef int N = distance_matrix.shape[0]
+    cdef int n_sub_indices = _sub_indices.shape[0]
+    cdef int do_cocycles_int = int(do_cocycles)
+    cdef imageRipserResults res
+
+    with nogil:
+        res = rips_image_sparse(
+            I, J, V, NEdges, N, sub_indices_ptr, n_sub_indices,
+            modulus, dim_max, threshold, do_cocycles_int
+        )
+
+    return ImageRipserResults(
+        subfiltration=_convert_ripser_results(res.subfiltration, dim_max),
+        image=_convert_ripser_results(res.image, dim_max),
+    )
+
 def get_boundary_matrix(
     distance_matrix: coo_matrix,
     float threshold,
@@ -208,3 +262,22 @@ cdef list converting_birth_death_simplex_to_list(
         death.append(simplex_vertices)
 
     return [birth, death]
+
+cdef object _convert_ripser_results(ripserResults res, int dim_max):
+    return RipserResults(
+        [
+            converting_birth_death_to_list(res.births_and_deaths_by_dim, i)
+            for i in range(dim_max + 1)
+        ],
+        [
+            converting_birth_death_simplex_to_list(
+                res.births_and_deaths_simplex_by_dim, i
+            )
+            for i in range(dim_max + 1)
+        ],
+        [
+            converting_cocycles_to_list(res.cocycles_by_dim, i)
+            for i in range(dim_max + 1)
+        ],
+        res.num_edges,
+    )
