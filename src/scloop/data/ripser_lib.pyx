@@ -11,6 +11,7 @@ ctypedef long index_t
 cdef extern from "ripser.hpp":
     cdef cppclass ripserResults:
         vector[vector[value_t]] births_and_deaths_by_dim
+        vector[vector[vector[int]]] births_and_deaths_simplex_by_dim
         vector[vector[vector[int]]] cocycles_by_dim
         int num_edges
     cdef cppclass boundaryMatrixResults:
@@ -22,6 +23,7 @@ cdef extern from "ripser.hpp":
 @dataclasses.dataclass
 class RipserResults:
     births_and_deaths_by_dim: list
+    births_and_deaths_simplex_by_dim: list
     cocycles_by_dim: list
     num_edges: int
 
@@ -122,9 +124,11 @@ def ripser(
     with nogil:
         res = rips_dm_sparse(I, J, V, NEdges, N, modulus, dim_max, threshold, do_cocycles_int)
     cdef list persistence_diagrams = [converting_birth_death_to_list(res.births_and_deaths_by_dim, i) for i in range(dim_max + 1)]
+    cdef list persistence_pair_simplices = [converting_birth_death_simplex_to_list(res.births_and_deaths_simplex_by_dim, i) for i in range(dim_max + 1)]
     cdef list cocycle_representatives = [converting_cocycles_to_list(res.cocycles_by_dim, i) for i in range(dim_max + 1)]
     return RipserResults(
         persistence_diagrams,
+        persistence_pair_simplices,
         cocycle_representatives,
         NEdges
     )
@@ -173,3 +177,34 @@ def get_boundary_matrix(
         triangle_vertices=triangle_vertices,
         triangle_diameters=triangle_diameters
     )
+
+cdef list converting_birth_death_simplex_to_list(
+    vector[vector[vector[int]]] births_and_deaths_simplex_by_dim,
+    int dim,
+):
+    '''
+    Convert the flattened simplex pairs
+    [birth0, death0, birth1, death1, ...] into
+    [[birth0, birth1, ...], [death0, death1, ...]].
+    '''
+    cdef list birth = []
+    cdef list death = []
+    cdef list simplex_vertices
+    cdef vector[vector[int]]* birth_death = &births_and_deaths_simplex_by_dim[dim]
+    cdef vector[int]* simplex
+    cdef int n_pairs = birth_death.size() // 2
+
+    for i in range(n_pairs):
+        simplex = &birth_death[0][i * 2]
+        simplex_vertices = []
+        for j in range(simplex[0].size()):
+            simplex_vertices.append(int(simplex[0][j]))
+        birth.append(simplex_vertices)
+
+        simplex = &birth_death[0][i * 2 + 1]
+        simplex_vertices = []
+        for j in range(simplex[0].size()):
+            simplex_vertices.append(int(simplex[0][j]))
+        death.append(simplex_vertices)
+
+    return [birth, death]

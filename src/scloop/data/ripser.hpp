@@ -16,13 +16,80 @@ template <class Key, class T, class H, class E>
 class hash_map : public hash_map_imp<Key, T, H, E> {};
 
 typedef index_t entry_t;
-typedef std::pair<value_t, index_t> diameter_index_t;
-struct diameter_entry_t : std::pair<value_t, entry_t> {
-    using std::pair<value_t, entry_t>::pair;
+struct diameter_index_t {
+    value_t diameter;
+    value_t diameter_sub;
+    index_t index;
+
+    diameter_index_t()
+        : diameter(0), diameter_sub(0), index(-1)
+    {
+    }
+
+    diameter_index_t(value_t _diameter, index_t _index)
+        : diameter(_diameter), diameter_sub(_diameter), index(_index)
+    {
+    }
+
+    diameter_index_t(value_t _diameter, value_t _diameter_sub, index_t _index)
+        : diameter(_diameter), diameter_sub(_diameter_sub), index(_index)
+    {
+    }
 };
+
+struct diameter_entry_t : std::pair<value_t, entry_t> {
+    using Base = std::pair<value_t, entry_t>;
+    value_t diameter_sub;
+
+    diameter_entry_t()
+        : Base(), diameter_sub(0)
+    {
+    }
+
+    diameter_entry_t(value_t _diameter, entry_t _entry)
+        : Base(_diameter, _entry), diameter_sub(_diameter)
+    {
+    }
+
+    diameter_entry_t(value_t _diameter, value_t _diameter_sub, index_t _index,
+                     coefficient_t _coefficient)
+        : Base(_diameter, _index), diameter_sub(_diameter_sub)
+    {
+        (void) _coefficient;
+    }
+
+    diameter_entry_t(value_t _diameter, index_t _index,
+                     coefficient_t _coefficient)
+        : Base(_diameter, _index), diameter_sub(_diameter)
+    {
+        (void) _coefficient;
+    }
+
+    diameter_entry_t(const diameter_index_t& _diameter_index,
+                     coefficient_t _coefficient)
+        : Base(_diameter_index.diameter, _diameter_index.index),
+          diameter_sub(_diameter_index.diameter_sub)
+    {
+        (void) _coefficient;
+    }
+
+    diameter_entry_t(const index_t& _index)
+        : Base(0, _index), diameter_sub(0)
+    {
+    }
+};
+
+enum class reduction_mode { ambient, subfiltration, image };
 
 template <typename Entry>
 struct greater_diameter_or_smaller_index {
+    bool use_diameter_sub;
+
+    greater_diameter_or_smaller_index(bool _use_diameter_sub = false)
+        : use_diameter_sub(_use_diameter_sub)
+    {
+    }
+
     bool operator()(const Entry& a, const Entry& b);
 };
 enum compressed_matrix_layout { LOWER_TRIANGULAR, UPPER_TRIANGULAR };
@@ -114,20 +181,22 @@ public:
     template <typename Column>
     diameter_entry_t init_coboundary_and_get_pivot(
         const diameter_entry_t simplex, Column& working_coboundary,
-        const index_t& dim, entry_hash_map& pivot_column_index);
+        const index_t& dim, entry_hash_map& pivot_column_index,
+        reduction_mode mode);
 
     template <typename Column>
     void add_simplex_coboundary(const diameter_entry_t simplex,
                                 const index_t& dim,
                                 Column& working_reduction_column,
-                                Column& working_coboundary);
+                                Column& working_coboundary,
+                                reduction_mode mode);
 
     template <typename Column>
     void add_coboundary(compressed_sparse_matrix<diameter_entry_t>& reduction_matrix,
                         const std::vector<diameter_index_t>& columns_to_reduce,
                         const size_t index_column_to_add, const coefficient_t factor,
                         const size_t& dim, Column& working_reduction_column,
-                        Column& working_coboundary);
+                        Column& working_coboundary, reduction_mode mode);
 
     typedef std::priority_queue<
         diameter_entry_t, std::vector<diameter_entry_t>,
@@ -140,7 +209,8 @@ public:
     void compute_cocycles(working_t cocycle, index_t dim);
 
     void compute_pairs(std::vector<diameter_index_t>& columns_to_reduce,
-                       entry_hash_map& pivot_column_index, index_t dim);
+                       entry_hash_map& pivot_column_index, index_t dim,
+                       reduction_mode mode);
 
     std::vector<diameter_index_t> get_edges();
 

@@ -204,30 +204,78 @@ void set_coefficient(entry_t& e, const coefficient_t c) {}
 
 const entry_t& get_entry(const entry_t& e) { return e; }
 
-typedef std::pair<value_t, index_t> diameter_index_t;
-value_t get_diameter(const diameter_index_t& i) { return i.first; }
-index_t get_index(const diameter_index_t& i) { return i.second; }
+struct diameter_index_t {
+    value_t diameter;
+    value_t diameter_sub;
+    index_t index;
+
+    diameter_index_t()
+        : diameter(0), diameter_sub(0), index(-1)
+    {
+    }
+
+    diameter_index_t(value_t _diameter, index_t _index)
+        : diameter(_diameter), diameter_sub(_diameter), index(_index)
+    {
+    }
+
+    diameter_index_t(value_t _diameter, value_t _diameter_sub, index_t _index)
+        : diameter(_diameter), diameter_sub(_diameter_sub), index(_index)
+    {
+    }
+};
+
+value_t get_diameter(const diameter_index_t& i) { return i.diameter; }
+value_t get_diameter_sub(const diameter_index_t& i) { return i.diameter_sub; }
+index_t get_index(const diameter_index_t& i) { return i.index; }
 
 typedef std::pair<index_t, value_t> index_diameter_t;
 index_t get_index(const index_diameter_t& i) { return i.first; }
 value_t get_diameter(const index_diameter_t& i) { return i.second; }
 
 struct diameter_entry_t : std::pair<value_t, entry_t> {
-    using std::pair<value_t, entry_t>::pair;
-    diameter_entry_t() {}
+    using Base = std::pair<value_t, entry_t>;
+    value_t diameter_sub;
+
+    diameter_entry_t()
+        : Base(), diameter_sub(0)
+    {
+    }
+
+    diameter_entry_t(value_t _diameter, entry_t _entry)
+        : Base(_diameter, _entry), diameter_sub(_diameter)
+    {
+    }
+
+    diameter_entry_t(value_t _diameter, value_t _diameter_sub, index_t _index,
+                     coefficient_t _coefficient)
+        : Base(_diameter, make_entry(_index, _coefficient)),
+          diameter_sub(_diameter_sub)
+    {
+    }
+
     diameter_entry_t(value_t _diameter, index_t _index,
                      coefficient_t _coefficient)
-        : diameter_entry_t(_diameter, make_entry(_index, _coefficient))
+        : Base(_diameter, make_entry(_index, _coefficient)),
+          diameter_sub(_diameter)
     {
     }
+
     diameter_entry_t(const diameter_index_t& _diameter_index,
                      coefficient_t _coefficient)
-        : diameter_entry_t(get_diameter(_diameter_index),
-                           make_entry(get_index(_diameter_index), _coefficient))
+        : Base(get_diameter(_diameter_index),
+               make_entry(get_index(_diameter_index), _coefficient)),
+          diameter_sub(get_diameter_sub(_diameter_index))
     {
     }
-    diameter_entry_t(const index_t& _index) : diameter_entry_t(0, _index, 0) {}
+
+    diameter_entry_t(const index_t& _index)
+        : Base(0, make_entry(_index, 0)), diameter_sub(0)
+    {
+    }
 };
+
+value_t get_diameter_sub(const diameter_entry_t& e) { return e.diameter_sub; }
 
 const entry_t& get_entry(const diameter_entry_t& p) { return p.second; }
 entry_t& get_entry(diameter_entry_t& p) { return p.second; }
@@ -245,13 +293,45 @@ void set_coefficient(diameter_entry_t& p, const coefficient_t c)
     set_coefficient(get_entry(p), c);
 }
 
+enum class reduction_mode { ambient, subfiltration, image };
+
+template <typename Entry>
+value_t get_birth_diameter(const Entry& entry, reduction_mode mode)
+{
+    return mode == reduction_mode::ambient ? get_diameter(entry)
+                                           : get_diameter_sub(entry);
+}
+
+template <typename Entry>
+value_t get_coboundary_diameter(const Entry& entry, reduction_mode mode)
+{
+    return mode == reduction_mode::subfiltration ? get_diameter_sub(entry)
+                                                  : get_diameter(entry);
+}
+
+bool pivots_use_sub_diameter(reduction_mode mode)
+{
+    return mode == reduction_mode::subfiltration;
+}
+
 template <typename Entry>
 struct greater_diameter_or_smaller_index {
+    bool use_diameter_sub;
+
+    greater_diameter_or_smaller_index(bool _use_diameter_sub = false)
+        : use_diameter_sub(_use_diameter_sub)
+    {
+    }
+
     bool operator()(const Entry& a, const Entry& b)
     {
-        return (get_diameter(a) > get_diameter(b)) ||
-               ((get_diameter(a) == get_diameter(b)) &&
-                (get_index(a) < get_index(b)));
+        return use_diameter_sub
+                   ? (get_diameter_sub(a) > get_diameter_sub(b)) ||
+                         ((get_diameter_sub(a) == get_diameter_sub(b)) &&
+                          (get_index(a) < get_index(b)))
+                   : (get_diameter(a) > get_diameter(b)) ||
+                         ((get_diameter(a) == get_diameter(b)) &&
+                          (get_index(a) < get_index(b)));
     }
 };
 
@@ -641,7 +721,7 @@ public:
 			}
             simplex_coboundary_enumerator trigs(diameter_entry_t(edge, 1), 1, *this);
             while (trigs.has_next(false)) {
-				auto trig = trigs.next();
+				diameter_entry_t trig = trigs.next();
 				index_t trig_idx = get_index(trig);
 				// skip if already seen this triangle
 				if (!seen_trigs.insert(trig_idx).second) {
@@ -653,7 +733,7 @@ public:
 					continue;
 				}
 				// Check if this triangle should be included
-				simplex_coboundary_enumerator tetrads(diameter_entry_t(trig, 2), 2, *this);
+				simplex_coboundary_enumerator tetrads(diameter_entry_t(diameter_index_t(trig.first, trig.second), 2), 2, *this);
 				bool should_add = false;
 				bool is_redundant = false;
 				// Check if triangle is part of any tetrahedron
@@ -843,17 +923,19 @@ public:
     template <typename Column>
     diameter_entry_t init_coboundary_and_get_pivot(
         const diameter_entry_t simplex, Column& working_coboundary,
-        const index_t& dim, entry_hash_map& pivot_column_index)
+        const index_t& dim, entry_hash_map& pivot_column_index,
+        reduction_mode mode)
     {
         bool check_for_emergent_pair = true;
         cofacet_entries.clear();
         simplex_coboundary_enumerator cofacets(simplex, dim, *this);
         while (cofacets.has_next()) {
             diameter_entry_t cofacet = cofacets.next();
-            if (get_diameter(cofacet) <= threshold) {
+            if (get_coboundary_diameter(cofacet, mode) <= threshold) {
                 cofacet_entries.push_back(cofacet);
                 if (check_for_emergent_pair &&
-                    (get_diameter(simplex) == get_diameter(cofacet))) {
+                    (get_coboundary_diameter(simplex, mode) ==
+                     get_coboundary_diameter(cofacet, mode))) {
                     if (pivot_column_index.find(get_entry(cofacet)) ==
                         pivot_column_index.end())
                         return cofacet;
@@ -870,13 +952,14 @@ public:
     void add_simplex_coboundary(const diameter_entry_t simplex,
                                 const index_t& dim,
                                 Column& working_reduction_column,
-                                Column& working_coboundary)
+                                Column& working_coboundary,
+                                reduction_mode mode)
     {
         working_reduction_column.push(simplex);
         simplex_coboundary_enumerator cofacets(simplex, dim, *this);
         while (cofacets.has_next()) {
             diameter_entry_t cofacet = cofacets.next();
-            if (get_diameter(cofacet) <= threshold)
+            if (get_coboundary_diameter(cofacet, mode) <= threshold)
                 working_coboundary.push(cofacet);
         }
     }
@@ -887,19 +970,19 @@ public:
                    const std::vector<diameter_index_t>& columns_to_reduce,
                    const size_t index_column_to_add, const coefficient_t factor,
                    const size_t& dim, Column& working_reduction_column,
-                   Column& working_coboundary)
+                   Column& working_coboundary, reduction_mode mode)
     {
         diameter_entry_t column_to_add(columns_to_reduce[index_column_to_add],
                                        factor);
         add_simplex_coboundary(column_to_add, dim, working_reduction_column,
-                               working_coboundary);
+                               working_coboundary, mode);
 
         for (diameter_entry_t simplex :
              reduction_matrix.subrange(index_column_to_add)) {
             set_coefficient(simplex,
                             get_coefficient(simplex) * factor % modulus);
             add_simplex_coboundary(simplex, dim, working_reduction_column,
-                                   working_coboundary);
+                                   working_coboundary, mode);
         }
     }
 
@@ -928,7 +1011,8 @@ public:
     }
 
     void compute_pairs(std::vector<diameter_index_t>& columns_to_reduce,
-                       entry_hash_map& pivot_column_index, index_t dim)
+                       entry_hash_map& pivot_column_index, index_t dim,
+                       reduction_mode mode)
     {
         compressed_sparse_matrix<diameter_entry_t> reduction_matrix;
         size_t index_column_to_add;
@@ -943,17 +1027,20 @@ public:
              ++index_column_to_reduce) {
             diameter_entry_t column_to_reduce(
                 columns_to_reduce[index_column_to_reduce], 1);
-            value_t diameter = get_diameter(column_to_reduce);
+            value_t diameter = get_birth_diameter(column_to_reduce, mode);
 
             reduction_matrix.append_column();
 
-            working_t working_reduction_column;
-            working_t working_coboundary;
+            greater_diameter_or_smaller_index<diameter_entry_t> comparator(
+                pivots_use_sub_diameter(mode));
+            working_t working_reduction_column(comparator);
+            working_t working_coboundary(comparator);
 
             working_reduction_column.push(column_to_reduce);
 
             diameter_entry_t pivot = init_coboundary_and_get_pivot(
-                column_to_reduce, working_coboundary, dim, pivot_column_index);
+                column_to_reduce, working_coboundary, dim, pivot_column_index,
+                mode);
 
             while (true) {
 #ifdef INDICATE_PROGRESS
@@ -981,11 +1068,11 @@ public:
                         add_coboundary(reduction_matrix, columns_to_reduce,
                                        index_column_to_add, factor, dim,
                                        working_reduction_column,
-                                       working_coboundary);
+                                       working_coboundary, mode);
 
                         pivot = get_pivot(working_coboundary);
                     } else {
-                        value_t death = get_diameter(pivot);
+                        value_t death = get_coboundary_diameter(pivot, mode);
                         if (death > diameter * ratio) {
                             births_and_deaths_by_dim[dim].push_back(diameter);
                             births_and_deaths_by_dim[dim].push_back(death);
@@ -1058,7 +1145,8 @@ public:
             entry_hash_map pivot_column_index;
             pivot_column_index.reserve(columns_to_reduce.size());
 
-            compute_pairs(columns_to_reduce, pivot_column_index, dim);
+            compute_pairs(columns_to_reduce, pivot_column_index, dim,
+                          reduction_mode::ambient);
 
             if (dim < dim_max)
                 assemble_columns_to_reduce(simplices, columns_to_reduce,
