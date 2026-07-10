@@ -492,6 +492,7 @@ typedef struct {
        and likewise for d-dimensional persistence in births_and_deaths_by_dim[d]
     */
     std::vector<std::vector<value_t>> births_and_deaths_by_dim;
+    std::vector<std::vector<std::vector<int>>> births_and_deaths_simplex_by_dim;
     /*
       The second variable is a vector of representative cocycles for each
       dimension. For now, only cocycles above dimension 0 are added, so
@@ -557,6 +558,7 @@ class ripser
 
 public:
     mutable std::vector<std::vector<value_t>> births_and_deaths_by_dim;
+    mutable std::vector<std::vector<std::vector<int>>> births_and_deaths_simplex_by_dim;
     mutable std::vector<std::vector<std::vector<int>>> cocycles_by_dim;
 
     ripser(DistanceMatrix&& _dist, index_t _dim_max, value_t _threshold,
@@ -572,6 +574,7 @@ public:
     void copy_results(ripserResults& res)
     {
         res.births_and_deaths_by_dim = births_and_deaths_by_dim;
+        res.births_and_deaths_simplex_by_dim = births_and_deaths_simplex_by_dim;
         res.cocycles_by_dim = cocycles_by_dim;
     }
 
@@ -990,6 +993,17 @@ public:
                                 // Representative cocycle
                                 compute_cocycles(working_reduction_column, dim);
                             }
+                            // TODO: add a flag here, skip if no need for cross match
+                            index_t birth_simplex_i = get_index(column_to_reduce);
+                            index_t death_simplex_i = get_index(pivot);
+                            std::vector<int> birth_simplex_vertices;
+                            std::vector<int> death_simplex_vertices;
+                            get_simplex_vertices(birth_simplex_i, dim, n,
+                                                 std::back_inserter(birth_simplex_vertices));
+                            get_simplex_vertices(death_simplex_i, dim + 1, n,
+                                                 std::back_inserter(death_simplex_vertices));
+                            births_and_deaths_simplex_by_dim[dim].push_back(birth_simplex_vertices);
+                            births_and_deaths_simplex_by_dim[dim].push_back(death_simplex_vertices);
                         }
 
                         pivot_column_index.insert(
@@ -1035,6 +1049,7 @@ public:
             dim_max = 0;
 
         births_and_deaths_by_dim.resize(dim_max + 1);
+        births_and_deaths_simplex_by_dim.resize(dim_max + 1);
         cocycles_by_dim.resize(dim_max + 1);
 
         compute_dim_0_pairs(simplices, columns_to_reduce);

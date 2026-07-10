@@ -52,6 +52,7 @@ class compressed_sparse_matrix;
 */
 typedef struct {
     std::vector<std::vector<value_t>> births_and_deaths_by_dim;
+    std::vector<std::vector<std::vector<int>>> births_and_deaths_simplex_by_dim;
     std::vector<std::vector<std::vector<int>>> cocycles_by_dim;
     int num_edges;
 } ripserResults;
