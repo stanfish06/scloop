@@ -7,7 +7,7 @@
 
 **Note: this package is in early stages of development. (manuscript in prep)**
 
-scLoop is a library to identify statistically significant loops in single-cell RNA-seq data. In brief, it bootstraps the data points and matches loops across the bootstrapped samples through both image homology and topological equivalence, which assigns confidence to individual loops in the dataset. The core computation routine is compiled and parallelized.
+scLoop is a library to identify statistically significant loops in single-cell RNA-seq data. In brief, it bootstraps the data points and matches loops across the bootstrapped samples through both image homology and topological equivalence, which assigns confidence to individual loops in the dataset. In addition, it supports cross datasets loop matching. The core computation routine is compiled and parallelized.
 
 <table>
   <tr>
