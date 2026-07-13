@@ -1236,7 +1236,10 @@ public:
                         pivot_column_index.insert(
                             {get_entry(pivot), index_column_to_reduce});
 
-                        pop_pivot(working_reduction_column);
+                        // Here need small modification to accommodate the image PH 
+                        // Old: pop_pivot(working_reduction_column) assume the pivot is diagonal, which is not in the case of image PH
+                        // New: get diagonal column and avoid adding the diagonal entry (10 lines below)
+                        index_t diagonal_index = get_index(column_to_reduce);
                         while (true) {
                             diameter_entry_t e =
                                 pop_pivot(working_reduction_column);
@@ -1244,6 +1247,8 @@ public:
                             if (get_index(e) == -1)
                                 break;
                             assert(get_coefficient(e) > 0);
+                            if (get_index(e) == diagonal_index)
+                                continue;
                             reduction_matrix.push_back(e);
                         }
                         break;

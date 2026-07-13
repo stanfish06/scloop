@@ -17,12 +17,14 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
+  "adjusttext>=1.4",
   "cython>=3.0.12",
   "glasbey==0.3",
   "huggingface-hub",
   "igraph>=0.11",
   "kmapper>=2.1",
   "loguru==0.7.3",
+  "mellon>=1.7.1",
   "numba>=0.62.1",
   "numpy<2",
   "pandas<2",
@@ -49,7 +51,9 @@ urls.Repository = "https://github.com/stanfish06/scloop.git"
 [dependency-groups]
 dev = [
   "fa2-modified>=0.4",
+  "jupyterlab>=4.6.1",
   "magic-impute>=3",
+  "notebook>=7.6.0",
   "phate>=2",
   "pyright==1.1.406",
   "ruff>=0.15.5",
