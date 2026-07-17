@@ -54,6 +54,13 @@ class ImageBootstrapHomologyResult:
     n_reference_vertices: int
 
 
+@dataclass
+class CrossDatasetImageHomologyResult:
+    source_image_result: object
+    target_image_result: object
+    n_source_vertices: int
+
+
 def _cap_infinite_deaths(diagrams: list, cap: float | None) -> list:
     if cap is None or not np.isfinite(cap):
         return diagrams
@@ -406,6 +413,53 @@ def compute_image_bootstrap_homology(
         reference_image_result=reference_image_result,
         bootstrap_image_result=bootstrap_image_result,
         n_reference_vertices=n_reference_vertices,
+    )
+
+
+def compute_cross_dataset_image_homology(
+    source_embedding: np.ndarray,
+    target_embedding: np.ndarray,
+    thresh: Diameter_t,
+    dim_max: int = 1,
+    **nei_kwargs,
+) -> CrossDatasetImageHomologyResult:
+    n_source_vertices = len(source_embedding)
+    union_embedding = np.vstack([source_embedding, target_embedding])
+    nei_kwargs.setdefault("mode", "distance")
+    union_distance_matrix = radius_neighbors_graph(
+        X=union_embedding,
+        radius=thresh,
+        **nei_kwargs,
+    ).tocsr()
+
+    source_indices = np.arange(n_source_vertices, dtype=np.intc)
+    target_indices = np.arange(
+        n_source_vertices, len(union_embedding), dtype=np.intc
+    )
+
+    source_image_result = ripser_image(
+        distance_matrix=union_distance_matrix.tocoo(copy=False),
+        sub_indices=source_indices,
+        modulus=2,
+        dim_max=dim_max,
+        threshold=thresh,
+        do_subfiltration_cocycles=False,
+        do_image_cocycles=True,
+    )
+    target_image_result = ripser_image(
+        distance_matrix=union_distance_matrix.tocoo(copy=False),
+        sub_indices=target_indices,
+        modulus=2,
+        dim_max=dim_max,
+        threshold=thresh,
+        do_subfiltration_cocycles=False,
+        do_image_cocycles=True,
+    )
+
+    return CrossDatasetImageHomologyResult(
+        source_image_result=source_image_result,
+        target_image_result=target_image_result,
+        n_source_vertices=n_source_vertices,
     )
 
 
