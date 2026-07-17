@@ -36,6 +36,7 @@ from ..data.types import (
 )
 from ..utils.logging import create_console, create_progress, ensure_logging
 from ..utils.pvalues import correct_pvalues
+from .cross_matching import cross_match_loops_image
 from .data_modules import nnRegressorDataModule
 from .mlp import MLPregressor
 from .nf import NeuralODEregressor
@@ -598,3 +599,39 @@ class CrossDatasetMatcher:
             logger.success(
                 f"Cross-dataset matching complete: {len(matched_indices)} matches found"
             )
+
+    def _loops_cross_match_image(
+        self,
+        thresh: PositiveFloat,
+        source_dataset_idx: Index_t = 0,
+        target_dataset_idx: Index_t = 1,
+        **nei_kwargs,
+    ) -> list[tuple[int, int]]:
+        source_hd = self.homology_data_list[source_dataset_idx]
+        target_hd = self.homology_data_list[target_dataset_idx]
+        source_vertex_ids = source_hd._original_vertex_ids
+        target_vertex_ids = target_hd._original_vertex_ids
+        source_embedding = np.asarray(
+            self.adata_list[source_dataset_idx].obsm[CROSS_MATCH_KEY]
+        )[source_vertex_ids]
+        target_embedding = np.asarray(
+            self.adata_list[target_dataset_idx].obsm[CROSS_MATCH_KEY]
+        )[target_vertex_ids]
+        ref_idx = self.meta.reference_idx
+
+        return cross_match_loops_image(
+            source_embedding=source_embedding,
+            target_embedding=target_embedding,
+            source_loop_classes=source_hd.selected_loop_classes,
+            target_loop_classes=target_hd.selected_loop_classes,
+            thresh=thresh,
+            source_loop_attribute_mode="exact"
+            if source_dataset_idx == ref_idx
+            else "boundary",
+            target_loop_attribute_mode="exact"
+            if target_dataset_idx == ref_idx
+            else "boundary",
+            source_vertex_ids=source_vertex_ids,
+            target_vertex_ids=target_vertex_ids,
+            **nei_kwargs,
+        )
