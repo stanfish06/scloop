@@ -146,7 +146,6 @@ def save_scloop(
     minify
         scVI-style minification: drop ``X`` and ``layers`` from the embedded
         adata. Plotting and geometric re-analysis still work; ``sanity`` bootstrap
-        and gene-trend recompute require re-running ``prepare_adata``.
     """
     filepath = Path(filepath)
     if filepath.exists() and not overwrite:
@@ -179,7 +178,14 @@ def save_scloop(
             if companion is not None:
                 from anndata.io import write_elem
 
-                write_elem(f, _ADATA_GROUP, companion)
+                try:
+                    write_elem(f, _ADATA_GROUP, companion)
+                except Exception as e:
+                    raise ValueError(
+                        "Some objects in adata.uns cannot be serialized. Remove or convert the offending "
+                        "entry, or call save_scloop(..., save_adata=False) to store "
+                        f"only scloop results. Original error: {e!r}"
+                    ) from e
         os.replace(tmp, filepath)
     finally:
         if tmp.exists():
