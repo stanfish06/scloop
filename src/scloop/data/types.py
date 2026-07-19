@@ -46,3 +46,5 @@ IndexListSimplex: TypeAlias = Annotated[
     list[Index_t],
     Field(min_length=0, description="Unique indicies for simplicies"),
 ]
+
+LOOP_ATTRIBUTE_MODE = Literal["exact", "boundary", "vertex"]

@@ -125,6 +125,8 @@ class LoopClass(BaseModel):
             "death_simplex", data=np.asarray(self.death_simplex, dtype=np.int64), **kw
         )
 
+        if self.cocycles is not None and len(self.cocycles) == 0:
+            group.attrs["_cocycles_empty"] = True
         if self.cocycles is not None and len(self.cocycles) > 0:
             verts_list = []
             coeffs_list = []
@@ -160,8 +162,9 @@ class LoopClass(BaseModel):
                     str(i), data=np.array(coords, dtype=np.float64), **kw
                 )
 
-    @classmethod
-    def from_hdf5_group(cls, group: h5py.Group) -> LoopClass:
+    @staticmethod
+    def _read_base_fields(group: h5py.Group) -> dict:
+        """Parse the fields common to every LoopClass into a kwargs dict."""
         rank = int(group.attrs["rank"])  # type: ignore[arg-type]
         persistence_index = int(group.attrs.get("persistence_index", rank))
         birth = float(group.attrs["birth"])  # type: ignore[arg-type]
@@ -177,8 +180,12 @@ class LoopClass(BaseModel):
             else []
         )
 
+        # None vs empty-list distinction is preserved via the "_cocycles_empty"
+        # marker written by to_hdf5_group.
         cocycles = None
-        if "cocycles" in group:
+        if group.attrs.get("_cocycles_empty", False):
+            cocycles = []
+        elif "cocycles" in group:
             cc_grp: h5py.Group = group["cocycles"]  # type: ignore[assignment]
             if "vertices" in cc_grp and "coefficients" in cc_grp:
                 verts_arr = np.asarray(cc_grp["vertices"])
@@ -204,7 +211,7 @@ class LoopClass(BaseModel):
                     np.asarray(coords_grp[str(i)]).tolist()
                 )
 
-        return cls(
+        return dict(
             rank=rank,
             persistence_index=persistence_index,
             birth=birth,
@@ -215,6 +222,19 @@ class LoopClass(BaseModel):
             representatives=representatives,
             coordinates_vertices_representatives=coordinates_vertices_representatives,
         )
+
+    @classmethod
+    def from_hdf5_group(cls, group: h5py.Group) -> LoopClass:
+        type_name = group.attrs.get("_type", "LoopClass")
+        if isinstance(type_name, bytes):
+            type_name = type_name.decode()
+
+        if cls is LoopClass and type_name == "LoopClassAnalysis":
+            from .analysis_containers import LoopClassAnalysis
+
+            return LoopClassAnalysis.from_hdf5_group(group)
+
+        return cls(**cls._read_base_fields(group))
 
 
 # TODO: could consider define a class for a single loop

@@ -21,6 +21,63 @@ if TYPE_CHECKING:
     import h5py
 
 
+def _write_kwargs_dict(parent: h5py.Group, name: str, d: dict, kw: dict) -> None:
+    """Serialize a provenance kwargs dict: scalars->attrs, lists->datasets."""
+    import h5py
+
+    g = parent.create_group(name)
+    for key, value in d.items():
+        if value is None:
+            g.attrs[f"{key}__none"] = True
+        elif isinstance(value, bool):
+            g.attrs[key] = value
+        elif isinstance(value, (int, float, str)):
+            g.attrs[key] = value
+        elif isinstance(value, (list, tuple, np.ndarray)):
+            seq = list(value)
+            if any(isinstance(x, str) for x in seq):
+                g.create_dataset(
+                    key,
+                    data=np.array([str(x) for x in seq], dtype=object),
+                    dtype=h5py.string_dtype(),
+                    **kw,
+                )
+                g.attrs[f"{key}__listkind"] = "str"
+            else:
+                g.create_dataset(key, data=np.asarray(seq), **kw)
+                g.attrs[f"{key}__listkind"] = "num"
+        else:
+            # last resort: stash the string repr so provenance is not lost
+            g.attrs[key] = str(value)
+
+
+def _read_kwargs_dict(parent: h5py.Group, name: str) -> dict | None:
+    if name not in parent:
+        return None
+    g = parent[name]
+    out: dict = {}
+    for key in g.keys():
+        kind = g.attrs.get(f"{key}__listkind")
+        arr = np.asarray(g[key])
+        if kind == "str":
+            out[key] = [x.decode() if isinstance(x, bytes) else str(x) for x in arr]
+        else:
+            out[key] = arr.tolist()
+    for key in g.attrs.keys():
+        if key.endswith("__none"):
+            out[key[: -len("__none")]] = None
+        elif key.endswith("__listkind"):
+            continue
+        else:
+            value = g.attrs[key]
+            if isinstance(value, bytes):
+                value = value.decode()
+            elif hasattr(value, "item"):
+                value = value.item()
+            out[key] = value
+    return out
+
+
 class PreprocessMeta(BaseModel):
     library_normalized: bool
     target_sum: float
@@ -63,20 +120,30 @@ class PreprocessMeta(BaseModel):
             group.attrs["scvi_key"] = self.scvi_key
         if self.num_vertices is not None:
             group.attrs["num_vertices"] = self.num_vertices
+        kw = {"compression": "gzip"} if compress else {}
         if self.indices_downsample is not None:
-            kw = {"compression": "gzip"} if compress else {}
             group.create_dataset(
                 "indices_downsample",
                 data=np.array(self.indices_downsample, dtype=np.int64),
                 **kw,
             )
+        if self.kwargs_downsample is not None:
+            _write_kwargs_dict(group, "kwargs_downsample", self.kwargs_downsample, kw)
+        if self.diffmap_operator is not None:
+            self.diffmap_operator.to_hdf5_group(
+                group.create_group("diffmap_operator"), compress=compress
+            )
 
     @classmethod
     def from_hdf5_group(cls, group: h5py.Group) -> PreprocessMeta:
-        kwargs_downsample = None
+        kwargs_downsample = _read_kwargs_dict(group, "kwargs_downsample")
         indices_downsample = None
         if "indices_downsample" in group:
             indices_downsample = np.asarray(group["indices_downsample"]).tolist()
+
+        diffmap_operator = None
+        if "diffmap_operator" in group:
+            diffmap_operator = DiffusionMap.from_hdf5_group(group["diffmap_operator"])
 
         feature_sel_method = str(group.attrs["feature_selection_method"])
         return cls(
@@ -91,6 +158,7 @@ class PreprocessMeta(BaseModel):
             n_pca_comps=group.attrs.get("n_pca_comps"),
             n_neighbors=int(group.attrs["n_neighbors"]),  # type: ignore[arg-type]
             n_diffusion_comps=group.attrs.get("n_diffusion_comps"),
+            diffmap_operator=diffmap_operator,
             scvi_key=group.attrs.get("scvi_key"),
             indices_downsample=indices_downsample,
             kwargs_downsample=kwargs_downsample,

@@ -149,9 +149,7 @@ def _build_image_pair_records(
             birth_simplex=[v + vertex_offset for v in loop_class.birth_simplex],
             death_simplex=[v + vertex_offset for v in loop_class.death_simplex],
         )
-        image_pair = image_pairs_by_birth.get(
-            tuple(sorted(source_pair.birth_simplex))
-        )
+        image_pair = image_pairs_by_birth.get(tuple(sorted(source_pair.birth_simplex)))
         records.append(
             ImagePairRecord(
                 source_class_idx=class_idx,
@@ -413,9 +411,7 @@ def run_single_bootstrap(
                         raise ValueError(
                             "extra_diameter_homology_equivalence must be nonnegative"
                         )
-                    max_lifetime = max(
-                        source_loop.lifetime, target_loop.lifetime
-                    )
+                    max_lifetime = max(source_loop.lifetime, target_loop.lifetime)
                     max_column_diameter = (
                         max(source_loop.death, target_loop.death)
                         + float(extra_diameter_homology_equivalence) * max_lifetime

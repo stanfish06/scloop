@@ -239,6 +239,46 @@ class DiffusionMap:
     _d_inv_sqrt: np.ndarray | None = None
     _vars_local: np.ndarray | None = None
 
+    _PERSISTED_ARRAYS = (
+        "eigenvalues",
+        "eigenvalues_multistep",
+        "eigenvectors",
+        "diffmap_coords",
+        "_d_inv_sqrt",
+        "_vars_local",
+    )
+
+    def to_hdf5_group(self, group, compress: bool = True) -> None:
+        group.attrs["_type"] = "DiffusionMap"
+        group.attrs["n_neighbors"] = int(self.n_neighbors)
+        group.attrs["damp_multistep"] = float(self.damp_multistep)
+        group.attrs["alpha_kernel"] = float(self.alpha_kernel)
+        kw = {"compression": "gzip"} if compress else {}
+        # NNDescent cache is intentionally not persisted; it is rebuilt lazily
+        # by project_query_data.
+        for name in self._PERSISTED_ARRAYS:
+            value = getattr(self, name)
+            if value is not None:
+                group.create_dataset(name, data=np.asarray(value), **kw)
+
+    @classmethod
+    def from_hdf5_group(cls, group) -> "DiffusionMap":
+        def _opt(name):
+            return np.asarray(group[name]) if name in group else None
+
+        obj = cls(
+            n_neighbors=int(group.attrs["n_neighbors"]),
+            damp_multistep=float(group.attrs.get("damp_multistep", 1.0)),
+            alpha_kernel=float(group.attrs.get("alpha_kernel", 10.0)),
+            eigenvalues=_opt("eigenvalues"),
+            eigenvalues_multistep=_opt("eigenvalues_multistep"),
+            eigenvectors=_opt("eigenvectors"),
+            diffmap_coords=_opt("diffmap_coords"),
+        )
+        obj._d_inv_sqrt = _opt("_d_inv_sqrt")
+        obj._vars_local = _opt("_vars_local")
+        return obj
+
     def _compute_knn_index(
         self, emb: np.ndarray, cache: bool = False, query: bool = False, **nn_kwargs
     ):

@@ -232,9 +232,7 @@ def find_loops(
             bootstrap_herding_n_features=bootstrap_herding_n_features,
             bootstrap_herding_seed=bootstrap_herding_seed,
             candidate_method=bootstrap_candidate_method,
-            require_homological_equivalence=(
-                require_bootstrap_homological_equivalence
-            ),
+            require_homological_equivalence=(require_bootstrap_homological_equivalence),
             verbose=verbose,
             progress_main=progress_main,
             use_log_display=use_log_display,
@@ -352,6 +350,13 @@ def analyze_loops(
         gene_expression_matrix = None
         gene_names = None
         if compute_gene_trends:
+            if adata.X is None:
+                raise ValueError(
+                    "compute_gene_trends=True requires expression data, but adata.X "
+                    "is None. This adata was loaded from a minified scloop file; "
+                    "re-run prepare_adata to restore expression, or set "
+                    "compute_gene_trends=False."
+                )
             if gene_trend_genes is not None:
                 adata_genes = adata[:, gene_trend_genes]
                 gene_names = gene_trend_genes

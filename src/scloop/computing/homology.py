@@ -80,16 +80,11 @@ def _persistence_pairs_from_ripser_result(
     result: object, dim: int = 1
 ) -> list[PersistencePair]:
     births, deaths = result.births_and_deaths_by_dim[dim]
-    birth_simplices, death_simplices = result.births_and_deaths_simplex_by_dim[
-        dim
-    ]
-    if not (
-        len(births)
-        == len(deaths)
-        == len(birth_simplices)
-        == len(death_simplices)
-    ):
-        raise ValueError("Ripser persistence pairs and critical simplices are misaligned")
+    birth_simplices, death_simplices = result.births_and_deaths_simplex_by_dim[dim]
+    if not (len(births) == len(deaths) == len(birth_simplices) == len(death_simplices)):
+        raise ValueError(
+            "Ripser persistence pairs and critical simplices are misaligned"
+        )
     return [
         PersistencePair(
             birth=float(birth),
@@ -330,9 +325,7 @@ def compute_image_bootstrap_homology(
     assert meta.preprocess is not None
     assert meta.preprocess.embedding_method is not None
 
-    embedding = np.asarray(
-        adata.obsm[f"X_{meta.preprocess.embedding_method}"]
-    )
+    embedding = np.asarray(adata.obsm[f"X_{meta.preprocess.embedding_method}"])
     source_indices = (
         meta.preprocess.indices_downsample
         if meta.preprocess.indices_downsample is not None
@@ -433,9 +426,7 @@ def compute_cross_dataset_image_homology(
     ).tocsr()
 
     source_indices = np.arange(n_source_vertices, dtype=np.intc)
-    target_indices = np.arange(
-        n_source_vertices, len(union_embedding), dtype=np.intc
-    )
+    target_indices = np.arange(n_source_vertices, len(union_embedding), dtype=np.intc)
 
     source_image_result = ripser_image(
         distance_matrix=union_distance_matrix.tocoo(copy=False),

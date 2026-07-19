@@ -43,6 +43,232 @@ if TYPE_CHECKING:
     import h5py
 
 
+def _write_opt_array(
+    parent: h5py.Group, name: str, value, kw: dict
+) -> None:
+    """Write an optional array; absence encodes None."""
+    if value is not None:
+        parent.create_dataset(name, data=np.asarray(value), **kw)
+
+
+def _read_opt_array(parent: h5py.Group, name: str):
+    return np.asarray(parent[name]) if name in parent else None
+
+
+def _write_opt_list_of_arrays(
+    parent: h5py.Group, name: str, value, kw: dict
+) -> None:
+    """Serialize a ``list[np.ndarray] | None`` preserving the None-vs-[] split."""
+    g = parent.create_group(name)
+    if value is None:
+        g.attrs["_is_none"] = True
+        return
+    g.attrs["_is_none"] = False
+    g.attrs["_count"] = len(value)
+    for i, arr in enumerate(value):
+        g.create_dataset(str(i), data=np.asarray(arr), **kw)
+
+
+def _read_opt_list_of_arrays(parent: h5py.Group, name: str):
+    if name not in parent:
+        return None
+    g = parent[name]
+    if g.attrs.get("_is_none", False):
+        return None
+    return [np.asarray(g[str(i)]) for i in range(int(g.attrs["_count"]))]
+
+
+def _write_diagram(parent: h5py.Group, name: str, diagram, kw: dict) -> None:
+    """Serialize a persistence diagram: list-per-dim of ``[births, deaths]``."""
+    g = parent.create_group(name)
+    if diagram is None:
+        g.attrs["_is_none"] = True
+        return
+    g.attrs["_is_none"] = False
+    g.attrs["_n_dims"] = len(diagram)
+    for d, dim_pd in enumerate(diagram):
+        dg = g.create_group(str(d))
+        if dim_pd is not None and len(dim_pd) >= 2:
+            dg.create_dataset("births", data=np.asarray(dim_pd[0], dtype=np.float64), **kw)
+            dg.create_dataset("deaths", data=np.asarray(dim_pd[1], dtype=np.float64), **kw)
+
+
+def _read_diagram(parent: h5py.Group, name: str):
+    if name not in parent:
+        return None
+    g = parent[name]
+    if g.attrs.get("_is_none", False):
+        return None
+    out = []
+    for d in range(int(g.attrs["_n_dims"])):
+        dg = g[str(d)]
+        if "births" in dg and "deaths" in dg:
+            out.append(
+                [np.asarray(dg["births"]).tolist(), np.asarray(dg["deaths"]).tolist()]
+            )
+        else:
+            out.append(None)
+    return out
+
+
+def _write_pair_simplices(parent: h5py.Group, name: str, pps, kw: dict) -> None:
+    """Serialize births/deaths critical simplices: list-per-dim of ``[births, deaths]``.
+
+    Each simplex is a variable-length list of vertex ids; within a (dim, slot)
+    """
+    g = parent.create_group(name)
+    if pps is None:
+        g.attrs["_is_none"] = True
+        return
+    g.attrs["_is_none"] = False
+    g.attrs["_n_dims"] = len(pps)
+    for d, dim_pps in enumerate(pps):
+        dg = g.create_group(str(d))
+        if dim_pps is None or len(dim_pps) < 2:
+            dg.attrs["_empty"] = True
+            continue
+        dg.attrs["_empty"] = False
+        for slot, simplices in (("births", dim_pps[0]), ("deaths", dim_pps[1])):
+            simplices = [list(s) for s in simplices]
+            dg.attrs[slot + "_count"] = len(simplices)
+            if not simplices:
+                continue
+            max_len = max((len(s) for s in simplices), default=0)
+            arr = np.full((len(simplices), max_len), -1, dtype=np.int64)
+            for i, s in enumerate(simplices):
+                arr[i, : len(s)] = s
+            dg.create_dataset(slot, data=arr, **kw)
+
+
+def _read_pair_simplices(parent: h5py.Group, name: str):
+    if name not in parent:
+        return None
+    g = parent[name]
+    if g.attrs.get("_is_none", False):
+        return None
+    out = []
+    for d in range(int(g.attrs["_n_dims"])):
+        dg = g[str(d)]
+        if dg.attrs.get("_empty", False):
+            # keep the [births, deaths] shape so downstream `births, deaths =
+            # pps[dim]` unpacking never breaks on an empty dimension
+            out.append([[], []])
+            continue
+        slots = []
+        for slot in ("births", "deaths"):
+            count = int(dg.attrs.get(slot + "_count", 0))
+            if count == 0 or slot not in dg:
+                slots.append([])
+                continue
+            arr = np.asarray(dg[slot])
+            slots.append([[int(v) for v in row if v >= 0] for row in arr])
+        out.append(slots)
+    return out
+
+
+def _write_cocycles(parent: h5py.Group, name: str, cocycles, kw: dict) -> None:
+    """Serialize cocycles: list-per-dim of list of ``(vertices, coefficient)``."""
+    g = parent.create_group(name)
+    if cocycles is None:
+        g.attrs["_is_none"] = True
+        return
+    g.attrs["_is_none"] = False
+    g.attrs["_n_dims"] = len(cocycles)
+    for d, dim_cocycles in enumerate(cocycles):
+        dg = g.create_group(str(d))
+        if dim_cocycles is None:
+            dg.attrs["_is_none"] = True
+            continue
+        dg.attrs["_is_none"] = False
+        dg.attrs["_n_cocycles"] = len(dim_cocycles)
+        for ci, cocycle in enumerate(dim_cocycles):
+            cg = dg.create_group(str(ci))
+            verts_list: list[list[int]] = []
+            coeffs_list: list[int] = []
+            for simplex in cocycle or []:
+                try:
+                    verts, coeff = simplex
+                    verts_list.append(list(verts))
+                    coeffs_list.append(int(coeff))
+                except (ValueError, TypeError):
+                    continue
+            cg.attrs["_count"] = len(verts_list)
+            if verts_list:
+                max_len = max(len(v) for v in verts_list)
+                verts_arr = np.full((len(verts_list), max_len), -1, dtype=np.int64)
+                for i, v in enumerate(verts_list):
+                    verts_arr[i, : len(v)] = v
+                cg.create_dataset("vertices", data=verts_arr, **kw)
+                cg.create_dataset(
+                    "coefficients", data=np.array(coeffs_list, dtype=np.int32), **kw
+                )
+
+
+def _read_cocycles(parent: h5py.Group, name: str):
+    if name not in parent:
+        return None
+    g = parent[name]
+    if g.attrs.get("_is_none", False):
+        return None
+    out = []
+    for d in range(int(g.attrs["_n_dims"])):
+        dg = g[str(d)]
+        if dg.attrs.get("_is_none", False):
+            out.append(None)
+            continue
+        dim_cocycles = []
+        for ci in range(int(dg.attrs.get("_n_cocycles", 0))):
+            cg = dg[str(ci)]
+            cocycle = []
+            if "vertices" in cg and "coefficients" in cg:
+                verts_arr = np.asarray(cg["vertices"])
+                coeffs_arr = np.asarray(cg["coefficients"])
+                for i in range(len(coeffs_arr)):
+                    verts = [int(v) for v in verts_arr[i] if v >= 0]
+                    cocycle.append((verts, int(coeffs_arr[i])))
+            dim_cocycles.append(cocycle)
+        out.append(dim_cocycles)
+    return out
+
+
+def _write_bootstrap_list(
+    parent: h5py.Group, name: str, items, per_item_writer, kw: dict
+) -> None:
+    g = parent.create_group(name)
+    g.attrs["_count"] = len(items)
+    for i, item in enumerate(items):
+        per_item_writer(g, str(i), item, kw)
+
+
+def _read_bootstrap_list(parent: h5py.Group, name: str, per_item_reader) -> list:
+    if name not in parent:
+        return []
+    g = parent[name]
+    return [per_item_reader(g, str(i)) for i in range(int(g.attrs["_count"]))]
+
+
+_LOOP_CLASS_ANALYSIS_ARRAY_LIST_FIELDS = (
+    "coordinates_edges",
+    "edge_values_raw",
+    "edge_gradient_raw",
+    "edge_embedding_raw",
+    "edge_embedding_smooth",
+    "edge_involvement_raw",
+    "edge_involvement_smooth",
+)
+
+_TRAJECTORY_OPT_ARRAY_FIELDS = (
+    "weights_vertices",
+    "indices_vertices",
+    "values_vertices",
+    "distances_vertices",
+    "mean_expression",
+    "se_expression",
+    "ci_lower",
+    "ci_upper",
+)
+
+
 @dataclass(config=ConfigDict(arbitrary_types_allowed=True))
 class LoopMatch:
     idx_bootstrap: int
@@ -60,7 +286,8 @@ def _serialize_loop_matches(
         group.attrs["_count"] = 0
         return
 
-    group.attrs["_count"] = len(matches)
+    n = len(matches)
+    group.attrs["_count"] = n
     kw = {"compression": "gzip"} if compress else {}
     group.create_dataset(
         "idx_bootstrap",
@@ -72,19 +299,6 @@ def _serialize_loop_matches(
         data=np.array([m.target_class_idx for m in matches], dtype=np.int64),
         **kw,
     )
-    geo_dists = [
-        m.geometric_distance if m.geometric_distance is not None else np.nan
-        for m in matches
-    ]
-    group.create_dataset(
-        "geometric_distance", data=np.array(geo_dists, dtype=np.float64), **kw
-    )
-    neighbor_ranks = [
-        m.neighbor_rank if m.neighbor_rank is not None else -1 for m in matches
-    ]
-    group.create_dataset(
-        "neighbor_rank", data=np.array(neighbor_ranks, dtype=np.int64), **kw
-    )
     group.create_dataset(
         "candidate_method",
         data=np.array(
@@ -93,15 +307,57 @@ def _serialize_loop_matches(
         ),
         **kw,
     )
-    image_death_simplices = np.full((len(matches), 3), -1, dtype=np.int64)
-    for i, match in enumerate(matches):
-        if match.image_death_simplex is not None:
-            image_death_simplices[i, : len(match.image_death_simplex)] = (
-                match.image_death_simplex
-            )
+
+    # geometric_distance: store the raw value (NaN is a legitimate value) plus a
+    # parallel present-mask so None does not collide with NaN.
     group.create_dataset(
-        "image_death_simplex", data=image_death_simplices, **kw
+        "geometric_distance",
+        data=np.array(
+            [
+                m.geometric_distance if m.geometric_distance is not None else np.nan
+                for m in matches
+            ],
+            dtype=np.float64,
+        ),
+        **kw,
     )
+    group.create_dataset(
+        "geometric_distance_present",
+        data=np.array([m.geometric_distance is not None for m in matches], dtype=bool),
+        **kw,
+    )
+
+    # neighbor_rank: -1 is no longer a None sentinel; use a present-mask.
+    group.create_dataset(
+        "neighbor_rank",
+        data=np.array(
+            [m.neighbor_rank if m.neighbor_rank is not None else -1 for m in matches],
+            dtype=np.int64,
+        ),
+        **kw,
+    )
+    group.create_dataset(
+        "neighbor_rank_present",
+        data=np.array([m.neighbor_rank is not None for m in matches], dtype=bool),
+        **kw,
+    )
+
+    # image_death_simplex: ragged (may have >3 vertices) with a None-vs-[] split.
+    group.create_dataset(
+        "image_death_simplex_present",
+        data=np.array([m.image_death_simplex is not None for m in matches], dtype=bool),
+        **kw,
+    )
+    lengths = np.array(
+        [len(m.image_death_simplex or []) for m in matches], dtype=np.int64
+    )
+    group.create_dataset("image_death_simplex_lengths", data=lengths, **kw)
+    max_len = int(lengths.max()) if n > 0 else 0
+    values = np.full((n, max_len), -1, dtype=np.int64)
+    for i, match in enumerate(matches):
+        simplex = match.image_death_simplex or []
+        values[i, : len(simplex)] = simplex
+    group.create_dataset("image_death_simplex_values", data=values, **kw)
 
 
 def _deserialize_loop_matches(group: h5py.Group) -> list[LoopMatch]:
@@ -118,16 +374,46 @@ def _deserialize_loop_matches(group: h5py.Group) -> list[LoopMatch]:
         if "candidate_method" in group
         else np.zeros(count, dtype=np.int8)
     )
-    image_death_simplices = (
-        np.asarray(group["image_death_simplex"])
-        if "image_death_simplex" in group
-        else np.full((count, 3), -1, dtype=np.int64)
+
+    geo_present = (
+        np.asarray(group["geometric_distance_present"])
+        if "geometric_distance_present" in group
+        else ~np.isnan(geo_dists)
+    )
+    rank_present = (
+        np.asarray(group["neighbor_rank_present"])
+        if "neighbor_rank_present" in group
+        else neighbor_ranks >= 0
+    )
+
+    ids_present = (
+        np.asarray(group["image_death_simplex_present"])
+        if "image_death_simplex_present" in group
+        else None
+    )
+    ids_lengths = (
+        np.asarray(group["image_death_simplex_lengths"])
+        if "image_death_simplex_lengths" in group
+        else None
+    )
+    ids_values = (
+        np.asarray(group["image_death_simplex_values"])
+        if "image_death_simplex_values" in group
+        else None
     )
 
     matches = []
     for i in range(count):
-        geo_dist = float(geo_dists[i]) if not np.isnan(geo_dists[i]) else None
-        rank = int(neighbor_ranks[i]) if neighbor_ranks[i] >= 0 else None
+        geo_dist = float(geo_dists[i]) if geo_present[i] else None
+        rank = int(neighbor_ranks[i]) if rank_present[i] else None
+        if ids_present is not None and ids_values is not None:
+            if ids_present[i]:
+                length = int(ids_lengths[i]) if ids_lengths is not None else 0
+                image_death_simplex = [int(v) for v in ids_values[i, :length]]
+            else:
+                image_death_simplex = None
+        else:
+            image_death_simplex = None
         matches.append(
             LoopMatch(
                 idx_bootstrap=int(idx_bootstraps[i]),
@@ -137,10 +423,7 @@ def _deserialize_loop_matches(group: h5py.Group) -> list[LoopMatch]:
                 ),
                 geometric_distance=geo_dist,
                 neighbor_rank=rank,
-                image_death_simplex=[
-                    int(v) for v in image_death_simplices[i] if v >= 0
-                ]
-                or None,
+                image_death_simplex=image_death_simplex,
             )
         )
     return matches
@@ -170,13 +453,23 @@ class LoopTrack:
         matches_grp = group.create_group("matches")
         _serialize_loop_matches(self.matches, matches_grp, compress=compress)
 
+        if self.hodge_analysis is not None:
+            self.hodge_analysis.to_hdf5_group(
+                group.create_group("hodge_analysis"), compress=compress
+            )
+
     @classmethod
     def from_hdf5_group(cls, group: h5py.Group) -> LoopTrack:
         source_class_idx = int(group.attrs["source_class_idx"])  # type: ignore[arg-type]
         matches_grp: h5py.Group = group["matches"]  # type: ignore[assignment]
         matches = _deserialize_loop_matches(matches_grp)
+        hodge_analysis = None
+        if "hodge_analysis" in group:
+            hodge_analysis = HodgeAnalysis.from_hdf5_group(group["hodge_analysis"])
         return cls(
-            source_class_idx=source_class_idx, matches=matches, hodge_analysis=None
+            source_class_idx=source_class_idx,
+            matches=matches,
+            hodge_analysis=hodge_analysis,
         )
 
 
@@ -452,6 +745,21 @@ class BootstrapAnalysis:
         group.attrs["_type"] = "BootstrapAnalysis"
         group.attrs["num_bootstraps"] = self.num_bootstraps
 
+        kw = {"compression": "gzip"} if compress else {}
+
+        # raw per-round homology: needed to recompute loop reps / rerun tests
+        _write_bootstrap_list(
+            group, "persistence_diagrams", self.persistence_diagrams, _write_diagram, kw
+        )
+        _write_bootstrap_list(
+            group,
+            "persistence_pair_simplices",
+            self.persistence_pair_simplices,
+            _write_pair_simplices,
+            kw,
+        )
+        _write_bootstrap_list(group, "cocycles", self.cocycles, _write_cocycles, kw)
+
         slc_grp = group.create_group("selected_loop_classes")
         slc_grp.attrs["_count"] = len(self.selected_loop_classes)
         for boot_idx, loop_classes in enumerate(self.selected_loop_classes):
@@ -552,11 +860,19 @@ class BootstrapAnalysis:
                 persistence_grp
             )
 
+        persistence_diagrams = _read_bootstrap_list(
+            group, "persistence_diagrams", _read_diagram
+        )
+        persistence_pair_simplices = _read_bootstrap_list(
+            group, "persistence_pair_simplices", _read_pair_simplices
+        )
+        cocycles = _read_bootstrap_list(group, "cocycles", _read_cocycles)
+
         return cls(
             num_bootstraps=num_bootstraps,
-            persistence_diagrams=[],
-            persistence_pair_simplices=[],
-            cocycles=[],
+            persistence_diagrams=persistence_diagrams,
+            persistence_pair_simplices=persistence_pair_simplices,
+            cocycles=cocycles,
             reference_image_pairs=image_records["reference_image_pairs"],
             bootstrap_image_pairs=image_records["bootstrap_image_pairs"],
             selected_loop_classes=selected_loop_classes,
@@ -694,6 +1010,67 @@ class LoopClassAnalysis(LoopClass):
             edge_gradient_raw=edge_gradient_raw,
         )
 
+    def to_hdf5_group(self, group: h5py.Group, compress: bool = True) -> None:
+        # base fields first, then override the stamped _type
+        LoopClass.to_hdf5_group(self, group, compress=compress)
+        group.attrs["_type"] = "LoopClassAnalysis"
+
+        kw = {"compression": "gzip"} if compress else {}
+        for field_name in _LOOP_CLASS_ANALYSIS_ARRAY_LIST_FIELDS:
+            _write_opt_list_of_arrays(
+                group, field_name, getattr(self, field_name), kw
+            )
+
+        _write_opt_list_of_arrays(
+            group,
+            "valid_edge_indices_per_rep",
+            [np.asarray(v, dtype=np.int64) for v in self.valid_edge_indices_per_rep],
+            kw,
+        )
+        _write_opt_list_of_arrays(
+            group, "edge_signs_per_rep", self.edge_signs_per_rep, kw
+        )
+        _write_opt_array(group, "vertex_divergence_raw", self.vertex_divergence_raw, kw)
+        _write_opt_array(
+            group, "vertex_divergence_smooth", self.vertex_divergence_smooth, kw
+        )
+        if self.vertex_ids_divergence is not None:
+            group.create_dataset(
+                "vertex_ids_divergence",
+                data=np.asarray(self.vertex_ids_divergence, dtype=np.int64),
+                **kw,
+            )
+
+    @classmethod
+    def from_hdf5_group(cls, group: h5py.Group) -> LoopClassAnalysis:
+        base = LoopClass._read_base_fields(group)
+
+        extra: dict = {
+            field_name: _read_opt_list_of_arrays(group, field_name)
+            for field_name in _LOOP_CLASS_ANALYSIS_ARRAY_LIST_FIELDS
+        }
+
+        valid_idx = _read_opt_list_of_arrays(group, "valid_edge_indices_per_rep")
+        extra["valid_edge_indices_per_rep"] = (
+            [np.asarray(a).astype(int).tolist() for a in valid_idx]
+            if valid_idx is not None
+            else []
+        )
+        edge_signs = _read_opt_list_of_arrays(group, "edge_signs_per_rep")
+        extra["edge_signs_per_rep"] = edge_signs if edge_signs is not None else []
+        extra["vertex_divergence_raw"] = _read_opt_array(
+            group, "vertex_divergence_raw"
+        )
+        extra["vertex_divergence_smooth"] = _read_opt_array(
+            group, "vertex_divergence_smooth"
+        )
+        extra["vertex_ids_divergence"] = (
+            np.asarray(group["vertex_ids_divergence"]).astype(int).tolist()
+            if "vertex_ids_divergence" in group
+            else None
+        )
+        return cls(**base, **extra)
+
 
 @dataclass(config=ConfigDict(arbitrary_types_allowed=True))
 class TrajectoryAnalysis:
@@ -715,6 +1092,74 @@ class TrajectoryAnalysis:
 
     gam_n_splines: int = 10
 
+    def to_hdf5_group(self, group: h5py.Group, compress: bool = True) -> None:
+        import h5py
+
+        group.attrs["_type"] = "TrajectoryAnalysis"
+        kw = {"compression": "gzip"} if compress else {}
+
+        group.create_dataset(
+            "trajectory_coordinates",
+            data=np.asarray(self.trajectory_coordinates),
+            **kw,
+        )
+        group.attrs["n_bins"] = self.n_bins
+        group.attrs["gam_n_splines"] = self.gam_n_splines
+
+        if self.trajectory_pseudotime_range is not None:
+            group.create_dataset(
+                "trajectory_pseudotime_range",
+                data=np.asarray(self.trajectory_pseudotime_range, dtype=np.float64),
+            )
+        if self.bandwidth_vertices is not None:
+            group.attrs["bandwidth_vertices"] = float(self.bandwidth_vertices)
+
+        for field_name in _TRAJECTORY_OPT_ARRAY_FIELDS:
+            _write_opt_array(group, field_name, getattr(self, field_name), kw)
+
+        if self.gene_names is not None:
+            group.create_dataset(
+                "gene_names",
+                data=np.array(self.gene_names, dtype=object),
+                dtype=h5py.string_dtype(),
+                **kw,
+            )
+
+    @classmethod
+    def from_hdf5_group(cls, group: h5py.Group) -> TrajectoryAnalysis:
+        ptr = None
+        if "trajectory_pseudotime_range" in group:
+            arr = np.asarray(group["trajectory_pseudotime_range"])
+            ptr = (float(arr[0]), float(arr[1]))
+
+        gene_names = None
+        if "gene_names" in group:
+            gene_names = [
+                g.decode() if isinstance(g, bytes) else str(g)
+                for g in np.asarray(group["gene_names"])
+            ]
+
+        return cls(
+            trajectory_coordinates=np.asarray(group["trajectory_coordinates"]),
+            trajectory_pseudotime_range=ptr,
+            n_bins=int(group.attrs.get("n_bins", 20)),
+            weights_vertices=_read_opt_array(group, "weights_vertices"),
+            indices_vertices=_read_opt_array(group, "indices_vertices"),
+            values_vertices=_read_opt_array(group, "values_vertices"),
+            bandwidth_vertices=(
+                float(group.attrs["bandwidth_vertices"])
+                if "bandwidth_vertices" in group.attrs
+                else None
+            ),
+            distances_vertices=_read_opt_array(group, "distances_vertices"),
+            gene_names=gene_names,
+            mean_expression=_read_opt_array(group, "mean_expression"),
+            se_expression=_read_opt_array(group, "se_expression"),
+            ci_lower=_read_opt_array(group, "ci_lower"),
+            ci_upper=_read_opt_array(group, "ci_upper"),
+            gam_n_splines=int(group.attrs.get("gam_n_splines", 10)),
+        )
+
 
 class HodgeAnalysis(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -723,6 +1168,87 @@ class HodgeAnalysis(BaseModel):
     edges_masks_loop_classes: list[list[np.ndarray]] = Field(default_factory=list)
     selected_loop_classes: list[LoopClassAnalysis] = Field(default_factory=list)
     trajectory_analyses: list[TrajectoryAnalysis] = Field(default_factory=list)
+
+    def to_hdf5_group(self, group: h5py.Group, compress: bool = True) -> None:
+        group.attrs["_type"] = "HodgeAnalysis"
+        kw = {"compression": "gzip"} if compress else {}
+
+        if self.hodge_eigenvalues is not None:
+            group.create_dataset(
+                "hodge_eigenvalues",
+                data=np.asarray(self.hodge_eigenvalues, dtype=np.float64),
+                **kw,
+            )
+        if self.hodge_eigenvectors is not None:
+            group.create_dataset(
+                "hodge_eigenvectors",
+                data=np.asarray(self.hodge_eigenvectors, dtype=np.float64),
+                **kw,
+            )
+
+        em_grp = group.create_group("edges_masks_loop_classes")
+        em_grp.attrs["_count"] = len(self.edges_masks_loop_classes)
+        for i, masks in enumerate(self.edges_masks_loop_classes):
+            sub = em_grp.create_group(str(i))
+            sub.attrs["_count"] = len(masks)
+            for j, mask in enumerate(masks):
+                sub.create_dataset(str(j), data=np.asarray(mask), **kw)
+
+        slc_grp = group.create_group("selected_loop_classes")
+        slc_grp.attrs["_count"] = len(self.selected_loop_classes)
+        for i, lc in enumerate(self.selected_loop_classes):
+            lc.to_hdf5_group(slc_grp.create_group(str(i)), compress=compress)
+
+        ta_grp = group.create_group("trajectory_analyses")
+        ta_grp.attrs["_count"] = len(self.trajectory_analyses)
+        for i, ta in enumerate(self.trajectory_analyses):
+            ta.to_hdf5_group(ta_grp.create_group(str(i)), compress=compress)
+
+    @classmethod
+    def from_hdf5_group(cls, group: h5py.Group) -> HodgeAnalysis:
+        hodge_eigenvalues = (
+            np.asarray(group["hodge_eigenvalues"]).tolist()
+            if "hodge_eigenvalues" in group
+            else None
+        )
+        hodge_eigenvectors = (
+            np.asarray(group["hodge_eigenvectors"]).tolist()
+            if "hodge_eigenvectors" in group
+            else None
+        )
+
+        edges_masks_loop_classes: list[list[np.ndarray]] = []
+        if "edges_masks_loop_classes" in group:
+            em_grp = group["edges_masks_loop_classes"]
+            for i in range(int(em_grp.attrs["_count"])):
+                sub = em_grp[str(i)]
+                edges_masks_loop_classes.append(
+                    [np.asarray(sub[str(j)]) for j in range(int(sub.attrs["_count"]))]
+                )
+
+        selected_loop_classes: list[LoopClassAnalysis] = []
+        if "selected_loop_classes" in group:
+            slc_grp = group["selected_loop_classes"]
+            for i in range(int(slc_grp.attrs["_count"])):
+                selected_loop_classes.append(
+                    LoopClassAnalysis.from_hdf5_group(slc_grp[str(i)])
+                )
+
+        trajectory_analyses: list[TrajectoryAnalysis] = []
+        if "trajectory_analyses" in group:
+            ta_grp = group["trajectory_analyses"]
+            for i in range(int(ta_grp.attrs["_count"])):
+                trajectory_analyses.append(
+                    TrajectoryAnalysis.from_hdf5_group(ta_grp[str(i)])
+                )
+
+        return cls(
+            hodge_eigenvalues=hodge_eigenvalues,
+            hodge_eigenvectors=hodge_eigenvectors,
+            edges_masks_loop_classes=edges_masks_loop_classes,
+            selected_loop_classes=selected_loop_classes,
+            trajectory_analyses=trajectory_analyses,
+        )
 
     def _embed_edges(
         self,

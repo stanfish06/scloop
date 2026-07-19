@@ -38,6 +38,8 @@ from .analysis_containers import (
     BootstrapAnalysis,
     LoopMatch,
     LoopTrack,
+    _read_pair_simplices,
+    _write_pair_simplices,
 )
 from .base_components import LoopClass
 from .boundary import BoundaryMatrixD0, BoundaryMatrixD1
@@ -136,6 +138,14 @@ class HomologyData:
                         "deaths", data=np.asarray(dim_pd[1], dtype=np.float64), **kw
                     )
 
+        if self.persistence_pair_simplices is not None:
+            _write_pair_simplices(
+                group,
+                "persistence_pair_simplices",
+                self.persistence_pair_simplices,
+                kw,
+            )
+
         # cocycles: list of list of (vertices, coeff) per dimension
         if self.cocycles is not None:
             cc_grp = group.create_group("cocycles")
@@ -220,6 +230,11 @@ class HomologyData:
                 else:
                     persistence_diagram.append(None)
 
+        # persistence_pair_simplices
+        persistence_pair_simplices = _read_pair_simplices(
+            group, "persistence_pair_simplices"
+        )
+
         # cocycles
         cocycles = None
         if "cocycles" in group:
@@ -275,6 +290,7 @@ class HomologyData:
         return cls(
             meta=meta,
             persistence_diagram=persistence_diagram,
+            persistence_pair_simplices=persistence_pair_simplices,
             cocycles=cocycles,
             selected_loop_classes=selected_loop_classes,
             boundary_matrix_d1=boundary_matrix_d1,
@@ -502,18 +518,16 @@ class HomologyData:
             assert self.bootstrap_data is not None
             assert len(self.bootstrap_data.persistence_diagrams) > idx_bootstrap
             assert len(self.bootstrap_data.cocycles) > idx_bootstrap
-            assert (
-                len(self.bootstrap_data.persistence_pair_simplices) > idx_bootstrap
-            )
+            assert len(self.bootstrap_data.persistence_pair_simplices) > idx_bootstrap
             assert self.meta.bootstrap is not None
             assert self.meta.bootstrap.indices_resample is not None
             assert len(self.meta.bootstrap.indices_resample) > idx_bootstrap
             persistence_diagram = self.bootstrap_data.persistence_diagrams[
                 idx_bootstrap
             ][1]
-            persistence_pair_simplices = (
-                self.bootstrap_data.persistence_pair_simplices[idx_bootstrap][1]
-            )
+            persistence_pair_simplices = self.bootstrap_data.persistence_pair_simplices[
+                idx_bootstrap
+            ][1]
             cocycles = self.bootstrap_data.cocycles[idx_bootstrap][1]
             vertex_ids = self.meta.bootstrap.indices_resample[idx_bootstrap]
 
