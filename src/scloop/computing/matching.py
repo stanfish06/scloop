@@ -7,6 +7,7 @@ from ..computing.homology import (
     compute_loop_geometric_distance,
     compute_loop_homological_equivalence,
 )
+from ..data.base_components import LoopClassEquivalence
 from ..data.boundary import BoundaryMatrixD1
 from ..data.constants import (
     DEFAULT_MAX_N_EDGES_RELAXATION_EQUIVALENCE,
@@ -14,7 +15,13 @@ from ..data.constants import (
     DEFAULT_N_PAIRS_CHECK,
     DEFAULT_WITH_RELAXATION_EQUIVALENCE,
 )
-from ..data.types import Count_t, LoopDistMethod, PositiveFloat
+from ..data.types import (
+    Count_t,
+    LoopDistMethod,
+    LoopEdges,
+    Percent_t,
+    PositiveFloat,
+)
 from ..data.utils import loop_vertices_to_edge_ids_with_signs
 
 
@@ -23,25 +30,27 @@ def loops_to_edge_mask(
     boundary_matrix_d1: BoundaryMatrixD1,
     return_valid_indices: bool = False,
     use_order: bool = False,
-) -> np.ndarray | tuple[np.ndarray, list[list[int]], list[np.ndarray]]:
+) -> np.ndarray | LoopEdges:
     num_vertices = boundary_matrix_d1.num_vertices
     n_edges = boundary_matrix_d1.shape[0]
 
     edge_lookup = {
-        int(edge_id): row_idx
+        edge_id: row_idx
         for row_idx, edge_id in enumerate(boundary_matrix_d1.row_simplex_ids)
     }
 
     dtype = np.int32 if use_order else bool
     mask = np.zeros((len(loops), n_edges), dtype=dtype)
     valid_indices_per_rep = []
-    edge_signs_per_rep = []
+    valid_edge_ids_per_rep = []
+    valid_edge_signs_per_rep = []
 
     for idx, loop in enumerate(loops):
         edge_ids, edge_signs = loop_vertices_to_edge_ids_with_signs(
             np.asarray(loop, dtype=np.int64), num_vertices
         )
         valid_indices = []
+        valid_ids = []
         valid_signs = []
         seen_row_ids = set()
         order = 1
@@ -51,13 +60,20 @@ def loops_to_edge_mask(
                 mask[idx, row_id] = order if use_order else True
                 order += 1
                 valid_indices.append(edge_idx)
+                valid_ids.append(eid)
                 valid_signs.append(sign)
                 seen_row_ids.add(row_id)
         valid_indices_per_rep.append(valid_indices)
-        edge_signs_per_rep.append(np.array(valid_signs, dtype=np.int8))
+        valid_edge_ids_per_rep.append(valid_ids)
+        valid_edge_signs_per_rep.append(np.array(valid_signs, dtype=np.int8))
 
     if return_valid_indices:
-        return mask, valid_indices_per_rep, edge_signs_per_rep
+        return LoopEdges(
+            mask=mask,
+            indices_per_rep=valid_indices_per_rep,
+            edge_ids_per_rep=valid_edge_ids_per_rep,
+            edge_signs_per_rep=valid_edge_signs_per_rep,
+        )
     return mask
 
 
@@ -71,7 +87,7 @@ def cocycle_to_edge_mask(
     num_vertices = boundary_matrix_d1.num_vertices
     n_edges = boundary_matrix_d1.shape[0]
     edge_lookup = {
-        int(edge_id): row_idx
+        edge_id: row_idx
         for row_idx, edge_id in enumerate(boundary_matrix_d1.row_simplex_ids)
     }
     mask = np.zeros(n_edges, dtype=bool)
@@ -95,7 +111,7 @@ def cocycle_to_edge_mask(
         if u_global > v_global:
             u_global, v_global = v_global, u_global
         edge_id = u_global * num_vertices + v_global
-        row_id = edge_lookup.get(int(edge_id), -1)
+        row_id = edge_lookup.get(edge_id, -1)
         if row_id >= 0:
             mask[row_id] = not mask[row_id]
     if not mask.any():
@@ -118,6 +134,12 @@ def compute_geometric_distance(
     return float(np.nanmean(distances_arr))
 
 
+def compute_simplicial_homotopy_coherence(
+    loop_a_edge_ids: list[int], loop_b_edge_ids: list[int], mapping_trig_ids: list[int]
+) -> Percent_t:
+    return 1
+
+
 def check_homological_equivalence(
     source_loops: list[list[int]],
     target_loops: list[list[int]],
@@ -128,17 +150,26 @@ def check_homological_equivalence(
     max_n_edges_relaxation: int = DEFAULT_MAX_N_EDGES_RELAXATION_EQUIVALENCE,
     max_column_diameter: PositiveFloat | None = None,
     cocycle_edge_mask: np.ndarray | None = None,
-) -> bool:
+    compute_homotopy_coherence: bool = True,
+) -> LoopClassEquivalence:
     if len(source_loops) == 0 or len(target_loops) == 0:
-        return False
+        return LoopClassEquivalence()
 
-    mask_a = loops_to_edge_mask(source_loops, boundary_matrix_d1)
-    mask_b = loops_to_edge_mask(target_loops, boundary_matrix_d1)
+    loop_edges_a = loops_to_edge_mask(
+        loops=source_loops,
+        boundary_matrix_d1=boundary_matrix_d1,
+        return_valid_indices=compute_homotopy_coherence,
+    )
+    loop_edges_b = loops_to_edge_mask(
+        loops=target_loops,
+        boundary_matrix_d1=boundary_matrix_d1,
+        return_valid_indices=compute_homotopy_coherence,
+    )
 
-    assert isinstance(mask_a, np.ndarray)
-    assert isinstance(mask_b, np.ndarray)
+    mask_a = loop_edges_a.mask if isinstance(loop_edges_a, LoopEdges) else loop_edges_a
+    mask_b = loop_edges_b.mask if isinstance(loop_edges_b, LoopEdges) else loop_edges_b
 
-    results, _, results_relax, _ = compute_loop_homological_equivalence(
+    result = compute_loop_homological_equivalence(
         boundary_matrix_d1=boundary_matrix_d1,
         loop_mask_a=mask_a,
         loop_mask_b=mask_b,
@@ -149,6 +180,5 @@ def check_homological_equivalence(
         max_column_diameter=max_column_diameter,
         cocycle_edge_mask=cocycle_edge_mask,
     )
-    if any(r == 0 for r in results):
-        return True
-    return results_relax is not None and any(r == 0 for r in results_relax)
+
+    return result

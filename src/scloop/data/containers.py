@@ -73,6 +73,7 @@ from .types import (
     Index_t,
     IndexListDownSample,
     LoopDistMethod,
+    LoopEdges,
     MultipleTestCorrectionMethod,
     Percent_t,
     PositiveFloat,
@@ -108,7 +109,7 @@ class HomologyData:
         loops: list[list[int]],
         return_valid_indices: bool = False,
         use_order: bool = False,
-    ) -> np.ndarray | tuple[np.ndarray, list[list[int]], list[np.ndarray]]:
+    ) -> np.ndarray | LoopEdges:
         assert self.boundary_matrix_d1 is not None
         return loops_to_edge_mask(
             loops=loops,
@@ -787,7 +788,7 @@ class HomologyData:
                 boundary_matrix_d1=self.boundary_matrix_d1,
                 vertex_ids=self._original_vertex_ids,
             )
-        is_equivalent = check_homological_equivalence(
+        result = check_homological_equivalence(
             source_loops=source_loops,
             target_loops=target_loops,
             boundary_matrix_d1=self.boundary_matrix_d1,
@@ -798,6 +799,7 @@ class HomologyData:
             max_column_diameter=max_column_diameter,
             cocycle_edge_mask=cocycle_edge_mask,
         )
+        is_equivalent = result.is_equivalent(relax=with_relaxation)
         return (source_class_idx, target_class_idx, is_equivalent)
 
     def _ensure_loop_tracks(self) -> None:

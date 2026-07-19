@@ -1,6 +1,7 @@
 # Copyright 2025 Zhiyuan Yu (Heemskerk's lab, University of Michigan)
-from typing import Annotated, Literal, TypeAlias
+from typing import Annotated, Literal, NamedTuple, TypeAlias
 
+import numpy as np
 from pydantic import Field
 
 FeatureSelectionMethod = Literal["hvg", "hvg_delve", "none"]
@@ -48,3 +49,10 @@ IndexListSimplex: TypeAlias = Annotated[
 ]
 
 LOOP_ATTRIBUTE_MODE = Literal["exact", "boundary", "vertex"]
+
+
+class LoopEdges(NamedTuple):
+    mask: np.ndarray
+    indices_per_rep: list[list[int]]
+    edge_ids_per_rep: list[list[int]]
+    edge_signs_per_rep: list[np.ndarray]

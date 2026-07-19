@@ -11,7 +11,7 @@ from scipy.sparse import csr_matrix
 from scipy.spatial.distance import directed_hausdorff
 from sklearn.neighbors import radius_neighbors_graph
 
-from ..data.base_components import PersistencePair
+from ..data.base_components import LoopClassEquivalence, PersistencePair
 from ..data.constants import DEFAULT_LOOP_DIST_METHOD, DEFAULT_N_MAX_WORKERS
 from ..data.metadata import ScloopMeta
 from ..data.ripser_lib import (  # type: ignore[import-not-found]
@@ -566,7 +566,7 @@ def compute_loop_homological_equivalence(
     max_n_edges_relaxation: int = 50,
     max_column_diameter: float | None = None,
     cocycle_edge_mask: np.ndarray | None = None,
-) -> tuple[list, list, list | None, list | None]:
+) -> LoopClassEquivalence:
     """
     Parameters
     ---------
@@ -584,19 +584,30 @@ def compute_loop_homological_equivalence(
     # in F2, sum is just xor
     loop_sums = loop_mask_a[:, None, :] ^ loop_mask_b[None, :, :]
     loop_sums = loop_sums.reshape(-1, loop_sums.shape[-1])
+    result = LoopClassEquivalence()
     if loop_sums.shape[0] == 0:
-        return [], [], [], []
+        return result
+    n_a = loop_mask_a.shape[0]
+    n_b = loop_mask_b.shape[0]
+    pairs_kept = [(i, j) for i in range(n_a) for j in range(n_b)]
     # early stoping, if sum is not a boundary according to cocycle, then skip it
     if cocycle_edge_mask is not None:
         mask = cocycle_edge_mask.astype(bool)
         if mask.shape[0] != loop_sums.shape[1]:
-            return [], [], [], []
+            return result
         if mask.any():
-            keep = (loop_sums[:, mask].sum(axis=1) % 2) == 0
+            keep = np.where((loop_sums[:, mask].sum(axis=1) % 2) == 0)[0]
+            result.n_loop_pairs_checked = loop_sums.shape[0]
+            if len(keep) == 0:
+                return result
             loop_sums = loop_sums[keep]
-            if loop_sums.shape[0] == 0:
-                return [], [], [], []
+            pairs_kept = [pairs_kept[i] for i in keep]
     n_pairs_check = min(n_pairs_check, loop_sums.shape[0])
+    pairs_kept = pairs_kept[:n_pairs_check]
+    one_idx_b_list = [
+        np.flatnonzero(loop_sums[i]).astype(int).tolist() for i in range(n_pairs_check)
+    ]
+    result.n_loop_pairs_checked = n_pairs_check
 
     one_ridx_A = np.asarray(boundary_matrix_d1.data[0])
     one_cidx_A = np.asarray(boundary_matrix_d1.data[1])
@@ -607,7 +618,7 @@ def compute_loop_homological_equivalence(
     if max_column_diameter is not None:
         cols_keep = np.flatnonzero(col_diams <= max_column_diameter)
         if cols_keep.size == 0:
-            return [], [], [], []
+            return result
         mask = np.isin(one_cidx_A, cols_keep)
         one_ridx_A = one_ridx_A[mask]
         one_cidx_A = one_cidx_A[mask]
@@ -640,17 +651,19 @@ def compute_loop_homological_equivalence(
             one_cidx_A = np.repeat(np.arange(ncol_A, dtype=int), 3)
             col_diams = col_diams[col_order]
 
-    one_idx_b_list = [
-        np.flatnonzero(loop_sums[i]).astype(int).tolist() for i in range(n_pairs_check)
-    ]
-    results, solutions = solve_multiple_gf2_m4ri(
+    states, solutions = solve_multiple_gf2_m4ri(
         one_ridx_A=one_ridx_A.tolist(),
         one_cidx_A=one_cidx_A.tolist(),
         nrow_A=nrow_A,
         ncol_A=ncol_A,
         one_idx_b_list=one_idx_b_list,
     )
-    results_relax, solutions_relax = None, None
+    solved = [i for i, s in enumerate(states) if s == 0]
+    if len(solved) > 0:
+        result.loop_pairs_matched = [pairs_kept[i] for i in solved]
+        result.mapping_deformation_matched = [solutions[i] for i in solved]
+
+    states_relax, solutions_relax = None, None
     if with_relaxation:
         max_n_edges_relaxation = min(max_n_edges_relaxation, ncol_A)
         n_hubs_edges = np.where(
@@ -670,15 +683,23 @@ def compute_loop_homological_equivalence(
         n_extra_edges = min(len(n_hubs_edges), max_n_edges_relaxation)
         if n_extra_edges > 0:
             one_ridx_A[: 3 * n_extra_edges] = np.repeat(n_hubs_edges[:n_extra_edges], 3)
-            results_relax, solutions_relax = solve_multiple_gf2_m4ri(
+            states_relax, solutions_relax = solve_multiple_gf2_m4ri(
                 one_ridx_A=one_ridx_A.tolist(),
                 one_cidx_A=one_cidx_A.tolist(),
                 nrow_A=nrow_A,
                 ncol_A=ncol_A,
                 one_idx_b_list=one_idx_b_list,
             )
+            solved_relax = [i for i, s in enumerate(states_relax) if s == 0]
+            if len(solved_relax) > 0:
+                result.loop_pairs_matched_relax = [
+                    pairs_kept[i] for i in solved_relax
+                ]
+                result.mapping_deformation_matched_relax = [
+                    solutions_relax[i] for i in solved_relax
+                ]
 
-    return results, solutions, results_relax, solutions_relax
+    return result
 
 
 def compute_loop_geometric_distance(

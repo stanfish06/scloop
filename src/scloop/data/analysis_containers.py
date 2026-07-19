@@ -43,9 +43,7 @@ if TYPE_CHECKING:
     import h5py
 
 
-def _write_opt_array(
-    parent: h5py.Group, name: str, value, kw: dict
-) -> None:
+def _write_opt_array(parent: h5py.Group, name: str, value, kw: dict) -> None:
     """Write an optional array; absence encodes None."""
     if value is not None:
         parent.create_dataset(name, data=np.asarray(value), **kw)
@@ -55,9 +53,7 @@ def _read_opt_array(parent: h5py.Group, name: str):
     return np.asarray(parent[name]) if name in parent else None
 
 
-def _write_opt_list_of_arrays(
-    parent: h5py.Group, name: str, value, kw: dict
-) -> None:
+def _write_opt_list_of_arrays(parent: h5py.Group, name: str, value, kw: dict) -> None:
     """Serialize a ``list[np.ndarray] | None`` preserving the None-vs-[] split."""
     g = parent.create_group(name)
     if value is None:
@@ -89,8 +85,12 @@ def _write_diagram(parent: h5py.Group, name: str, diagram, kw: dict) -> None:
     for d, dim_pd in enumerate(diagram):
         dg = g.create_group(str(d))
         if dim_pd is not None and len(dim_pd) >= 2:
-            dg.create_dataset("births", data=np.asarray(dim_pd[0], dtype=np.float64), **kw)
-            dg.create_dataset("deaths", data=np.asarray(dim_pd[1], dtype=np.float64), **kw)
+            dg.create_dataset(
+                "births", data=np.asarray(dim_pd[0], dtype=np.float64), **kw
+            )
+            dg.create_dataset(
+                "deaths", data=np.asarray(dim_pd[1], dtype=np.float64), **kw
+            )
 
 
 def _read_diagram(parent: h5py.Group, name: str):
@@ -275,8 +275,9 @@ class LoopMatch:
     target_class_idx: int
     candidate_method: Literal["geometric", "image"] = "geometric"
     geometric_distance: Optional[float] = None
+    homotopy_coherence: Optional[Percent_t] = None
     neighbor_rank: Optional[int] = None
-    image_death_simplex: list[int] | None = None
+    image_death_simplex: Optional[list[int]] = None
 
 
 def _serialize_loop_matches(
@@ -1017,9 +1018,7 @@ class LoopClassAnalysis(LoopClass):
 
         kw = {"compression": "gzip"} if compress else {}
         for field_name in _LOOP_CLASS_ANALYSIS_ARRAY_LIST_FIELDS:
-            _write_opt_list_of_arrays(
-                group, field_name, getattr(self, field_name), kw
-            )
+            _write_opt_list_of_arrays(group, field_name, getattr(self, field_name), kw)
 
         _write_opt_list_of_arrays(
             group,
@@ -1058,9 +1057,7 @@ class LoopClassAnalysis(LoopClass):
         )
         edge_signs = _read_opt_list_of_arrays(group, "edge_signs_per_rep")
         extra["edge_signs_per_rep"] = edge_signs if edge_signs is not None else []
-        extra["vertex_divergence_raw"] = _read_opt_array(
-            group, "vertex_divergence_raw"
-        )
+        extra["vertex_divergence_raw"] = _read_opt_array(group, "vertex_divergence_raw")
         extra["vertex_divergence_smooth"] = _read_opt_array(
             group, "vertex_divergence_smooth"
         )

@@ -416,7 +416,7 @@ def run_single_bootstrap(
                         max(source_loop.death, target_loop.death)
                         + float(extra_diameter_homology_equivalence) * max_lifetime
                     )
-                is_equivalent = check_homological_equivalence(
+                result = check_homological_equivalence(
                     source_loops=source_loop.representatives,
                     target_loops=target_loop.representatives,
                     boundary_matrix_d1=original_boundary_matrix_d1,
@@ -427,6 +427,7 @@ def run_single_bootstrap(
                     max_column_diameter=max_column_diameter,
                     cocycle_edge_mask=cocycle_edge_masks[source_idx],
                 )
+                is_equivalent = result.is_equivalent(relax=with_relaxation_equivalence)
 
             if is_equivalent:
                 matches.setdefault(source_idx, []).append(

@@ -24,7 +24,7 @@ from ..data.constants import (
     DEFAULT_WEIGHT_HODGE,
 )
 from ..data.metadata import ScloopMeta
-from ..data.types import Count_t, Index_t, Percent_t
+from ..data.types import Count_t, Index_t, LoopEdges, Percent_t
 from ..data.utils import loops_masks_to_edges_masks
 
 
@@ -147,12 +147,16 @@ def compute_hodge_analysis(
 
     for loop in track.hodge_analysis.selected_loop_classes:
         assert loop.representatives is not None
-        loops_mask, valid_indices_per_rep, edge_signs = loops_to_edge_mask(
+        loop_edges = loops_to_edge_mask(
             loops=loop.representatives,
             boundary_matrix_d1=boundary_matrix_d1,
             return_valid_indices=True,
             use_order=True,
         )
+        assert isinstance(loop_edges, LoopEdges)
+        loops_mask = loop_edges.mask
+        valid_indices_per_rep = loop_edges.indices_per_rep
+        edge_signs = loop_edges.edge_signs_per_rep
         loop.valid_edge_indices_per_rep = valid_indices_per_rep
         loop.edge_signs_per_rep = edge_signs
         track.hodge_analysis.edges_masks_loop_classes.append(

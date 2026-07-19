@@ -32,6 +32,7 @@ _MINIFICATION_UNS_KEY = "scloop_minification"
 
 _MIGRATIONS: dict[str, Callable[[h5py.Group], None]] = {}
 
+
 def check_native_write_safe(adata: AnnData) -> None:
     """Raise if ``adata`` holds scloop objects that break ``write_h5ad``.
 
@@ -92,7 +93,7 @@ def _build_companion_adata(adata: AnnData, minify: bool) -> AnnData:
     """Build the preprocessed companion adata to embed alongside HomologyData.
 
     Keeps full ``obs`` and every ``obsm``
-    ``minify=True`` drops ``X`` and all ``layers`` 
+    ``minify=True`` drops ``X`` and all ``layers``
     """
     import anndata as ad
 
