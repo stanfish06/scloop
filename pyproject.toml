@@ -53,7 +53,7 @@ dev = [
   "fa2-modified>=0.4",
   "jupyterlab>=4.6.1",
   "magic-impute>=3",
-  "notebook>=7.6.0",
+  "notebook>=7.6",
   "phate>=2",
   "pyright==1.1.406",
   "ruff>=0.15.5",

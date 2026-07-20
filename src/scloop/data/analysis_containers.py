@@ -280,6 +280,16 @@ class LoopMatch:
     neighbor_rank: Optional[int] = None
     image_death_simplex: Optional[list[int]] = None
 
+    def summarize_homotopy_coherence(self) -> Percent_t | None:
+        if self.topological_equivalence is None:
+            return None
+        values = (
+            self.topological_equivalence.homotopy_coherence_matched
+            + self.topological_equivalence.homotopy_coherence_matched_relax
+        )
+        values = [value for value in values if value is not None]
+        return max(values) if values else None
+
 
 def _serialize_loop_matches(
     matches: list[LoopMatch], group: h5py.Group, compress: bool = True
@@ -447,6 +457,23 @@ class LoopTrack:
         if self.matches is None:
             return []
         return [(m.idx_bootstrap, m.target_class_idx) for m in self.matches]
+
+    def summarize_homotopy_coherence(
+        self,
+        mode: Literal["full", "mean", "median"] = "full",
+    ) -> list[Percent_t | None] | Percent_t | None:
+        values = [match.summarize_homotopy_coherence() for match in self.matches]
+        if mode == "full":
+            return values
+
+        valid_values = [value for value in values if value is not None]
+        if not valid_values:
+            return None
+        if mode == "mean":
+            return float(np.mean(valid_values))
+        if mode == "median":
+            return float(np.median(valid_values))
+        raise ValueError(f"unknown coherence summary mode: {mode}")
 
     def to_hdf5_group(self, group: h5py.Group, compress: bool = True) -> None:
         group.attrs["_type"] = "LoopTrack"
