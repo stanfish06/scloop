@@ -316,8 +316,10 @@ class LoopClassEquivalence:
     n_loop_pairs_checked: int = 0
     loop_pairs_matched: list[tuple] = Field(default_factory=list)
     loop_pairs_matched_relax: list[tuple] = Field(default_factory=list)
-    homotopy_coherence_matched: list[Percent_t] = Field(default_factory=list)
-    homotopy_coherence_matched_relax: list[Percent_t] = Field(default_factory=list)
+    homotopy_coherence_matched: list[Percent_t | None] = Field(default_factory=list)
+    homotopy_coherence_matched_relax: list[Percent_t | None] = Field(
+        default_factory=list
+    )
     mapping_deformation_matched: list = Field(default_factory=list)
     mapping_deformation_matched_relax: list = Field(default_factory=list)
 

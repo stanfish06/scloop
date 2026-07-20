@@ -15,6 +15,7 @@ from ..utils.pvalues import correct_pvalues
 from .base_components import (
     ImagePairRecord,
     LoopClass,
+    LoopClassEquivalence,
     PersistenceTestResult,
     PresenceTestResult,
 )
@@ -274,8 +275,8 @@ class LoopMatch:
     idx_bootstrap: int
     target_class_idx: int
     candidate_method: Literal["geometric", "image"] = "geometric"
+    topological_equivalence: Optional[LoopClassEquivalence] = None
     geometric_distance: Optional[float] = None
-    homotopy_coherence: Optional[Percent_t] = None
     neighbor_rank: Optional[int] = None
     image_death_simplex: Optional[list[int]] = None
 

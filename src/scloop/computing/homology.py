@@ -556,6 +556,26 @@ def find_incident_edges(
     return rows_include ^ b
 
 
+def _decode_deformation(
+    solution: list[int], column_ids: list[int], columns_are_triangles: list[bool]
+) -> dict[str, tuple[int, ...]]:
+    selected = [
+        (simplex_id, is_triangle)
+        for value, simplex_id, is_triangle in zip(
+            solution, column_ids, columns_are_triangles
+        )
+        if value % 2 == 1
+    ]
+    return {
+        "triangle_ids": tuple(
+            simplex_id for simplex_id, is_triangle in selected if is_triangle
+        ),
+        "relaxation_edge_ids": tuple(
+            simplex_id for simplex_id, is_triangle in selected if not is_triangle
+        ),
+    }
+
+
 def compute_loop_homological_equivalence(
     boundary_matrix_d1: "BoundaryMatrixD1",
     loop_mask_a: np.ndarray,
@@ -609,47 +629,41 @@ def compute_loop_homological_equivalence(
     ]
     result.n_loop_pairs_checked = n_pairs_check
 
-    one_ridx_A = np.asarray(boundary_matrix_d1.data[0])
-    one_cidx_A = np.asarray(boundary_matrix_d1.data[1])
+    one_ridx_A = np.asarray(boundary_matrix_d1.data[0], dtype=int)
+    one_cidx_A = np.asarray(boundary_matrix_d1.data[1], dtype=int)
     nrow_A = boundary_matrix_d1.shape[0]
     ncol_A = boundary_matrix_d1.shape[1]
 
     col_diams = np.asarray(boundary_matrix_d1.col_simplex_diams, dtype=float)
+    col_simplex_ids = np.asarray(boundary_matrix_d1.col_simplex_ids, dtype=int)
+    row_simplex_ids = np.asarray(boundary_matrix_d1.row_simplex_ids, dtype=int)
+    column_rows = [one_ridx_A[one_cidx_A == i] for i in range(ncol_A)]
+    if any(len(rows) != 3 for rows in column_rows):
+        raise ValueError("every D1 boundary-matrix column must contain three edges")
+
+    cols_keep = np.arange(ncol_A, dtype=int)
     if max_column_diameter is not None:
-        cols_keep = np.flatnonzero(col_diams <= max_column_diameter)
+        cols_keep = cols_keep[col_diams <= max_column_diameter]
         if cols_keep.size == 0:
             return result
-        mask = np.isin(one_cidx_A, cols_keep)
-        one_ridx_A = one_ridx_A[mask]
-        one_cidx_A = one_cidx_A[mask]
-        # reindex columns
-        col_reindex = -np.ones(ncol_A, dtype=int)
-        col_reindex[cols_keep] = np.arange(cols_keep.size, dtype=int)
-        one_cidx_A = col_reindex[one_cidx_A]
-        ncol_A = cols_keep.size
-        col_diams = col_diams[cols_keep]
 
     # still have redundant columns; keep the larger remaining triangles, since
     # the smaller ones appear less stable under bootstrap perturbations
-    if ncol_A > nrow_A:
-        cols_keep_sorted = np.argsort(col_diams)[-nrow_A:]
-
-        mask = np.isin(one_cidx_A, cols_keep_sorted)
-        one_ridx_A = one_ridx_A[mask]
-        one_cidx_A = one_cidx_A[mask]
-
-        col_reindex = -np.ones(ncol_A, dtype=int)
-        col_reindex[cols_keep_sorted] = np.arange(nrow_A, dtype=int)
-        one_cidx_A = col_reindex[one_cidx_A]
-        ncol_A = nrow_A
+    if cols_keep.size > nrow_A:
+        keep_order = np.argsort(col_diams[cols_keep], kind="stable")[-nrow_A:]
+        cols_keep = cols_keep[keep_order]
 
     # order columns by increasing diameter
-    if ncol_A > 0:
-        col_order = np.argsort(col_diams[:ncol_A])
-        if not np.array_equal(col_order, np.arange(ncol_A)):
-            one_ridx_A = one_ridx_A.reshape(ncol_A, 3)[col_order].reshape(-1)
-            one_cidx_A = np.repeat(np.arange(ncol_A, dtype=int), 3)
-            col_diams = col_diams[col_order]
+    cols_keep = cols_keep[np.argsort(col_diams[cols_keep], kind="stable")]
+    ncol_A = int(cols_keep.size)
+    one_ridx_A = (
+        np.concatenate([column_rows[i] for i in cols_keep])
+        if ncol_A > 0
+        else np.empty(0, dtype=int)
+    )
+    one_cidx_A = np.repeat(np.arange(ncol_A, dtype=int), 3)
+    solver_column_ids = [int(col_simplex_ids[i]) for i in cols_keep]
+    solver_columns_are_triangles = [True] * ncol_A
 
     states, solutions = solve_multiple_gf2_m4ri(
         one_ridx_A=one_ridx_A.tolist(),
@@ -661,7 +675,12 @@ def compute_loop_homological_equivalence(
     solved = [i for i, s in enumerate(states) if s == 0]
     if len(solved) > 0:
         result.loop_pairs_matched = [pairs_kept[i] for i in solved]
-        result.mapping_deformation_matched = [solutions[i] for i in solved]
+        result.mapping_deformation_matched = [
+            _decode_deformation(
+                solutions[i], solver_column_ids, solver_columns_are_triangles
+            )
+            for i in solved
+        ]
 
     states_relax, solutions_relax = None, None
     if with_relaxation:
@@ -682,7 +701,15 @@ def compute_loop_homological_equivalence(
         # replace last columns (already sorted by diameters) with identity columns
         n_extra_edges = min(len(n_hubs_edges), max_n_edges_relaxation)
         if n_extra_edges > 0:
-            one_ridx_A[: 3 * n_extra_edges] = np.repeat(n_hubs_edges[:n_extra_edges], 3)
+            replace_start = ncol_A - n_extra_edges
+            one_ridx_A[3 * replace_start :] = np.repeat(n_hubs_edges[:n_extra_edges], 3)
+            solver_column_ids_relax = list(solver_column_ids)
+            solver_columns_are_triangles_relax = list(solver_columns_are_triangles)
+            for offset, row in enumerate(n_hubs_edges[:n_extra_edges]):
+                edge_id = int(row_simplex_ids[row])
+                column = replace_start + offset
+                solver_column_ids_relax[column] = edge_id
+                solver_columns_are_triangles_relax[column] = False
             states_relax, solutions_relax = solve_multiple_gf2_m4ri(
                 one_ridx_A=one_ridx_A.tolist(),
                 one_cidx_A=one_cidx_A.tolist(),
@@ -692,11 +719,14 @@ def compute_loop_homological_equivalence(
             )
             solved_relax = [i for i, s in enumerate(states_relax) if s == 0]
             if len(solved_relax) > 0:
-                result.loop_pairs_matched_relax = [
-                    pairs_kept[i] for i in solved_relax
-                ]
+                result.loop_pairs_matched_relax = [pairs_kept[i] for i in solved_relax]
                 result.mapping_deformation_matched_relax = [
-                    solutions_relax[i] for i in solved_relax
+                    _decode_deformation(
+                        solutions_relax[i],
+                        solver_column_ids_relax,
+                        solver_columns_are_triangles_relax,
+                    )
+                    for i in solved_relax
                 ]
 
     return result

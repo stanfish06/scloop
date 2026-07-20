@@ -34,7 +34,7 @@ except ImportError as e:
 _io_module: ModuleType | None = None
 try:
     from . import io as _io_module  # noqa: F401
-    from .io import load_scloop, save_scloop  # noqa: F401
+    from .io import load_scloop, load_scloop_adata, save_scloop  # noqa: F401
 except Exception as e:
     logger.warning(f"Could not import io modules: {type(e).__name__}: {e}")
 io = _io_module
