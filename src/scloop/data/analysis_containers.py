@@ -280,7 +280,10 @@ class LoopMatch:
     neighbor_rank: Optional[int] = None
     image_death_simplex: Optional[list[int]] = None
 
-    def summarize_homotopy_coherence(self) -> Percent_t | None:
+    def summarize_homotopy_coherence(
+        self,
+        mode: Literal["max", "mean", "median"] = "max",
+    ) -> Percent_t | None:
         if self.topological_equivalence is None:
             return None
         values = (
@@ -288,7 +291,15 @@ class LoopMatch:
             + self.topological_equivalence.homotopy_coherence_matched_relax
         )
         values = [value for value in values if value is not None]
-        return max(values) if values else None
+        if not values:
+            return None
+        match mode:
+            case "max":
+                return max(values)
+            case "mean":
+                return float(np.mean(values))
+            case "median":
+                return float(np.median(values))
 
 
 def _serialize_loop_matches(
@@ -461,19 +472,23 @@ class LoopTrack:
     def summarize_homotopy_coherence(
         self,
         mode: Literal["full", "mean", "median"] = "full",
+        mode_match: Literal["max", "mean", "median"] = "max",
     ) -> list[Percent_t | None] | Percent_t | None:
-        values = [match.summarize_homotopy_coherence() for match in self.matches]
+        values = [
+            match.summarize_homotopy_coherence(mode=mode_match)
+            for match in self.matches
+        ]
         if mode == "full":
             return values
 
         valid_values = [value for value in values if value is not None]
         if not valid_values:
             return None
-        if mode == "mean":
-            return float(np.mean(valid_values))
-        if mode == "median":
-            return float(np.median(valid_values))
-        raise ValueError(f"unknown coherence summary mode: {mode}")
+        match mode:
+            case "mean":
+                return float(np.mean(valid_values))
+            case "median":
+                return float(np.median(valid_values))
 
     def to_hdf5_group(self, group: h5py.Group, compress: bool = True) -> None:
         group.attrs["_type"] = "LoopTrack"

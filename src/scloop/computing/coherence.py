@@ -1,7 +1,7 @@
 # Copyright 2025 Zhiyuan Yu (Heemskerk's lab, University of Michigan)
 from __future__ import annotations
 
-from heapq import heappop, heappush
+from math import sqrt
 from typing import Mapping, Sequence
 
 from ..data.types import HomotopyCoherenceMethod
@@ -38,11 +38,10 @@ def _perimeter(cycle: frozenset[int], edge_lengths: Mapping[int, float]) -> floa
     return sum(edge_lengths[edge] for edge in cycle)
 
 
-def _coherence(source_length: float, target_length: float, reversal: float) -> float:
-    if reversal == 0:
-        return 1.0
-    net_change = abs(target_length - source_length)
-    return net_change / (net_change + 2 * reversal)
+def _coherence(reversal_squared_sum: float, n_steps: int) -> float | None:
+    if n_steps == 0:
+        return None
+    return 1.0 - sqrt(reversal_squared_sum / n_steps)
 
 
 def exact_coherence(
@@ -68,7 +67,7 @@ def exact_coherence(
     cycles = {0: source}
     lengths = {0: _perimeter(source, edge_lengths)}
     reversals = {0: 0.0}
-    penalize_contraction = lengths[0] <= _perimeter(target, edge_lengths)
+    target_length = _perimeter(target, edge_lengths)
 
     for mask in range(full_mask + 1):
         if mask not in cycles:
@@ -85,84 +84,66 @@ def exact_coherence(
 
             next_mask = mask | bit
             next_length = _perimeter(next_cycle, edge_lengths)
-            change = next_length - length
             cycles[next_mask] = next_cycle
             lengths[next_mask] = next_length
-            step_reversal = (
-                max(-change, 0.0) if penalize_contraction else max(change, 0.0)
-            )
+            step_reversal = max(
+                abs(target_length - next_length) - abs(target_length - length),
+                0.0,
+            ) / ((length + next_length) / 2)
             reversals[next_mask] = min(
                 reversals.get(next_mask, float("inf")),
-                reversals[mask] + step_reversal,
+                reversals[mask] + step_reversal**2,
             )
 
     if cycles.get(full_mask) != target:
         return None
-    return _coherence(lengths[0], lengths[full_mask], reversals[full_mask])
+    return _coherence(reversals[full_mask], len(triangle_sets))
 
 
-def _path_finding_reversal(
+def _greedy_reversal(
     source: frozenset[int],
     target: frozenset[int],
     triangles: tuple[frozenset[int], ...],
     edge_lengths: Mapping[int, float],
     num_vertices: int,
-    max_states: int,
 ) -> float | None:
-    """Find a low-reversal valid triangle order within a state budget."""
+    """Follow one valid triangle order greedily by target perimeter distance."""
 
-    full_mask = (1 << len(triangles)) - 1
     target_length = _perimeter(target, edge_lengths)
     source_length = _perimeter(source, edge_lengths)
-    penalize_contraction = source_length <= target_length
+    cycle = source
+    length = source_length
+    reversal = 0.0
+    remaining = set(range(len(triangles)))
 
-    queue = [(0.0, len(source ^ target), 0)]
-    best_cost = {0: 0.0}
-    cycles = {0: source}
-    lengths = {0: source_length}
-    best_complete = None
-    states_expanded = 0
-
-    while queue and states_expanded < max_states:
-        cost, _, mask = heappop(queue)
-        if cost != best_cost.get(mask):
-            continue
-        states_expanded += 1
-        if mask == full_mask:
-            if cycles[mask] == target:
-                return cost
-            continue
-
-        cycle = cycles[mask]
-        length = lengths[mask]
-        for triangle_index, triangle in enumerate(triangles):
-            bit = 1 << triangle_index
-            if mask & bit:
-                continue
+    while remaining:
+        best_key = None
+        best_step = None
+        for triangle_index in remaining:
+            triangle = triangles[triangle_index]
             next_cycle = _flip_triangle(cycle, triangle, num_vertices)
             if next_cycle is None:
                 continue
 
-            next_mask = mask | bit
             next_length = _perimeter(next_cycle, edge_lengths)
-            change = next_length - length
-            step_cost = max(-change, 0.0) if penalize_contraction else max(change, 0.0)
-            next_cost = cost + step_cost
-            if next_cost >= best_cost.get(next_mask, float("inf")):
-                continue
+            next_remaining_cost = abs(target_length - next_length)
+            step_reversal = max(
+                next_remaining_cost - abs(target_length - length),
+                0.0,
+            ) / max(length, next_length)
+            key = (next_remaining_cost, triangle_index)
+            if best_key is None or key < best_key:
+                best_key = key
+                best_step = (triangle_index, next_cycle, next_length, step_reversal)
 
-            best_cost[next_mask] = next_cost
-            cycles[next_mask] = next_cycle
-            lengths[next_mask] = next_length
-            heappush(queue, (next_cost, len(next_cycle ^ target), next_mask))
-            if next_mask == full_mask and next_cycle == target:
-                best_complete = (
-                    next_cost
-                    if best_complete is None
-                    else min(best_complete, next_cost)
-                )
+        if best_step is None:
+            return None
 
-    return best_complete
+        triangle_index, cycle, length, step_reversal = best_step
+        remaining.remove(triangle_index)
+        reversal += step_reversal**2
+
+    return reversal if cycle == target else None
 
 
 def path_finding_coherence(
@@ -171,42 +152,31 @@ def path_finding_coherence(
     triangles: Sequence[Sequence[int]],
     edge_lengths: Mapping[int, float],
     num_vertices: int,
-    max_states: int,
 ) -> float | None:
-    """Return the best coherence found within a state budget."""
-
-    if max_states <= 0:
-        raise ValueError("max_states must be positive")
+    """Return coherence from a greedy valid triangle order."""
 
     source = frozenset(source_edges)
     target = frozenset(target_edges)
     triangle_sets = tuple(frozenset(triangle) for triangle in triangles)
-    forward = _path_finding_reversal(
+    forward = _greedy_reversal(
         source,
         target,
         triangle_sets,
         edge_lengths,
         num_vertices,
-        max_states,
     )
-    reverse = _path_finding_reversal(
+    reverse = _greedy_reversal(
         target,
         source,
         triangle_sets,
         edge_lengths,
         num_vertices,
-        max_states,
     )
 
     candidates = [cost for cost in (forward, reverse) if cost is not None]
     if not candidates:
         return None
-    reversal = min(candidates)
-    return _coherence(
-        _perimeter(source, edge_lengths),
-        _perimeter(target, edge_lengths),
-        reversal,
-    )
+    return _coherence(min(candidates), len(triangle_sets))
 
 
 def compute_coherence(
@@ -216,25 +186,23 @@ def compute_coherence(
     edge_lengths: Mapping[int, float],
     num_vertices: int,
     method: HomotopyCoherenceMethod = "path_finding",
-    max_states: int = 10_000,
     max_triangles: int = 18,
 ) -> float | None:
-    if method == "exact":
-        return exact_coherence(
-            source_edges,
-            target_edges,
-            triangles,
-            edge_lengths,
-            num_vertices,
-            max_triangles,
-        )
-    if method == "path_finding":
-        return path_finding_coherence(
-            source_edges,
-            target_edges,
-            triangles,
-            edge_lengths,
-            num_vertices,
-            max_states,
-        )
-    raise ValueError(f"unknown coherence method: {method}")
+    match method:
+        case "exact":
+            return exact_coherence(
+                source_edges,
+                target_edges,
+                triangles,
+                edge_lengths,
+                num_vertices,
+                max_triangles,
+            )
+        case "path_finding":
+            return path_finding_coherence(
+                source_edges,
+                target_edges,
+                triangles,
+                edge_lengths,
+                num_vertices,
+            )

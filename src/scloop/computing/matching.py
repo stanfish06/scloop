@@ -148,7 +148,6 @@ def check_homological_equivalence(
     cocycle_edge_mask: np.ndarray | None = None,
     compute_homotopy_coherence: bool = True,
     homotopy_coherence_method: HomotopyCoherenceMethod = "path_finding",
-    max_states_homotopy_coherence: int = 10_000,
     max_triangles_homotopy_coherence: int = 18,
 ) -> LoopClassEquivalence:
     if len(source_loops) == 0 or len(target_loops) == 0:
@@ -213,7 +212,6 @@ def check_homological_equivalence(
                 edge_lengths=edge_lengths,
                 num_vertices=boundary_matrix_d1.num_vertices,
                 method=homotopy_coherence_method,
-                max_states=max_states_homotopy_coherence,
                 max_triangles=max_triangles_homotopy_coherence,
             )
         )
@@ -236,7 +234,6 @@ def check_homological_equivalence(
                 edge_lengths=edge_lengths,
                 num_vertices=boundary_matrix_d1.num_vertices,
                 method=homotopy_coherence_method,
-                max_states=max_states_homotopy_coherence,
                 max_triangles=max_triangles_homotopy_coherence,
             ),
             compute_coherence(
@@ -246,7 +243,6 @@ def check_homological_equivalence(
                 edge_lengths=edge_lengths,
                 num_vertices=boundary_matrix_d1.num_vertices,
                 method=homotopy_coherence_method,
-                max_states=max_states_homotopy_coherence,
                 max_triangles=max_triangles_homotopy_coherence,
             ),
         ]
