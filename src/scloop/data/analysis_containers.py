@@ -23,6 +23,7 @@ from .constants import (
     DEFAULT_HALF_WINDOW,
     DEFAULT_N_NEIGHBORS_EDGE_EMBEDDING,
     DEFAULT_WEIGHT_HODGE,
+    DEFAULT_WITH_RELAXATION_EQUIVALENCE,
     NUMERIC_EPSILON,
 )
 from .types import (
@@ -279,6 +280,7 @@ class LoopMatch:
     geometric_distance: Optional[float] = None
     neighbor_rank: Optional[int] = None
     image_death_simplex: Optional[list[int]] = None
+    boundary_checked: bool = False
 
     def summarize_homotopy_coherence(
         self,
@@ -328,6 +330,11 @@ def _serialize_loop_matches(
             [0 if m.candidate_method == "geometric" else 1 for m in matches],
             dtype=np.int8,
         ),
+        **kw,
+    )
+    group.create_dataset(
+        "boundary_checked",
+        data=np.array([m.boundary_checked for m in matches], dtype=bool),
         **kw,
     )
 
@@ -397,6 +404,11 @@ def _deserialize_loop_matches(group: h5py.Group) -> list[LoopMatch]:
         if "candidate_method" in group
         else np.zeros(count, dtype=np.int8)
     )
+    boundary_checked = (
+        np.asarray(group["boundary_checked"])
+        if "boundary_checked" in group
+        else np.zeros(count, dtype=bool)
+    )
 
     geo_present = (
         np.asarray(group["geometric_distance_present"])
@@ -447,6 +459,7 @@ def _deserialize_loop_matches(group: h5py.Group) -> list[LoopMatch]:
                 geometric_distance=geo_dist,
                 neighbor_rank=rank,
                 image_death_simplex=image_death_simplex,
+                boundary_checked=bool(boundary_checked[i]),
             )
         )
     return matches
@@ -458,16 +471,31 @@ class LoopTrack:
     matches: list[LoopMatch] = Field(default_factory=list)
     hodge_analysis: HodgeAnalysis | None = None
 
+    def filter_matches(
+        self,
+        keep: Literal["all", "equivalent"] = "all",
+        relax: bool = DEFAULT_WITH_RELAXATION_EQUIVALENCE,
+    ) -> list[LoopMatch]:
+        if keep == "all":
+            return list(self.matches)
+        return [
+            m
+            for m in self.matches
+            if m.topological_equivalence is None
+            or m.topological_equivalence.is_equivalent(relax=relax)
+        ]
+
     @property
     # it is possible to have one-to-many matches (TODO: need a way to select best match)
     def n_matches(self) -> Count_t:
-        return len({m.idx_bootstrap for m in self.matches})
+        return len({m.idx_bootstrap for m in self.filter_matches(keep="equivalent")})
 
     @property
     def track_ipairs(self) -> list[tuple[Index_t, Index_t]]:
-        if self.matches is None:
-            return []
-        return [(m.idx_bootstrap, m.target_class_idx) for m in self.matches]
+        return [
+            (m.idx_bootstrap, m.target_class_idx)
+            for m in self.filter_matches(keep="equivalent")
+        ]
 
     def summarize_homotopy_coherence(
         self,
@@ -476,7 +504,7 @@ class LoopTrack:
     ) -> list[Percent_t | None] | Percent_t | None:
         values = [
             match.summarize_homotopy_coherence(mode=mode_match)
-            for match in self.matches
+            for match in self.filter_matches(keep="equivalent")
         ]
         if mode == "full":
             return values
@@ -531,11 +559,15 @@ class BootstrapAnalysis:
     persistence_test_result: PersistenceTestResult | None = None
 
     def _get_track_embedding(
-        self, idx_track: Index_t, embedding_alt: np.ndarray | None = None
+        self,
+        idx_track: Index_t,
+        embedding_alt: np.ndarray | None = None,
+        keep_matches: str = "equivalent",
     ) -> list[np.ndarray]:
         assert idx_track in self.loop_tracks
         loops = []
-        for boot_id, loop_id in self.loop_tracks[idx_track].track_ipairs:
+        for match in self.loop_tracks[idx_track].filter_matches(keep=keep_matches):
+            boot_id, loop_id = match.idx_bootstrap, match.target_class_idx
             if boot_id < len(self.selected_loop_classes) and loop_id < len(
                 self.selected_loop_classes[boot_id]
             ):

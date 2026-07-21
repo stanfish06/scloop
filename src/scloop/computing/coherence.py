@@ -1,7 +1,6 @@
 # Copyright 2025 Zhiyuan Yu (Heemskerk's lab, University of Michigan)
 from __future__ import annotations
 
-from math import sqrt
 from typing import Mapping, Sequence
 
 from ..data.types import HomotopyCoherenceMethod
@@ -38,10 +37,11 @@ def _perimeter(cycle: frozenset[int], edge_lengths: Mapping[int, float]) -> floa
     return sum(edge_lengths[edge] for edge in cycle)
 
 
-def _coherence(reversal_squared_sum: float, n_steps: int) -> float | None:
-    if n_steps == 0:
+def _coherence(reversal: float, scale: float) -> float | None:
+    """Path efficiency: loop-scale motion not consumed by perimeter reversals."""
+    if scale <= 0.0:
         return None
-    return 1.0 - sqrt(reversal_squared_sum / n_steps)
+    return scale / (scale + 2.0 * reversal)
 
 
 def exact_coherence(
@@ -89,15 +89,15 @@ def exact_coherence(
             step_reversal = max(
                 abs(target_length - next_length) - abs(target_length - length),
                 0.0,
-            ) / ((length + next_length) / 2)
+            )
             reversals[next_mask] = min(
                 reversals.get(next_mask, float("inf")),
-                reversals[mask] + step_reversal**2,
+                reversals[mask] + step_reversal,
             )
 
     if cycles.get(full_mask) != target:
         return None
-    return _coherence(reversals[full_mask], len(triangle_sets))
+    return _coherence(reversals[full_mask], (lengths[0] + target_length) / 2)
 
 
 def _greedy_reversal(
@@ -130,7 +130,7 @@ def _greedy_reversal(
             step_reversal = max(
                 next_remaining_cost - abs(target_length - length),
                 0.0,
-            ) / max(length, next_length)
+            )
             key = (next_remaining_cost, triangle_index)
             if best_key is None or key < best_key:
                 best_key = key
@@ -141,7 +141,7 @@ def _greedy_reversal(
 
         triangle_index, cycle, length, step_reversal = best_step
         remaining.remove(triangle_index)
-        reversal += step_reversal**2
+        reversal += step_reversal
 
     return reversal if cycle == target else None
 
@@ -176,7 +176,8 @@ def path_finding_coherence(
     candidates = [cost for cost in (forward, reverse) if cost is not None]
     if not candidates:
         return None
-    return _coherence(min(candidates), len(triangle_sets))
+    scale = (_perimeter(source, edge_lengths) + _perimeter(target, edge_lengths)) / 2
+    return _coherence(min(candidates), scale)
 
 
 def compute_coherence(

@@ -33,7 +33,6 @@ from ..data.analysis_containers import LoopMatch
 from ..data.base_components import (
     ImagePairRecord,
     LoopClass,
-    LoopClassEquivalence,
     PersistencePair,
 )
 from ..data.boundary import BoundaryMatrixD1
@@ -403,52 +402,46 @@ def run_single_bootstrap(
             if target_loop is None:
                 continue
 
-            is_equivalent = not require_homological_equivalence
-            topological_equivalence: LoopClassEquivalence | None = None
-            if require_homological_equivalence:
-                if (
-                    source_loop.representatives is None
-                    or target_loop.representatives is None
-                ):
-                    continue
-                max_column_diameter = None
-                if filter_column_homology_equivalence:
-                    if extra_diameter_homology_equivalence < 0:
-                        raise ValueError(
-                            "extra_diameter_homology_equivalence must be nonnegative"
-                        )
-                    max_lifetime = max(source_loop.lifetime, target_loop.lifetime)
-                    max_column_diameter = (
-                        max(source_loop.death, target_loop.death)
-                        + float(extra_diameter_homology_equivalence) * max_lifetime
-                    )
-                topological_equivalence = check_homological_equivalence(
-                    source_loops=source_loop.representatives,
-                    target_loops=target_loop.representatives,
-                    boundary_matrix_d1=original_boundary_matrix_d1,
-                    n_pairs_check=n_pairs_check_equivalence,
-                    with_relaxation=with_relaxation_equivalence,
-                    n_hubs_relaxation=n_hubs_relaxation_equivalence,
-                    max_n_edges_relaxation=max_n_edges_relaxation_equivalence,
-                    max_column_diameter=max_column_diameter,
-                    cocycle_edge_mask=cocycle_edge_masks[source_idx],
-                )
-                is_equivalent = topological_equivalence.is_equivalent(
-                    relax=with_relaxation_equivalence
-                )
+            match = LoopMatch(
+                idx_bootstrap=idx_bootstrap,
+                target_class_idx=candidate.target_class_idx,
+                candidate_method=candidate_method,
+                geometric_distance=candidate.geometric_distance,
+                neighbor_rank=candidate.neighbor_rank,
+                image_death_simplex=candidate.image_death_simplex,
+            )
+            matches.setdefault(source_idx, []).append(match)
 
-            if is_equivalent:
-                matches.setdefault(source_idx, []).append(
-                    LoopMatch(
-                        idx_bootstrap=idx_bootstrap,
-                        target_class_idx=candidate.target_class_idx,
-                        candidate_method=candidate_method,
-                        topological_equivalence=topological_equivalence,
-                        geometric_distance=candidate.geometric_distance,
-                        neighbor_rank=candidate.neighbor_rank,
-                        image_death_simplex=candidate.image_death_simplex,
+            if not require_homological_equivalence:
+                continue
+            if (
+                source_loop.representatives is None
+                or target_loop.representatives is None
+            ):
+                continue
+            max_column_diameter = None
+            if filter_column_homology_equivalence:
+                if extra_diameter_homology_equivalence < 0:
+                    raise ValueError(
+                        "extra_diameter_homology_equivalence must be nonnegative"
                     )
+                max_lifetime = max(source_loop.lifetime, target_loop.lifetime)
+                max_column_diameter = (
+                    max(source_loop.death, target_loop.death)
+                    + float(extra_diameter_homology_equivalence) * max_lifetime
                 )
+            match.topological_equivalence = check_homological_equivalence(
+                source_loops=source_loop.representatives,
+                target_loops=target_loop.representatives,
+                boundary_matrix_d1=original_boundary_matrix_d1,
+                n_pairs_check=n_pairs_check_equivalence,
+                with_relaxation=with_relaxation_equivalence,
+                n_hubs_relaxation=n_hubs_relaxation_equivalence,
+                max_n_edges_relaxation=max_n_edges_relaxation_equivalence,
+                max_column_diameter=max_column_diameter,
+                cocycle_edge_mask=cocycle_edge_masks[source_idx],
+            )
+            match.boundary_checked = True
 
     return BootstrapResult(
         idx_bootstrap=idx_bootstrap,

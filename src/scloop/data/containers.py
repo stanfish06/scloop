@@ -606,6 +606,7 @@ class HomologyData:
         idx_loop: Index_t | None = None,
         embedding_alt: np.ndarray | None = None,
         include_bootstrap: bool = True,
+        keep_matches: str = "equivalent",
     ) -> list[list[list[float]]]:
         """
         Use embedding stored in LoopClass by default
@@ -659,7 +660,9 @@ class HomologyData:
                     if selector in self.bootstrap_data.loop_tracks:
                         loops.extend(
                             self.bootstrap_data._get_track_embedding(
-                                idx_track=selector, embedding_alt=embedding_alt
+                                idx_track=selector,
+                                embedding_alt=embedding_alt,
+                                keep_matches=keep_matches,
                             )
                         )
                     else:

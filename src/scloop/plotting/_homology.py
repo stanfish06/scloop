@@ -29,7 +29,7 @@ DEFAULT_GLASBEY_BLOCK_SIZE = 5
 
 # ugly function, fix that
 def _get_track_loop(
-    data: HomologyData, track_id: int
+    data: HomologyData, track_id: int, keep_matches: str = "equivalent"
 ) -> list[tuple[int, int, float, float]]:
     if data.bootstrap_data is None:
         return []
@@ -43,7 +43,7 @@ def _get_track_loop(
             tracked_pairs.append(
                 (0, track.source_class_idx, loop_class.birth, loop_class.death)
             )
-    for m in track.matches:
+    for m in track.filter_matches(keep=keep_matches):
         if m.idx_bootstrap < len(data.bootstrap_data.selected_loop_classes):
             if m.target_class_idx < len(
                 data.bootstrap_data.selected_loop_classes[m.idx_bootstrap]
@@ -174,6 +174,7 @@ def bar_lifetimes(
     adata: AnnData,
     key_homology: str = SCLOOP_UNS_KEY,
     track_ids: list[Index_t] | None = None,
+    keep_matches: str = "equivalent",
     ax: Axes | None = None,
     *,
     dimension_homology: Index_t = 1,
@@ -262,7 +263,7 @@ def bar_lifetimes(
         cmap = glasbey.create_block_palette(block_sizes=[block_size] * n_tracks)
         cmap = [cmap[i : i + block_size] for i in range(0, len(cmap), block_size)]
         for i, src_tid in enumerate(track_ids):
-            tracked_pairs = _get_track_loop(data, src_tid)
+            tracked_pairs = _get_track_loop(data, src_tid, keep_matches)
             lifetime_tracks = []
             loc_idx = []
             for tid in tracked_pairs:
@@ -292,6 +293,7 @@ def persistence_diagram(
     adata: AnnData,
     key_homology: str = SCLOOP_UNS_KEY,
     track_ids: list[Index_t] | None = None,
+    keep_matches: str = "equivalent",
     ax: Axes | None = None,
     *,
     dimension_homology: Index_t = 1,
@@ -375,7 +377,7 @@ def persistence_diagram(
         cmap = glasbey.create_block_palette(block_sizes=[block_size] * n_tracks)
         cmap = [cmap[i : i + block_size] for i in range(0, len(cmap), block_size)]
         for i, src_tid in enumerate(track_ids):
-            tracked_pairs = _get_track_loop(data, src_tid)
+            tracked_pairs = _get_track_loop(data, src_tid, keep_matches)
             for tid in tracked_pairs:
                 if not show_bootstrap:
                     if tid[0] > 0:
@@ -447,6 +449,7 @@ def loops(
         | IdxLoopInClassInBootstrap
     ]
     | None = None,
+    keep_matches: str = "equivalent",
     components: tuple[Index_t, Index_t] | list[Index_t] = (0, 1),
     ax: Axes | None = None,
     *,
@@ -535,6 +538,7 @@ def loops(
                             selector=selector,
                             include_bootstrap=True,
                             embedding_alt=emb,
+                            keep_matches=keep_matches,
                         )
                 case IdxLoopInTrack(idx_track, idx_loop):
                     return data._get_loop_embedding(
@@ -542,6 +546,7 @@ def loops(
                         include_bootstrap=True,
                         idx_loop=idx_loop,
                         embedding_alt=emb,
+                        keep_matches=keep_matches,
                     )
                 case IdxLoopInClassOrig(idx_loop_class, idx_loop):
                     return data._get_loop_embedding(

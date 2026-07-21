@@ -191,9 +191,7 @@ def check_homological_equivalence(
     row_indices = np.asarray(boundary_matrix_d1.data[0], dtype=int)
     column_indices = np.asarray(boundary_matrix_d1.data[1], dtype=int)
     triangle_edges = {
-        int(triangle_id): tuple(
-            row_edge_ids[row_indices[column_indices == column]].tolist()
-        )
+        triangle_id: tuple(row_edge_ids[row_indices[column_indices == column]].tolist())
         for column, triangle_id in enumerate(boundary_matrix_d1.col_simplex_ids)
     }
 
@@ -248,7 +246,7 @@ def check_homological_equivalence(
         ]
         valid_scores = [score for score in scores if score is not None]
         result.homotopy_coherence_matched_relax.append(
-            max(valid_scores) if valid_scores else None
+            float(np.mean(valid_scores)) if valid_scores else None
         )
 
     return result
