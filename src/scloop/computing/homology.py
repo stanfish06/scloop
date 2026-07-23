@@ -8,11 +8,16 @@ import numpy as np
 from anndata import AnnData
 from numba import jit
 from scipy.sparse import csr_matrix
-from scipy.spatial.distance import directed_hausdorff
+from scipy.spatial.distance import cdist, directed_hausdorff
 from sklearn.neighbors import radius_neighbors_graph
 
 from ..data.base_components import LoopClassEquivalence, PersistencePair
-from ..data.constants import DEFAULT_LOOP_DIST_METHOD, DEFAULT_N_MAX_WORKERS
+from ..data.constants import (
+    DEFAULT_COLUMN_TRIM_METHOD,
+    DEFAULT_LOOP_DIST_METHOD,
+    DEFAULT_N_MAX_WORKERS,
+    DEFAULT_N_NEIGHBORS_COLUMN_TRIM,
+)
 from ..data.metadata import ScloopMeta
 from ..data.ripser_lib import (  # type: ignore[import-not-found]
     get_boundary_matrix,
@@ -20,6 +25,7 @@ from ..data.ripser_lib import (  # type: ignore[import-not-found]
     ripser_image,
 )
 from ..data.types import (
+    ColumnTrimMethod,
     Count_t,
     Diameter_t,
     IndexListDistMatrix,
@@ -39,7 +45,7 @@ from ..utils.linear_algebra_gf2 import (  # type: ignore
 )
 
 if TYPE_CHECKING:
-    from ..data.containers import BoundaryMatrixD1
+    from ..data.boundary import BoundaryMatrixD1
 
 
 @dataclass
@@ -576,6 +582,34 @@ def _decode_deformation(
     }
 
 
+def _loop_proximity_column_scores(
+    centroids: np.ndarray,
+    loop_coords: np.ndarray,
+    n_neighbors: int,
+) -> np.ndarray:
+    """Mean distance from each triangle centroid to its k nearest loop points."""
+    n_tri = centroids.shape[0]
+    n_loop = loop_coords.shape[0]
+    if n_tri == 0:
+        return np.empty(0, dtype=np.float64)
+    if n_loop == 0:
+        return np.full(n_tri, np.inf, dtype=np.float64)
+
+    k = max(1, min(int(n_neighbors), n_loop))
+    if n_loop <= 64:
+        d = cdist(centroids, loop_coords)
+        if k == n_loop:
+            return d.mean(axis=1)
+        idx = np.argpartition(d, kth=k - 1, axis=1)[:, :k]
+        return np.take_along_axis(d, idx, axis=1).mean(axis=1)
+
+    from pynndescent import NNDescent
+
+    index = NNDescent(loop_coords, n_neighbors=k)
+    _, dists = index.query(centroids, k=k)
+    return np.asarray(dists, dtype=np.float64).mean(axis=1)
+
+
 def compute_loop_homological_equivalence(
     boundary_matrix_d1: "BoundaryMatrixD1",
     loop_mask_a: np.ndarray,
@@ -586,6 +620,10 @@ def compute_loop_homological_equivalence(
     max_n_edges_relaxation: int = 50,
     max_column_diameter: float | None = None,
     cocycle_edge_mask: np.ndarray | None = None,
+    column_trim_method: ColumnTrimMethod = DEFAULT_COLUMN_TRIM_METHOD,
+    embedding: np.ndarray | None = None,
+    loop_vertex_ids: np.ndarray | None = None,
+    n_neighbors_column_trim: int = DEFAULT_N_NEIGHBORS_COLUMN_TRIM,
 ) -> LoopClassEquivalence:
     """
     Parameters
@@ -597,9 +635,23 @@ def compute_loop_homological_equivalence(
     max_column_diameter: float | None
         If provided, restrict the boundary matrix to columns (triangles) with diameter
         no larger than this value.
+    column_trim_method: {"diameter", "loop_proximity"}
+        When more triangle columns remain than edge rows, trim to ``nrow`` columns.
+        ``diameter`` keeps the largest-diameter triangles (legacy).
+        ``loop_proximity`` keeps triangles whose centroids are nearest to the
+        loop vertices (requires ``embedding`` and ``loop_vertex_ids``).
     """
     assert loop_mask_a.shape[1] == boundary_matrix_d1.shape[0]
     assert loop_mask_b.shape[1] == boundary_matrix_d1.shape[0]
+    if column_trim_method not in ("diameter", "loop_proximity"):
+        raise ValueError(f"unknown column_trim_method: {column_trim_method}")
+    if column_trim_method == "loop_proximity":
+        if embedding is None:
+            raise ValueError("column_trim_method='loop_proximity' requires embedding")
+        if loop_vertex_ids is None:
+            raise ValueError(
+                "column_trim_method='loop_proximity' requires loop_vertex_ids"
+            )
 
     # in F2, sum is just xor
     loop_sums = loop_mask_a[:, None, :] ^ loop_mask_b[None, :, :]
@@ -647,13 +699,26 @@ def compute_loop_homological_equivalence(
         if cols_keep.size == 0:
             return result
 
-    # still have redundant columns; keep the larger remaining triangles, since
-    # the smaller ones appear less stable under bootstrap perturbations
     if cols_keep.size > nrow_A:
-        keep_order = np.argsort(col_diams[cols_keep], kind="stable")[-nrow_A:]
-        cols_keep = cols_keep[keep_order]
+        if column_trim_method == "loop_proximity":
+            assert embedding is not None and loop_vertex_ids is not None
+            centroids = boundary_matrix_d1.compute_col_centroids(embedding)[cols_keep]
+            loop_ids = np.unique(np.asarray(loop_vertex_ids, dtype=np.int64))
+            loop_coords = np.asarray(embedding)[loop_ids].astype(np.float64, copy=False)
+            scores = _loop_proximity_column_scores(
+                centroids=centroids,
+                loop_coords=loop_coords,
+                n_neighbors=n_neighbors_column_trim,
+            )
+            # keep nearest (lowest score); stable for ties
+            keep_order = np.argsort(scores, kind="stable")[:nrow_A]
+            cols_keep = cols_keep[keep_order]
+        else:
+            # legacy: keep the larger remaining triangles
+            keep_order = np.argsort(col_diams[cols_keep], kind="stable")[-nrow_A:]
+            cols_keep = cols_keep[keep_order]
 
-    # order columns by increasing diameter
+    # order columns by increasing diameter (relaxation replaces the largest tail)
     cols_keep = cols_keep[np.argsort(col_diams[cols_keep], kind="stable")]
     ncol_A = int(cols_keep.size)
     one_ridx_A = (

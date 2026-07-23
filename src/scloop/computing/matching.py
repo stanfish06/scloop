@@ -11,12 +11,15 @@ from ..computing.homology import (
 from ..data.base_components import LoopClassEquivalence
 from ..data.boundary import BoundaryMatrixD1
 from ..data.constants import (
+    DEFAULT_COLUMN_TRIM_METHOD,
     DEFAULT_MAX_N_EDGES_RELAXATION_EQUIVALENCE,
     DEFAULT_N_HUBS_RELAXATION_EQUIVALENCE,
+    DEFAULT_N_NEIGHBORS_COLUMN_TRIM,
     DEFAULT_N_PAIRS_CHECK,
     DEFAULT_WITH_RELAXATION_EQUIVALENCE,
 )
 from ..data.types import (
+    ColumnTrimMethod,
     Count_t,
     HomotopyCoherenceMethod,
     LoopDistMethod,
@@ -149,6 +152,9 @@ def check_homological_equivalence(
     compute_homotopy_coherence: bool = True,
     homotopy_coherence_method: HomotopyCoherenceMethod = "path_finding",
     max_triangles_homotopy_coherence: int = 18,
+    column_trim_method: ColumnTrimMethod = DEFAULT_COLUMN_TRIM_METHOD,
+    embedding: np.ndarray | None = None,
+    n_neighbors_column_trim: int = DEFAULT_N_NEIGHBORS_COLUMN_TRIM,
 ) -> LoopClassEquivalence:
     if len(source_loops) == 0 or len(target_loops) == 0:
         return LoopClassEquivalence()
@@ -167,6 +173,15 @@ def check_homological_equivalence(
     mask_a = loop_edges_a.mask if isinstance(loop_edges_a, LoopEdges) else loop_edges_a
     mask_b = loop_edges_b.mask if isinstance(loop_edges_b, LoopEdges) else loop_edges_b
 
+    loop_vertex_ids = None
+    if column_trim_method == "loop_proximity":
+        ids: list[int] = []
+        for loop in source_loops:
+            ids.extend(int(v) for v in loop)
+        for loop in target_loops:
+            ids.extend(int(v) for v in loop)
+        loop_vertex_ids = np.unique(np.asarray(ids, dtype=np.int64))
+
     result = compute_loop_homological_equivalence(
         boundary_matrix_d1=boundary_matrix_d1,
         loop_mask_a=mask_a,
@@ -177,6 +192,10 @@ def check_homological_equivalence(
         max_n_edges_relaxation=max_n_edges_relaxation,
         max_column_diameter=max_column_diameter,
         cocycle_edge_mask=cocycle_edge_mask,
+        column_trim_method=column_trim_method,
+        embedding=embedding,
+        loop_vertex_ids=loop_vertex_ids,
+        n_neighbors_column_trim=n_neighbors_column_trim,
     )
 
     if not compute_homotopy_coherence:

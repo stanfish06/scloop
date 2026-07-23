@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import math
-from typing import Iterable, List, Sequence, Tuple
+from typing import Iterable, Iterator, List, Sequence, Tuple
 
 import igraph as ig
 import numpy as np
@@ -14,8 +14,10 @@ from scipy.sparse import csr_matrix, triu
 from ..data.base_components import LoopClass
 from ..data.boundary import BoundaryMatrixD1
 from ..data.constants import (
+    DEFAULT_FOREIGN_CHORD_MULT,
     DEFAULT_K_YEN,
     DEFAULT_LIFE_PCT,
+    DEFAULT_MAX_PERIMETER_MULT,
     DEFAULT_N_COCYCLES_USED,
     DEFAULT_N_FORCE_DEVIATE,
     DEFAULT_N_REPS_PER_LOOP,
@@ -108,6 +110,17 @@ def clean_cocycle_region(
     return edges_to_block
 
 
+def _iter_cocycle_edges(cocycles_dim1: Iterable) -> Iterator[tuple[object, int, int]]:
+    for simplex in cocycles_dim1:
+        try:
+            verts, coeff = simplex
+        except ValueError:
+            continue
+        if coeff == 0 or len(verts) != 2:
+            continue
+        yield simplex, int(verts[0]), int(verts[1])
+
+
 def compute_loop_representatives(
     embedding: np.ndarray,
     pairwise_distance_matrix: csr_matrix,
@@ -133,6 +146,8 @@ def compute_loop_representatives(
     bootstrap: bool = False,
     rank_offset: int = 0,
     do_clean_cocycle_region: bool = False,
+    foreign_chord_mult: float = DEFAULT_FOREIGN_CHORD_MULT,
+    max_perimeter_mult: float = DEFAULT_MAX_PERIMETER_MULT,
 ) -> list[LoopClass | None]:
     assert pairwise_distance_matrix.shape is not None
 
@@ -162,6 +177,16 @@ def compute_loop_representatives(
 
     results: list[LoopClass | None] = [None] * len(indices_top_k)
 
+    build_foreign = foreign_chord_mult > 1.0
+    cocycle_edges_per_class: dict[int, set[tuple[int, int]]] = {}
+    if build_foreign:
+        for cls_idx in range(len(cocycles)):
+            cocycle_edges_per_class[cls_idx] = {
+                (min(a, b), max(a, b))
+                for _, a, b in _iter_cocycle_edges(cocycles[cls_idx])
+                if a != b
+            }
+
     for i, loop_idx in enumerate(indices_top_k):
         loop_birth = loop_births[loop_idx].item()
         loop_death = loop_deaths[loop_idx].item()
@@ -177,15 +202,9 @@ def compute_loop_representatives(
         valid_cocycles = []
         n_cocycles_original = len(cocycles[loop_idx])
 
-        for simplex in cocycles[loop_idx]:
-            try:
-                verts, coeff = simplex
-            except ValueError:
-                continue
-            if coeff == 0 or len(verts) != 2:
-                continue
-            u_global = vertex_ids[int(verts[0])]
-            v_global = vertex_ids[int(verts[1])]
+        for simplex, u_local, v_local in _iter_cocycle_edges(cocycles[loop_idx]):
+            u_global = vertex_ids[u_local]
+            v_global = vertex_ids[v_local]
             edge_global = (min(u_global, v_global), max(u_global, v_global))
 
             if bootstrap:
@@ -223,6 +242,15 @@ def compute_loop_representatives(
         edges_array_filtered = edges_array[valid_edge_mask]
         edge_diameters_filtered = edge_diameters[valid_edge_mask]
 
+        foreign_cocycle_edges: list[tuple[int, int]] | None = None
+        if build_foreign:
+            foreign_set: set[tuple[int, int]] = set()
+            for cls_idx, edge_set in cocycle_edges_per_class.items():
+                if cls_idx == int(loop_idx):
+                    continue
+                foreign_set |= edge_set
+            foreign_cocycle_edges = list(foreign_set)
+
         loops_local, _ = reconstruct_n_loop_representatives(
             cocycles_dim1=valid_cocycles,
             edges=edges_array_filtered,
@@ -243,6 +271,9 @@ def compute_loop_representatives(
             seed_random_walk=seed_random_walk,
             do_force_deviate_random_walk=do_force_deviate_random_walk,
             do_clean_cocycle_region=do_clean_cocycle_region,
+            foreign_cocycle_edges=foreign_cocycle_edges,
+            foreign_chord_mult=foreign_chord_mult,
+            max_perimeter_mult=max_perimeter_mult,
         )
 
         loops = [[vertex_ids[v] for v in loop] for loop in loops_local]
@@ -284,6 +315,9 @@ def reconstruct_n_loop_representatives(
     do_force_deviate_random_walk: bool = False,
     *,
     do_clean_cocycle_region: bool = False,
+    foreign_cocycle_edges: list[tuple[int, int]] | None = None,
+    foreign_chord_mult: float = DEFAULT_FOREIGN_CHORD_MULT,
+    max_perimeter_mult: float = DEFAULT_MAX_PERIMETER_MULT,
 ) -> Tuple[List[List[int]], List[float]]:
     """
     Reconstruct diverse loop representatives using shortest paths or random walks
@@ -292,15 +326,9 @@ def reconstruct_n_loop_representatives(
         return [], []
     filt_t = loop_birth + (loop_death - loop_birth) * life_pct
 
-    all_cocycle_edges: list[tuple[int, int]] = []
-    for simplex in cocycles_dim1:
-        try:
-            verts, coeff = simplex
-        except ValueError:
-            continue
-        if coeff == 0 or len(verts) != 2:
-            continue
-        all_cocycle_edges.append((int(verts[0]), int(verts[1])))
+    all_cocycle_edges: list[tuple[int, int]] = [
+        (a, b) for _, a, b in _iter_cocycle_edges(cocycles_dim1)
+    ]
 
     if not all_cocycle_edges:
         return [], []
@@ -343,28 +371,42 @@ def reconstruct_n_loop_representatives(
     _n_trials: Count_t = n_random_graphs if do_random_walk else n_force_deviate
 
     edge_list = list(edge_weight_dict.keys())
-    n_vertices = max(max(e) for e in edge_list) + 1
     if not edge_list:
         return [], []
+    n_vertices = max(max(e) for e in edge_list) + 1
+
+    factor_array = np.ones(len(edge_list), dtype=np.float64)
+    if foreign_cocycle_edges and foreign_chord_mult > 1.0:
+        own_chord_keys = {(min(e), max(e)) for e in all_cocycle_edges}
+        foreign_keys = {
+            (min(int(u), int(v)), max(int(u), int(v))) for u, v in foreign_cocycle_edges
+        } - own_chord_keys
+        for idx, e in enumerate(edge_list):
+            if e in foreign_keys:
+                factor_array[idx] = foreign_chord_mult
+
     g = ig.Graph(n=n_vertices, edges=edge_list, directed=False)
     base_weight_list = [edge_weight_dict[e] for e in edge_list]
     g.es["base_weight"] = base_weight_list
     rng = np.random.default_rng(seed_random_walk)
     for _ in range(_n_trials):
-        weight_list = [edge_weight_dict[e] for e in edge_list]
+        weight_array = (
+            np.array([edge_weight_dict[e] for e in edge_list], dtype=np.float64)
+            * factor_array
+        )
 
         if do_random_walk:
             # Gumbel max trick to simulate/approximate random walk bridge
-            weight_list_perturbed = decay_random_walk * np.array(
-                weight_list
-            ) - noise_random_walk * rng.gumbel(
-                loc=0.0, scale=1.0, size=len(weight_list)
+            weight_list_perturbed = (
+                decay_random_walk * weight_array
+                - noise_random_walk
+                * rng.gumbel(loc=0.0, scale=1.0, size=len(weight_array))
             )
             weight_list_perturbed -= np.min(weight_list_perturbed)
             weight_list_perturbed += NUMERIC_EPSILON
             g.es["weight"] = list(weight_list_perturbed)
         else:
-            g.es["weight"] = weight_list
+            g.es["weight"] = list(weight_array)
 
         paths_this_round: list[list[int]] = []
         for i, j in cocycle_edges_for_paths:
@@ -390,6 +432,7 @@ def reconstruct_n_loop_representatives(
         n=n,
         lower_pct=loop_lower_pct,
         upper_pct=loop_upper_pct,
+        max_perimeter_mult=max_perimeter_mult,
     )
 
 
@@ -426,6 +469,7 @@ def _select_diverse_loops(
     n: int,
     lower_pct: float,
     upper_pct: float,
+    max_perimeter_mult: float = DEFAULT_MAX_PERIMETER_MULT,
 ) -> Tuple[List[List[int]], List[float]]:
     pairs = sorted(
         [(float(d), list(c)) for d, c in zip(distances, cycles) if math.isfinite(d)],
@@ -433,6 +477,15 @@ def _select_diverse_loops(
     )
     if not pairs:
         return [], []
+
+    # Gate long/off-rail candidates against the shortest (most trusted) rep,
+    # then run the usual percentile diversity sampling on what remains.
+    if math.isfinite(max_perimeter_mult) and max_perimeter_mult > 0.0:
+        l_min = pairs[0][0]
+        max_len = max_perimeter_mult * l_min
+        pairs = [p for p in pairs if p[0] <= max_len]
+        if not pairs:
+            return [], []
 
     n_total = len(pairs)
     n_return = min(n_total, n)

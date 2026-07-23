@@ -37,23 +37,27 @@ from ..data.base_components import (
 )
 from ..data.boundary import BoundaryMatrixD1
 from ..data.constants import (
+    DEFAULT_COLUMN_TRIM_METHOD,
     DEFAULT_EXTRA_DIAM_EQUIVALENCE,
+    DEFAULT_FOREIGN_CHORD_MULT,
     DEFAULT_K_NEIGHBORS_CHECK_EQUIVALENCE,
     DEFAULT_K_YEN,
     DEFAULT_LIFE_PCT,
     DEFAULT_LOOP_DIST_METHOD,
     DEFAULT_MAX_N_EDGES_RELAXATION_EQUIVALENCE,
+    DEFAULT_MAX_PERIMETER_MULT,
     DEFAULT_N_COCYCLES_USED,
     DEFAULT_N_FORCE_DEVIATE,
     DEFAULT_N_HUBS_RELAXATION_EQUIVALENCE,
     DEFAULT_N_MAX_WORKERS,
+    DEFAULT_N_NEIGHBORS_COLUMN_TRIM,
     DEFAULT_N_PAIRS_CHECK_EQUIVALENCE,
     DEFAULT_N_REPS_PER_LOOP,
     DEFAULT_NOISE_SCALE,
     DEFAULT_WITH_RELAXATION_EQUIVALENCE,
 )
 from ..data.metadata import ScloopMeta
-from ..data.types import Count_t, LoopDistMethod, PositiveFloat
+from ..data.types import ColumnTrimMethod, Count_t, LoopDistMethod, PositiveFloat
 from ..data.utils import nearest_neighbor_per_row
 
 
@@ -186,6 +190,8 @@ def run_single_bootstrap(
     noise_random_walk: PositiveFloat = 1.0,
     seed_random_walk: int = 1,
     do_force_deviate_random_walk: bool = False,
+    foreign_chord_mult: float = DEFAULT_FOREIGN_CHORD_MULT,
+    max_perimeter_mult: float = DEFAULT_MAX_PERIMETER_MULT,
     k_neighbors_check_equivalence: int = DEFAULT_K_NEIGHBORS_CHECK_EQUIVALENCE,
     method_geometric_equivalence: LoopDistMethod = DEFAULT_LOOP_DIST_METHOD,
     n_pairs_check_equivalence: int = DEFAULT_N_PAIRS_CHECK_EQUIVALENCE,
@@ -194,6 +200,8 @@ def run_single_bootstrap(
     max_n_edges_relaxation_equivalence: int = DEFAULT_MAX_N_EDGES_RELAXATION_EQUIVALENCE,
     extra_diameter_homology_equivalence: float = DEFAULT_EXTRA_DIAM_EQUIVALENCE,
     filter_column_homology_equivalence: bool = True,
+    column_trim_method: ColumnTrimMethod = DEFAULT_COLUMN_TRIM_METHOD,
+    n_neighbors_column_trim: int = DEFAULT_N_NEIGHBORS_COLUMN_TRIM,
     full_pairwise_distance_matrix: csr_matrix | None = None,
     full_vertex_ids: list[int] | None = None,
     reconstruct_on_full_data: bool = False,
@@ -285,6 +293,8 @@ def run_single_bootstrap(
             do_force_deviate_random_walk=do_force_deviate_random_walk,
             bootstrap=False,
             do_clean_cocycle_region=True,
+            foreign_chord_mult=foreign_chord_mult,
+            max_perimeter_mult=max_perimeter_mult,
         )
     else:
         bootstrap_loop_classes = compute_loop_representatives(
@@ -310,6 +320,8 @@ def run_single_bootstrap(
             seed_random_walk=seed_random_walk,
             do_force_deviate_random_walk=do_force_deviate_random_walk,
             bootstrap=True,
+            foreign_chord_mult=foreign_chord_mult,
+            max_perimeter_mult=max_perimeter_mult,
         )
 
     if image_homology_result is not None:
@@ -440,6 +452,9 @@ def run_single_bootstrap(
                 max_n_edges_relaxation=max_n_edges_relaxation_equivalence,
                 max_column_diameter=max_column_diameter,
                 cocycle_edge_mask=cocycle_edge_masks[source_idx],
+                column_trim_method=column_trim_method,
+                embedding=embedding,
+                n_neighbors_column_trim=n_neighbors_column_trim,
             )
             match.boundary_checked = True
 

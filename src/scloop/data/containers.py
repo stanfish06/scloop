@@ -44,19 +44,23 @@ from .analysis_containers import (
 from .base_components import LoopClass
 from .boundary import BoundaryMatrixD0, BoundaryMatrixD1
 from .constants import (
+    DEFAULT_COLUMN_TRIM_METHOD,
     DEFAULT_EXTRA_DIAM_EQUIVALENCE,
+    DEFAULT_FOREIGN_CHORD_MULT,
     DEFAULT_HALF_WINDOW,
     DEFAULT_K_NEIGHBORS_CHECK_EQUIVALENCE,
     DEFAULT_K_YEN,
     DEFAULT_LIFE_PCT,
     DEFAULT_LOOP_DIST_METHOD,
     DEFAULT_MAX_N_EDGES_RELAXATION_EQUIVALENCE,
+    DEFAULT_MAX_PERIMETER_MULT,
     DEFAULT_MAXITER_EIGENDECOMPOSITION,
     DEFAULT_N_COCYCLES_USED,
     DEFAULT_N_FORCE_DEVIATE,
     DEFAULT_N_HODGE_COMPONENTS,
     DEFAULT_N_HUBS_RELAXATION_EQUIVALENCE,
     DEFAULT_N_MAX_WORKERS,
+    DEFAULT_N_NEIGHBORS_COLUMN_TRIM,
     DEFAULT_N_NEIGHBORS_EDGE_EMBEDDING,
     DEFAULT_N_PAIRS_CHECK,
     DEFAULT_N_PAIRS_CHECK_EQUIVALENCE,
@@ -68,6 +72,7 @@ from .constants import (
 )
 from .metadata import BootstrapMeta, ScloopMeta
 from .types import (
+    ColumnTrimMethod,
     Count_t,
     Diameter_t,
     Index_t,
@@ -501,6 +506,8 @@ class HomologyData:
         noise_random_walk: PositiveFloat = 1.0,
         seed_random_walk: int = 1,
         do_force_deviate_random_walk: bool = False,
+        foreign_chord_mult: float = DEFAULT_FOREIGN_CHORD_MULT,
+        max_perimeter_mult: float = DEFAULT_MAX_PERIMETER_MULT,
     ):
         assert pairwise_distance_matrix.shape is not None
         assert self.meta.preprocess is not None
@@ -556,6 +563,8 @@ class HomologyData:
             do_force_deviate_random_walk=do_force_deviate_random_walk,
             bootstrap=bootstrap,
             rank_offset=0,
+            foreign_chord_mult=foreign_chord_mult,
+            max_perimeter_mult=max_perimeter_mult,
         )
 
         if not bootstrap:
@@ -737,6 +746,9 @@ class HomologyData:
         extra_diameter_homology_equivalence: PositiveFloat = DEFAULT_EXTRA_DIAM_EQUIVALENCE,
         filter_column_homology_equivalence: bool = True,
         cocycle_edge_mask: np.ndarray | None = None,
+        column_trim_method: ColumnTrimMethod = DEFAULT_COLUMN_TRIM_METHOD,
+        embedding: np.ndarray | None = None,
+        n_neighbors_column_trim: Count_t = DEFAULT_N_NEIGHBORS_COLUMN_TRIM,
     ) -> tuple[int, int, bool]:
         assert self.bootstrap_data is not None
         self._ensure_loop_tracks()
@@ -801,6 +813,9 @@ class HomologyData:
             max_n_edges_relaxation=max_n_edges_relaxation,
             max_column_diameter=max_column_diameter,
             cocycle_edge_mask=cocycle_edge_mask,
+            column_trim_method=column_trim_method,
+            embedding=embedding,
+            n_neighbors_column_trim=n_neighbors_column_trim,
         )
         is_equivalent = result.is_equivalent(relax=with_relaxation)
         return (source_class_idx, target_class_idx, is_equivalent)
@@ -839,12 +854,16 @@ class HomologyData:
         noise_random_walk: PositiveFloat = 1.0,
         seed_random_walk: int = 1,
         do_force_deviate_random_walk: bool = False,
+        foreign_chord_mult: float = DEFAULT_FOREIGN_CHORD_MULT,
+        max_perimeter_mult: float = DEFAULT_MAX_PERIMETER_MULT,
         n_pairs_check_equivalence: Count_t = DEFAULT_N_PAIRS_CHECK_EQUIVALENCE,
         with_relaxation_equivalence: bool = DEFAULT_WITH_RELAXATION_EQUIVALENCE,
         n_hubs_relaxation_equivalence: Count_t = DEFAULT_N_HUBS_RELAXATION_EQUIVALENCE,
         max_n_edges_relaxation_equivalence: Count_t = DEFAULT_MAX_N_EDGES_RELAXATION_EQUIVALENCE,
         extra_diameter_homology_equivalence: PositiveFloat = DEFAULT_EXTRA_DIAM_EQUIVALENCE,
         filter_column_homology_equivalence: bool = True,
+        column_trim_method: ColumnTrimMethod = DEFAULT_COLUMN_TRIM_METHOD,
+        n_neighbors_column_trim: Count_t = DEFAULT_N_NEIGHBORS_COLUMN_TRIM,
         n_max_workers: Count_t = DEFAULT_N_MAX_WORKERS,
         k_neighbors_check_equivalence: Count_t = DEFAULT_K_NEIGHBORS_CHECK_EQUIVALENCE,
         method_geometric_equivalence: LoopDistMethod = DEFAULT_LOOP_DIST_METHOD,
@@ -890,12 +909,16 @@ class HomologyData:
                 noise_random_walk=noise_random_walk,
                 seed_random_walk=seed_random_walk,
                 do_force_deviate_random_walk=do_force_deviate_random_walk,
+                foreign_chord_mult=foreign_chord_mult,
+                max_perimeter_mult=max_perimeter_mult,
                 n_pairs_check_equivalence=n_pairs_check_equivalence,
                 with_relaxation_equivalence=with_relaxation_equivalence,
                 n_hubs_relaxation_equivalence=n_hubs_relaxation_equivalence,
                 max_n_edges_relaxation_equivalence=max_n_edges_relaxation_equivalence,
                 extra_diameter_homology_equivalence=extra_diameter_homology_equivalence,
                 filter_column_homology_equivalence=filter_column_homology_equivalence,
+                column_trim_method=column_trim_method,
+                n_neighbors_column_trim=n_neighbors_column_trim,
                 n_max_workers=n_max_workers if use_parallel else 1,
                 k_neighbors_check_equivalence=k_neighbors_check_equivalence,
                 method_geometric_equivalence=method_geometric_equivalence,
@@ -954,6 +977,8 @@ class HomologyData:
                     noise_random_walk=noise_random_walk,
                     seed_random_walk=seed_random_walk,
                     do_force_deviate_random_walk=do_force_deviate_random_walk,
+                    foreign_chord_mult=foreign_chord_mult,
+                    max_perimeter_mult=max_perimeter_mult,
                 )
                 if verbose:
                     logger.info("Matching bootstrapped loops to the original loops")
@@ -1042,6 +1067,9 @@ class HomologyData:
                                     extra_diameter_homology_equivalence=extra_diameter_homology_equivalence,
                                     filter_column_homology_equivalence=filter_column_homology_equivalence,
                                     cocycle_edge_mask=cocycle_edge_masks[si],
+                                    column_trim_method=column_trim_method,
+                                    embedding=embedding,
+                                    n_neighbors_column_trim=n_neighbors_column_trim,
                                 )
                                 tasks[task] = (si, tj, neighbor_distances[si, k], k)
 
@@ -1096,12 +1124,16 @@ class HomologyData:
         noise_random_walk: PositiveFloat = 1.0,
         seed_random_walk: int = 1,
         do_force_deviate_random_walk: bool = False,
+        foreign_chord_mult: float = DEFAULT_FOREIGN_CHORD_MULT,
+        max_perimeter_mult: float = DEFAULT_MAX_PERIMETER_MULT,
         n_pairs_check_equivalence: int = DEFAULT_N_PAIRS_CHECK_EQUIVALENCE,
         with_relaxation_equivalence: bool = DEFAULT_WITH_RELAXATION_EQUIVALENCE,
         n_hubs_relaxation_equivalence: int = DEFAULT_N_HUBS_RELAXATION_EQUIVALENCE,
         max_n_edges_relaxation_equivalence: int = DEFAULT_MAX_N_EDGES_RELAXATION_EQUIVALENCE,
         extra_diameter_homology_equivalence: PositiveFloat = DEFAULT_EXTRA_DIAM_EQUIVALENCE,
         filter_column_homology_equivalence: bool = True,
+        column_trim_method: ColumnTrimMethod = DEFAULT_COLUMN_TRIM_METHOD,
+        n_neighbors_column_trim: Count_t = DEFAULT_N_NEIGHBORS_COLUMN_TRIM,
         n_max_workers: int = DEFAULT_N_MAX_WORKERS,
         k_neighbors_check_equivalence: int = DEFAULT_K_NEIGHBORS_CHECK_EQUIVALENCE,
         method_geometric_equivalence: LoopDistMethod = DEFAULT_LOOP_DIST_METHOD,
@@ -1140,6 +1172,8 @@ class HomologyData:
             noise_random_walk=noise_random_walk,
             seed_random_walk=seed_random_walk,
             do_force_deviate_random_walk=do_force_deviate_random_walk,
+            foreign_chord_mult=foreign_chord_mult,
+            max_perimeter_mult=max_perimeter_mult,
             k_neighbors_check_equivalence=k_neighbors_check_equivalence,
             method_geometric_equivalence=method_geometric_equivalence,
             candidate_method=candidate_method,
@@ -1150,6 +1184,8 @@ class HomologyData:
             max_n_edges_relaxation_equivalence=max_n_edges_relaxation_equivalence,
             extra_diameter_homology_equivalence=extra_diameter_homology_equivalence,
             filter_column_homology_equivalence=filter_column_homology_equivalence,
+            column_trim_method=column_trim_method,
+            n_neighbors_column_trim=n_neighbors_column_trim,
             **nei_kwargs,
         )
 

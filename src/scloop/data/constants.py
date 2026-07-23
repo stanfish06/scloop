@@ -5,7 +5,7 @@ import os
 
 from IPython.display import Javascript
 
-from .types import LoopDistMethod, PositiveFloat
+from .types import ColumnTrimMethod, LoopDistMethod, PositiveFloat
 
 CROSS_MATCH_KEY = "X_scloop_aligned"
 CROSS_MATCH_RESULT_KEY = "scloop_cross_match"
@@ -36,10 +36,16 @@ DEFAULT_N_REPS_PER_LOOP: int = 4
 DEFAULT_N_COCYCLES_USED: int = 3
 DEFAULT_N_FORCE_DEVIATE: int = 4
 DEFAULT_K_YEN: int = 8
+DEFAULT_FOREIGN_CHORD_MULT: float = 1.0
+# Keep reconstructed reps with perimeter <= α * L_min before diversity
+# sampling. math.inf disables the gate. Typical range: 1.5–3.
+DEFAULT_MAX_PERIMETER_MULT: float = float("inf")
 DEFAULT_N_PAIRS_CHECK_EQUIVALENCE: int = 4
 # typically one neighbor is sufficient for checking
 DEFAULT_K_NEIGHBORS_CHECK_EQUIVALENCE: int = 1
 DEFAULT_EXTRA_DIAM_EQUIVALENCE: float = 1.0
+DEFAULT_COLUMN_TRIM_METHOD: ColumnTrimMethod = "diameter"
+DEFAULT_N_NEIGHBORS_COLUMN_TRIM: int = 8
 DEFAULT_WITH_RELAXATION_EQUIVALENCE: bool = True
 DEFAULT_N_HUBS_RELAXATION_EQUIVALENCE: int = 3
 DEFAULT_MAX_N_EDGES_RELAXATION_EQUIVALENCE: int = 500
