@@ -6,6 +6,7 @@ from typing import Literal
 import numpy as np
 import scanpy as sc
 from anndata import AnnData
+from loguru import logger
 from numba import jit
 from pydantic.dataclasses import dataclass
 from pynndescent import NNDescent
@@ -293,6 +294,7 @@ class DiffusionMap:
 
     def _compute_one_step_transition(self, emb: np.ndarray, **nn_kwargs) -> csr_matrix:
         n = emb.shape[0]
+        logger.debug(f"Diffusion transition: {n} cells, n_neighbors={self.n_neighbors}")
         knn_index = self._compute_knn_index(
             emb=emb, cache=False, query=False, **nn_kwargs
         )
@@ -318,6 +320,10 @@ class DiffusionMap:
         self, emb: np.ndarray, ndim_eigenspace: Count_t, **nn_kwargs
     ):
         _A = self._compute_one_step_transition(emb=emb, **nn_kwargs)
+        logger.debug(
+            f"Multi-step eigenspace: transition matrix {_A.shape}, "
+            f"ndim={ndim_eigenspace}"
+        )
         res = compute_sparse_eigendecomposition(
             matrix=_A, which="LM", n_components=ndim_eigenspace
         )
@@ -359,8 +365,13 @@ class DiffusionMap:
                 lb_pct=pct_lower_bound_potential_t,
             )
         n = V_sym.shape[0]
+        logger.debug(
+            f"Potential space: {len(ts)} diffusion time(s), "
+            f"building {n}x{n * len(ts)} float32 matrix"
+        )
         U_all = np.empty((n, n * len(ts)), dtype=np.float32)
         for i, t_i in enumerate(ts):
+            logger.debug(f"Potential space: diffusion time {i + 1}/{len(ts)} (t={t_i:.4g})")
             eigvals_t = eigvals_clipped**t_i
             P_t = (V_sym * eigvals_t) @ V_sym.T
             P_t *= d_inv_sqrt_safe[:, np.newaxis]
@@ -376,6 +387,7 @@ class DiffusionMap:
                     np.sqrt(P_t, out=block)
         U_all -= U_all.mean(axis=0, keepdims=True)
         k = min(n_comps, n - 1)
+        logger.debug(f"Potential space: randomized SVD on {U_all.shape} matrix, k={k}")
         U_left, S, _ = randomized_svd(U_all, n_components=k, random_state=random_state)
         return (U_left * S).astype(np.float32)
 

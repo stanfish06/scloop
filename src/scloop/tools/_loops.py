@@ -141,6 +141,8 @@ def find_loops(
                     f"using threshold = {threshold_homology:.4f} (factor={auto_factor})"
                 )
 
+        if verbose:
+            logger.info("Computing persistence homology")
         sparse_dist_mat = hd._compute_homology(adata=adata, thresh=threshold_homology)
         boundary_thresh = threshold_boundary
         if boundary_thresh is None:
@@ -148,7 +150,8 @@ def find_loops(
         hd._compute_boundary_matrix_d1(
             adata=adata, thresh=boundary_thresh, verbose=verbose
         )
-        logger.info(f"Boundary matrix computed with threshold {boundary_thresh}")
+        if verbose:
+            logger.info(f"Boundary matrix computed with threshold {boundary_thresh}")
         assert hd.boundary_matrix_d1 is not None
         assert meta.preprocess is not None
         if hd.boundary_matrix_d1.shape[1] > max_columns_boundary_matrix:
@@ -194,6 +197,8 @@ def find_loops(
 
         kwargs_loop_representatives = kwargs_loop_representatives or {}
         embedding = np.array(adata.obsm[f"X_{meta.preprocess.embedding_method}"])
+        if verbose:
+            logger.info("Reconstructing loop representatives")
         hd._compute_loop_representatives(
             embedding=embedding,
             pairwise_distance_matrix=sparse_dist_mat,
@@ -201,6 +206,12 @@ def find_loops(
             life_pct=tightness_loops,
             **kwargs_loop_representatives,
         )
+        if verbose:
+            n_h1 = len(hd.persistence_diagram[1][0])
+            n_loops = sum(lc is not None for lc in hd.selected_loop_classes)
+            logger.info(
+                f"Found {n_h1} H1 feature(s); reconstructed {n_loops} loop candidate(s)"
+            )
         """
         ========= bootstrap =========
         - resample data
@@ -216,6 +227,8 @@ def find_loops(
             "require_homological_equivalence",
             require_bootstrap_homological_equivalence,
         )
+        if verbose:
+            logger.info(f"Bootstrap validation: {n_bootstrap} resamples")
         hd._bootstrap(
             adata=adata,
             n_bootstrap=n_bootstrap,
@@ -247,7 +260,17 @@ def find_loops(
         ====================================
         """
         assert hd.bootstrap_data is not None
+        if verbose:
+            logger.info("Statistical testing (presence + persistence)")
         hd._test_loops(**(kwargs_loop_test or {}))
+        if verbose:
+            presence = hd.bootstrap_data.presence_test_result
+            if presence is not None:
+                q = presence.pvalues_corrected
+                logger.info(
+                    f"{sum(p < 0.05 for p in q)}/{len(q)} significant loop(s) (presence q<0.05)"
+                )
+            logger.success("Loop detection complete")
         adata.uns[SCLOOP_UNS_KEY] = hd
 
 
@@ -381,7 +404,7 @@ def analyze_loops(
             progress = create_progress()
 
         assert progress is not None
-        with progress:
+        with nullcontext() if use_log_display else progress:
             task_main = progress.add_task("Analyzing loops...", total=len(track_ids))
 
             for track_id in track_ids:

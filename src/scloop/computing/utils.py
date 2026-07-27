@@ -1,5 +1,6 @@
 import multiprocessing
 import queue
+import time
 from typing import Literal
 
 import numpy as np
@@ -38,6 +39,11 @@ def compute_sparse_eigendecomposition(
     maxiter: Count_t | None = DEFAULT_MAXITER_EIGENDECOMPOSITION,
 ) -> tuple[np.ndarray, np.ndarray] | None:
     tolerances = [1e-6, 1e-5, 1e-4, 1e-3]
+    t_start = time.perf_counter()
+    logger.debug(
+        f"Eigendecomposition: matrix {matrix.shape} nnz={matrix.nnz}, "
+        f"k={n_components}, which={which}"
+    )
     for tol in tolerances:
         q = multiprocessing.Queue()
         p = multiprocessing.Process(
@@ -61,6 +67,10 @@ def compute_sparse_eigendecomposition(
                         sort_idx = np.argsort(eigenvalues)
                     case _:
                         sort_idx = np.arange(len(eigenvalues))
+                logger.debug(
+                    f"Eigendecomposition succeeded with tol={tol} "
+                    f"in {time.perf_counter() - t_start:.2f}s"
+                )
                 return eigenvalues[sort_idx], eigenvectors[:, sort_idx]
             else:
                 logger.warning(

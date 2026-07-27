@@ -22,7 +22,12 @@ from ..data.types import (
     FeatureSelectionMethod,
 )
 from ..utils.denoise import compute_posterior_gene_noise_model
-from ..utils.logging import LogDisplay, ensure_logging
+from ..utils.logging import (
+    LogDisplay,
+    create_console,
+    create_progress,
+    ensure_logging,
+)
 from .delve import delve_fs
 from .downsample import sample
 
@@ -187,8 +192,16 @@ def prepare_adata(
     use_log_display = verbose and max_log_messages is not None
     if verbose:
         ensure_logging()
+    display_console = create_console() if use_log_display else None
+    progress = create_progress(console=display_console) if use_log_display else None
     log_context = (
-        LogDisplay(maxlen=max_log_messages) if use_log_display else nullcontext()
+        LogDisplay(
+            maxlen=max_log_messages,
+            progress=progress,
+            console=display_console,
+        )
+        if use_log_display
+        else nullcontext()
     )
 
     needs_pca = "X_pca" not in adata.obsm and "pca" in (
@@ -205,6 +218,9 @@ def prepare_adata(
             logger.info(
                 f"Preparing AnnData with {adata.n_obs} cells and {adata.n_vars} genes"
             )
+        task_prep = (
+            progress.add_task("", total=5) if progress is not None else None
+        )
 
         if verbose and (library_normalization or needs_hvg):
             logger.info("Step 1/5: Normalization and feature selection")
@@ -253,6 +269,9 @@ def prepare_adata(
             delve_feature_list = dyn_feats + lap_feats
             adata._inplace_subset_var(adata.var_names.isin(delve_feature_list))
 
+        if progress is not None and task_prep is not None:
+            progress.advance(task_prep)
+
         """
         =============== sanity ===============
         - estimate noise model for each gene
@@ -271,6 +290,9 @@ def prepare_adata(
             )
         elif verbose:
             logger.info("Step 2/5: Sanity noise model skipped")
+
+        if progress is not None and task_prep is not None:
+            progress.advance(task_prep)
 
         if needs_pca:
             if verbose:
@@ -299,6 +321,9 @@ def prepare_adata(
             if verbose:
                 logger.info("Step 3/5: PCA not needed, skipping")
 
+        if progress is not None and task_prep is not None:
+            progress.advance(task_prep)
+
         # TODO: need to support externally computed embedding and bypass some of the steps here
         diffmap = None
         if needs_diffmap:
@@ -324,6 +349,9 @@ def prepare_adata(
                 raise ValueError(f"scvi key {scvi_key} does not exist in adata.obsm")
             if verbose:
                 logger.info(f"Using scVI embedding from {scvi_key}")
+
+        if progress is not None and task_prep is not None:
+            progress.advance(task_prep)
 
         """
         ========= downsample =========
@@ -367,6 +395,9 @@ def prepare_adata(
             "n_neighbors_density": n_neighbors_removal_density,
             "density_exempt_groups": density_exempt_groups,
         }
+
+        if progress is not None and task_prep is not None:
+            progress.advance(task_prep)
 
         preprocess_meta = PreprocessMeta(
             library_normalized=library_normalization,

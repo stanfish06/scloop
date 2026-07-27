@@ -13,20 +13,23 @@ from typing import Any, Callable, Literal
 
 from loguru import logger
 from pydantic import BaseModel, ConfigDict, Field
+from rich import box
 from rich.console import Console
 from rich.layout import Layout
 from rich.live import Live
 from rich.panel import Panel
 from rich.progress import (
-    BarColumn,
+    MofNCompleteColumn,
     Progress,
+    ProgressColumn,
     SpinnerColumn,
-    TaskProgressColumn,
+    Task,
     TextColumn,
     TimeElapsedColumn,
-    TimeRemainingColumn,
 )
 from rich.table import Table
+from rich.text import Text
+from rich.theme import Theme
 
 from ..data.types import LogLevel
 
@@ -41,13 +44,13 @@ VALID_LOG_LEVELS: tuple[LogLevel, ...] = (
 )
 
 LEVEL_STYLES: dict[LogLevel, str] = {
-    "TRACE": "dim",
-    "DEBUG": "dim",
-    "INFO": "blue",
-    "SUCCESS": "green",
-    "WARNING": "yellow",
-    "ERROR": "red",
-    "CRITICAL": "bold red",
+    "TRACE": "grey50",
+    "DEBUG": "grey50",
+    "INFO": "steel_blue",
+    "SUCCESS": "dark_sea_green4",
+    "WARNING": "orange3",
+    "ERROR": "indian_red",
+    "CRITICAL": "bold indian_red",
 }
 
 DEFAULT_LOG_FORMAT = (
@@ -136,7 +139,12 @@ def configure_logging(
 ) -> LoggingConfig:
     updates: dict[str, Any] = {}
     if level is not None:
-        updates["level"] = level
+        normalized = level.upper()
+        if normalized not in VALID_LOG_LEVELS:
+            raise ValueError(
+                f"invalid log level {level!r}; expected one of {VALID_LOG_LEVELS}"
+            )
+        updates["level"] = normalized
     if console_width is not None:
         updates["console_width"] = console_width
     if console_height is not None:
@@ -161,12 +169,50 @@ def get_logging_config() -> LoggingConfig:
     return _LOGGING_CONFIG.model_copy(deep=True)
 
 
+_PROGRESS_THEME = Theme(
+    {
+        "progress.spinner": "default",
+        "progress.download": "default",
+        "progress.elapsed": "default",
+        "progress.remaining": "default",
+        "progress.percentage": "default",
+    }
+)
+
+
 def create_console(*, width: int | None = None, height: int | None = None) -> Console:
     config = get_logging_config()
     return Console(
         width=config.console_width if width is None else width,
         height=config.console_height if height is None else height,
+        theme=_PROGRESS_THEME,
     )
+
+
+class BlockBarColumn(ProgressColumn):
+    def __init__(
+        self,
+        bar_width: int = 40,
+        complete_style: str = "default",
+        finished_style: str = "default",
+        back_style: str = "grey58",
+    ) -> None:
+        self.bar_width = bar_width
+        self.complete_style = complete_style
+        self.finished_style = finished_style
+        self.back_style = back_style
+        super().__init__()
+
+    def render(self, task: Task) -> Text:
+        ratio = 0.0
+        if task.total:
+            ratio = min(max(task.completed / task.total, 0.0), 1.0)
+        n_done = int(ratio * self.bar_width)
+        style = self.finished_style if task.finished else self.complete_style
+        bar = Text(no_wrap=True)
+        bar.append("█" * n_done, style=style)
+        bar.append("░" * (self.bar_width - n_done), style=self.back_style)
+        return bar
 
 
 def create_progress(
@@ -179,9 +225,8 @@ def create_progress(
     return Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
-        BarColumn(),
-        TaskProgressColumn(),
-        TimeRemainingColumn(),
+        BlockBarColumn(),
+        MofNCompleteColumn(),
         TimeElapsedColumn(),
         **progress_kwargs,
     )
@@ -194,7 +239,7 @@ def install_stdlib_bridge() -> None:
 
     scloop_logger = logging.getLogger("scloop")
     scloop_logger.handlers = [StdlibToLoguruHandler()]
-    scloop_logger.setLevel(logging.NOTSET)
+    scloop_logger.setLevel(1)
     scloop_logger.propagate = False
 
     _BRIDGE_INSTALLED = True
@@ -308,8 +353,7 @@ class LogDisplay(BaseModel):
     _handler_id: int | None = None
     _layout: Layout | None = None
     _session_id: str | None = None
-    _last_refresh_at: float = 0.0
-    _pending_refresh: bool = False
+    _prev_session: str | None = None
     _in_jupyter: bool = False
 
     def model_post_init(self, __context: Any) -> None:
@@ -344,7 +388,11 @@ class LogDisplay(BaseModel):
 
     def _create_table(self) -> Panel:
         table = Table(
-            show_header=True, header_style="bold magenta", box=None, expand=True
+            show_header=True,
+            header_style="bold",
+            box=box.MINIMAL,
+            show_edge=False,
+            expand=True,
         )
         table.add_column("Time", style="dim", width=8, no_wrap=True)
         table.add_column("Level", width=8, no_wrap=True)
@@ -365,9 +413,19 @@ class LogDisplay(BaseModel):
 
         return Panel(
             table,
-            title="[bold blue]Pipeline Logs",
+            title="[bold]Pipeline Logs",
             subtitle=self._summary_text(),
-            border_style="blue",
+            box=box.SQUARE,
+            border_style="default",
+        )
+
+    def _progress_panel(self) -> Panel:
+        assert self.progress is not None
+        return Panel(
+            self.progress,
+            title="[bold]Progress",
+            box=box.SQUARE,
+            border_style="default",
         )
 
     def _create_layout(self) -> Layout:
@@ -386,9 +444,7 @@ class LogDisplay(BaseModel):
             Layout(name="progress", size=progress_height),
             Layout(name="logs", size=log_height),
         )
-        layout["progress"].update(
-            Panel(self.progress, title="[bold green]Progress", border_style="green")
-        )
+        layout["progress"].update(self._progress_panel())
         layout["logs"].update(self._create_table())
         return layout
 
@@ -396,30 +452,53 @@ class LogDisplay(BaseModel):
         ensure_logging()
 
         self._in_jupyter = _is_in_jupyter()
+        console = self.console
+        if not self._in_jupyter and console is not None and (
+            not console.is_terminal or console.is_dumb_terminal
+        ):
+            return self.cache
+
         self._session_id = uuid.uuid4().hex
         with _STATE_LOCK:
             global _ACTIVE_DISPLAY_SESSION
+            self._prev_session = _ACTIVE_DISPLAY_SESSION
             _ACTIVE_DISPLAY_SESSION = self._session_id
 
-        self._handler_id = logger.add(
-            self.cache.append,
-            level="TRACE",
-            enqueue=True,
-            backtrace=False,
-            diagnose=False,
-            filter=_display_sink_filter(self._session_id),
-        )
-        self.cache._update_callback = self.update
-        self._layout = self._create_layout()
-        self._live = Live(
-            self._layout,
-            console=self.console,
-            auto_refresh=False,
-            transient=False if self.transient is None else self.transient,
-            vertical_overflow="crop",
-        )
-        self._live.__enter__()
-        self.update(force=True)
+        try:
+            self._handler_id = logger.add(
+                self.cache.append,
+                level="TRACE",
+                enqueue=True,
+                backtrace=False,
+                diagnose=False,
+                filter=_display_sink_filter(self._session_id),
+            )
+            self.cache._update_callback = self.update
+            self._layout = self._create_layout()
+            self._live = Live(
+                self._layout,
+                console=self.console,
+                auto_refresh=True,
+                refresh_per_second=self.refresh_per_second or 4,
+                transient=True,
+                vertical_overflow="crop",
+            )
+            self._live.__enter__()
+            self.update(force=True)
+        except BaseException:
+            self.cache._update_callback = None
+            if self._live is not None:
+                try:
+                    self._live.__exit__(*sys.exc_info())
+                except Exception:
+                    pass
+                self._live = None
+            if self._handler_id is not None:
+                logger.remove(self._handler_id)
+                self._handler_id = None
+            self._reset_session()
+            self._session_id = None
+            raise
         return self.cache
 
     def __exit__(self, *args: Any) -> None:
@@ -427,7 +506,6 @@ class LogDisplay(BaseModel):
 
         if self._handler_id is not None:
             logger.complete()
-            self.update(force=True)
             logger.remove(self._handler_id)
             self._handler_id = None
 
@@ -435,28 +513,33 @@ class LogDisplay(BaseModel):
             self._live.__exit__(*args)
             self._live = None
 
+        if (
+            self._session_id is not None
+            and self.console is not None
+            and self.transient is not True
+        ):
+            if self.progress is not None:
+                self.console.print(self._progress_panel())
+            self.console.print(self._create_table())
+
+        self._reset_session()
+        self._session_id = None
+
+    def _reset_session(self) -> None:
+        if self._session_id is None:
+            return
         with _STATE_LOCK:
             global _ACTIVE_DISPLAY_SESSION
             if _ACTIVE_DISPLAY_SESSION == self._session_id:
-                _ACTIVE_DISPLAY_SESSION = None
-        self._session_id = None
+                _ACTIVE_DISPLAY_SESSION = self._prev_session
 
     def update(self, *, force: bool = False) -> None:
+        del force
         if self._live is None or self._layout is None:
             return
 
-        refresh_interval = 1 / self.refresh_per_second
-        now = time.monotonic()
-        if not force and now - self._last_refresh_at < refresh_interval:
-            self._pending_refresh = True
-            return
-
-        self._pending_refresh = False
-        self._last_refresh_at = now
-
         if self.progress is not None:
             self._layout["logs"].update(self._create_table())
-            self._live.refresh()
-            return
-
-        self._live.update(self._create_table(), refresh=True)
+        else:
+            self._live.update(self._create_table())
+        self._live.refresh()

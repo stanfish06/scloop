@@ -536,9 +536,11 @@ def run_bootstrap_pipeline(
                 res = task.result()
                 results.append(res)
                 if verbose:
-                    logger.success(f"Bootstrap {i + 1}/{n_bootstrap} finished")
+                    logger.success(f"[Bootstrap {i + 1}/{n_bootstrap}] finished")
             except Exception as e:
-                logger.error(f"Bootstrap {i + 1}/{n_bootstrap} failed: {e}")
+                logger.opt(exception=True).warning(
+                    f"[Bootstrap {i + 1}/{n_bootstrap}] failed: {e}"
+                )
 
             if progress and task_id is not None:
                 progress.advance(task_id)

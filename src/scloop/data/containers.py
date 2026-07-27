@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from contextlib import nullcontext
 from typing import Any, Literal
 
 import numpy as np
@@ -937,11 +938,11 @@ class HomologyData:
         if progress_main is None:
             progress_main = create_progress(disable=use_log_display)
 
-        with progress_main:
+        with nullcontext() if use_log_display else progress_main:
             for idx_bootstrap in progress_main.track(range(n_bootstrap)):
                 start_time = time.perf_counter()
                 if verbose:
-                    logger.info(f"Start round {idx_bootstrap + 1}/{n_bootstrap}")
+                    logger.info(f"[Bootstrap {idx_bootstrap + 1}/{n_bootstrap}] started")
                 if verbose:
                     logger.info("Computing bootstrapped homology")
                 pairwise_distance_matrix = self._compute_homology(
@@ -996,11 +997,12 @@ class HomologyData:
                 if n_original_loop_classes == 0 or n_bootstrap_loop_classes == 0:
                     continue
 
-                logger.info(
-                    f"[Bootstrap {idx_bootstrap + 1}/{n_bootstrap}] "
-                    f"Geometric matching candidates: {n_original_loop_classes} original classes "
-                    f"x {n_bootstrap_loop_classes} bootstrap classes"
-                )
+                if verbose:
+                    logger.info(
+                        f"[Bootstrap {idx_bootstrap + 1}/{n_bootstrap}] "
+                        f"Geometric matching candidates: {n_original_loop_classes} original classes "
+                        f"x {n_bootstrap_loop_classes} bootstrap classes"
+                    )
 
                 pairwise_result_matrix = np.full(
                     (n_original_loop_classes, n_bootstrap_loop_classes), np.nan
@@ -1027,10 +1029,11 @@ class HomologyData:
                     pairwise_result_matrix, k_neighbors_check_equivalence
                 )
 
-                logger.info(
-                    f"[Bootstrap {idx_bootstrap + 1}/{n_bootstrap}] "
-                    f"Geometric neighbors chosen per class: {k_neighbors_check_equivalence}"
-                )
+                if verbose:
+                    logger.info(
+                        f"[Bootstrap {idx_bootstrap + 1}/{n_bootstrap}] "
+                        f"Geometric neighbors chosen per class: {k_neighbors_check_equivalence}"
+                    )
                 original_vertex_ids = self._original_vertex_ids
                 cocycle_edge_masks: list[np.ndarray | None] = []
                 for loop_class in self.selected_loop_classes:
@@ -1080,12 +1083,13 @@ class HomologyData:
                             self.bootstrap_data is not None
                             and is_homologically_equivalent
                         ):
-                            logger.info(
-                                f"[Bootstrap {idx_bootstrap + 1}/{n_bootstrap}] "
-                                f"Homology match found: original class #{si}↔bootstrap class #{tj} "
-                                f"({method_geometric_equivalence} distance={geo_dist:.4f}, "
-                                f"neighbor rank {neighbor_rank + 1}/{k_neighbors_check_equivalence})"
-                            )
+                            if verbose:
+                                logger.info(
+                                    f"[Bootstrap {idx_bootstrap + 1}/{n_bootstrap}] "
+                                    f"Homology match found: original class #{si}↔bootstrap class #{tj} "
+                                    f"({method_geometric_equivalence} distance={geo_dist:.4f}, "
+                                    f"neighbor rank {neighbor_rank + 1}/{k_neighbors_check_equivalence})"
+                                )
                             self._ensure_loop_tracks()
                             track: LoopTrack = self.bootstrap_data.loop_tracks[si]
                             track.matches.append(
@@ -1101,7 +1105,7 @@ class HomologyData:
                 if verbose:
                     time_elapsed = end_time - start_time
                     logger.success(
-                        f"Round {idx_bootstrap + 1}/{n_bootstrap} finished in {int(time_elapsed // 3600)}h {int(time_elapsed % 3600 // 60)}m {int(time_elapsed % 60)}s"
+                        f"[Bootstrap {idx_bootstrap + 1}/{n_bootstrap}] finished in {int(time_elapsed // 3600)}h {int(time_elapsed % 3600 // 60)}m {int(time_elapsed % 60)}s"
                     )
 
     def _bootstrap_parallel(

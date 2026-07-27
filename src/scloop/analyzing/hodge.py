@@ -174,7 +174,9 @@ def compute_hodge_analysis(
             n_neighbors=n_neighbors_edge_embedding
         )
     except Exception as e:
-        logger.warning(f"Edge smoothing failed: {e}")
+        logger.opt(exception=True).warning(
+            f"Edge smoothing failed for track {idx_track}: {e}"
+        )
 
     try:
         if progress is not None and task_step is not None:
@@ -186,7 +188,9 @@ def compute_hodge_analysis(
             smooth_half_window=half_window,
         )
     except Exception as e:
-        logger.warning(f"Divergence computation failed: {e}")
+        logger.opt(exception=True).warning(
+            f"Divergence computation failed for track {idx_track}: {e}"
+        )
 
     try:
         if progress is not None and task_step is not None:
@@ -194,7 +198,8 @@ def compute_hodge_analysis(
         kwargs_trajectory = kwargs_trajectory or {}
         if coordinates_vertices is None:
             logger.warning(
-                "coordinates_vertices is None. Trajectory identification skipped."
+                f"coordinates_vertices is None. "
+                f"Trajectory identification skipped for track {idx_track}."
             )
         else:
             track.hodge_analysis._trajectory_identification(
@@ -211,7 +216,9 @@ def compute_hodge_analysis(
                 split_threshold=kwargs_trajectory.get("split_threshold", 0.0),
             )
     except Exception as e:
-        logger.warning(f"Trajectory identification failed: {e}")
+        logger.opt(exception=True).warning(
+            f"Trajectory identification failed for track {idx_track}: {e}"
+        )
 
     if (
         compute_gene_trends
@@ -235,7 +242,9 @@ def compute_hodge_analysis(
                 verbose=verbose,
             )
         except Exception as e:
-            logger.warning(f"Gene trend computation failed: {e}")
+            logger.opt(exception=True).warning(
+                f"Gene trend computation failed for track {idx_track}: {e}"
+            )
 
     if progress is not None and task_step is not None:
         progress.remove_task(task_step)

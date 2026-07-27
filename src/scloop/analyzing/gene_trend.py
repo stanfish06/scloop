@@ -56,6 +56,7 @@ def compute_gene_trends_for_trajectories(
         ci_lower = np.zeros((n_genes, n_eval_points))
         ci_upper = np.zeros((n_genes, n_eval_points))
 
+        n_failed = 0
         for gene_idx, gene_name in enumerate(gene_names):
             gene_expr = gene_expression_matrix[:, gene_idx]
 
@@ -74,10 +75,14 @@ def compute_gene_trends_for_trajectories(
                 ci_lower[gene_idx] = ci_lo
                 ci_upper[gene_idx] = ci_hi
             except Exception as e:
-                if verbose:
-                    logger.warning(f"Failed to fit GAM for gene {gene_name}: {e}")
+                n_failed += 1
+                logger.debug(f"Failed to fit GAM for gene {gene_name}: {e}")
                 continue
 
+        if verbose and n_failed:
+            logger.warning(
+                f"GAM fit failed for {n_failed}/{n_genes} gene(s) on this trajectory"
+            )
         traj.gene_names = gene_names
         traj.mean_expression = mean_expr
         traj.se_expression = se_expr
