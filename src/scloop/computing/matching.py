@@ -154,7 +154,6 @@ def check_homological_equivalence(
     cocycle_edge_mask: np.ndarray | None = None,
     compute_homotopy_coherence: bool = True,
     homotopy_coherence_method: HomotopyCoherenceMethod = "path_finding",
-    max_triangles_homotopy_coherence: int = 18,
     column_trim_method: ColumnTrimMethod = DEFAULT_COLUMN_TRIM_METHOD,
     column_scores: np.ndarray | None = None,
     embedding: np.ndarray | None = None,
@@ -245,7 +244,6 @@ def check_homological_equivalence(
                 edge_lengths=edge_lengths,
                 num_vertices=boundary_matrix_d1.num_vertices,
                 method=homotopy_coherence_method,
-                max_triangles=max_triangles_homotopy_coherence,
             )
         )
 
@@ -267,7 +265,6 @@ def check_homological_equivalence(
                 edge_lengths=edge_lengths,
                 num_vertices=boundary_matrix_d1.num_vertices,
                 method=homotopy_coherence_method,
-                max_triangles=max_triangles_homotopy_coherence,
             ),
             compute_coherence(
                 source_edges=tuple(source),
@@ -276,7 +273,6 @@ def check_homological_equivalence(
                 edge_lengths=edge_lengths,
                 num_vertices=boundary_matrix_d1.num_vertices,
                 method=homotopy_coherence_method,
-                max_triangles=max_triangles_homotopy_coherence,
             ),
         ]
         valid_scores = [score for score in scores if score is not None]
