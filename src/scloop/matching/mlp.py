@@ -149,6 +149,7 @@ class MLPregressor(pl.LightningModule):
             accelerator="auto",
             logger=False,
             enable_checkpointing=True,
+            enable_progress_bar=False,
             check_val_every_n_epoch=self.check_val_every_n_epoch,
         )
         self.trainer.fit(self, self.data)

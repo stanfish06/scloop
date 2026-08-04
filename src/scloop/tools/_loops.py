@@ -13,7 +13,7 @@ from scipy.spatial.distance import pdist
 from ..data.constants import (
     DEFAULT_AUTO_THRESHOLD_FACTOR,
     DEFAULT_K_NEIGHBORS_CHECK_EQUIVALENCE,
-    DEFAULT_MAX_COLUMNS_BOUNDARY_MATRIX,
+    DEFAULT_MAX_ROWS_BOUNDARY_MATRIX,
     DEFAULT_MAXITER_EIGENDECOMPOSITION,
     DEFAULT_N_BOOTSTRAP,
     DEFAULT_N_HODGE_COMPONENTS,
@@ -69,7 +69,7 @@ def find_loops(
     bootstrap_candidate_method: Literal["geometric", "image"] = "geometric",
     require_bootstrap_homological_equivalence: bool = True,
     n_check_per_candidate: NonZeroCount_t = 1,
-    max_columns_boundary_matrix: NonZeroCount_t = DEFAULT_MAX_COLUMNS_BOUNDARY_MATRIX,
+    max_rows_boundary_matrix: NonZeroCount_t = DEFAULT_MAX_ROWS_BOUNDARY_MATRIX,
     auto_shrink_boundary_matrix: bool = True,
     auto_shrink_factor: Percent_t = 0.9,
     n_max_workers: NonZeroCount_t = DEFAULT_N_MAX_WORKERS,
@@ -154,9 +154,9 @@ def find_loops(
             logger.info(f"Boundary matrix computed with threshold {boundary_thresh}")
         assert hd.boundary_matrix_d1 is not None
         assert meta.preprocess is not None
-        if hd.boundary_matrix_d1.shape[1] > max_columns_boundary_matrix:
+        if hd.boundary_matrix_d1.shape[0] > max_rows_boundary_matrix:
             logger.warning(
-                f"Boundary matrix has more than {max_columns_boundary_matrix} columns. Downstream computation could be slow"
+                f"Boundary matrix has more than {max_rows_boundary_matrix} rows. Downstream computation could be slow"
             )
             if auto_shrink_boundary_matrix:
                 logger.info(
@@ -171,7 +171,7 @@ def find_loops(
                     n_current = int(n_current * auto_shrink_factor)
                 n_downsample_final = n_current
                 while (
-                    hd.boundary_matrix_d1.shape[1] > max_columns_boundary_matrix
+                    hd.boundary_matrix_d1.shape[0] > max_rows_boundary_matrix
                     and n_current > 0
                 ):
                     logger.info(

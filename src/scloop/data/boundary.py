@@ -103,8 +103,7 @@ class BoundaryMatrix(BaseModel, ABC):
 
 class BoundaryMatrixD1(BoundaryMatrix):
     _cached_edge_set: set[tuple[Index_t, Index_t]] | None = None
-    # All-or-none cache of triangle centroids in embedding space; not serialized.
-    _cached_col_centroids: np.ndarray | None = None
+    _cached_col_vertices: np.ndarray | None = None
 
     @property
     def row_simplex_decode(self) -> list[tuple[Index_t, Index_t]]:
@@ -120,28 +119,14 @@ class BoundaryMatrixD1(BoundaryMatrix):
             self._cached_edge_set = set(self.row_simplex_decode)
         return self._cached_edge_set
 
-    def compute_col_centroids(self, embedding: np.ndarray) -> np.ndarray:
-        """Return (n_triangles, d) centroids, computing and caching on first call.
-
-        ``embedding`` is indexed by global vertex ids (same space as
-        ``col_simplex_ids`` / ``num_vertices``). The cache is all-or-none: once
-        filled it is reused; call sites must not mix embeddings on one instance.
-        """
-        if self._cached_col_centroids is not None:
-            return self._cached_col_centroids
-
-        emb = np.asarray(embedding)
-        if emb.ndim != 2:
-            raise ValueError("embedding must be a 2D array of shape (n_vertices, d)")
-        if emb.shape[0] < self.num_vertices:
-            raise ValueError(
-                f"embedding has {emb.shape[0]} rows but num_vertices={self.num_vertices}"
-            )
+    def compute_col_vertices(self) -> np.ndarray:
+        if self._cached_col_vertices is not None:
+            return self._cached_col_vertices
 
         n_triangles = self.shape[1]
         if n_triangles == 0:
-            self._cached_col_centroids = np.empty((0, emb.shape[1]), dtype=np.float64)
-            return self._cached_col_centroids
+            self._cached_col_vertices = np.empty((0, 3), dtype=np.int64)
+            return self._cached_col_vertices
 
         verts = np.asarray(self.col_simplex_decode, dtype=np.int64)
         if verts.shape != (n_triangles, 3):
@@ -149,8 +134,8 @@ class BoundaryMatrixD1(BoundaryMatrix):
                 f"decoded triangle vertices have shape {verts.shape}, "
                 f"expected ({n_triangles}, 3)"
             )
-        self._cached_col_centroids = emb[verts].mean(axis=1)
-        return self._cached_col_centroids
+        self._cached_col_vertices = verts
+        return self._cached_col_vertices
 
     def to_hdf5_group(self, group: h5py.Group, compress: bool = True) -> None:
         group.attrs["_type"] = "BoundaryMatrixD1"

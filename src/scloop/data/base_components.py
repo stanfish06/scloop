@@ -6,12 +6,43 @@ from typing import TYPE_CHECKING
 import numpy as np
 from pydantic import BaseModel, Field, model_validator
 from pydantic.dataclasses import dataclass
+from scipy.spatial.distance import cdist
 from typing_extensions import Self
 
 from .types import Diameter_t, Index_t, Percent_t, PositiveFloat
 
 if TYPE_CHECKING:
     import h5py
+
+    from .boundary import BoundaryMatrixD1
+
+
+def loop_proximity_column_scores(
+    triangle_vertices: np.ndarray,
+    embedding: np.ndarray,
+    loop_coords: np.ndarray,
+    n_neighbors: int,
+) -> np.ndarray:
+    n_tri = triangle_vertices.shape[0]
+    n_loop = loop_coords.shape[0]
+    if n_tri == 0:
+        return np.empty(0, dtype=np.float32)
+    if n_loop == 0:
+        return np.full(n_tri, np.inf, dtype=np.float32)
+
+    k = max(1, min(n_neighbors, n_loop))
+    used = np.unique(triangle_vertices)
+    d = cdist(np.asarray(embedding)[used], loop_coords)
+    if k == n_loop:
+        per_vertex = d.mean(axis=1)
+    else:
+        idx = np.argpartition(d, kth=k - 1, axis=1)[:, :k]
+        per_vertex = np.take_along_axis(d, idx, axis=1).mean(axis=1)
+
+    lookup = np.zeros(int(used.max()) + 1, dtype=np.float32)
+    lookup[used] = per_vertex
+    # Distance from a triangle to the loop: worst of its three vertices.
+    return lookup[triangle_vertices].max(axis=1)
 
 
 class PersistencePair(BaseModel):
@@ -87,6 +118,8 @@ class LoopClass(BaseModel):
     representatives: list[list[Index_t]] | None = None
     coordinates_vertices_representatives: list[list[list[float]]] | None = None
 
+    _cached_column_scores: np.ndarray | None = None
+
     model_config = {"arbitrary_types_allowed": True}
 
     @model_validator(mode="after")
@@ -98,6 +131,28 @@ class LoopClass(BaseModel):
     @property
     def lifetime(self):
         return self.death - self.birth
+
+    def column_proximity_scores(
+        self,
+        boundary_matrix_d1: BoundaryMatrixD1,
+        embedding: np.ndarray,
+        n_neighbors: int = 1,
+    ) -> np.ndarray:
+        if self._cached_column_scores is not None:
+            return self._cached_column_scores
+
+        if self.representatives is None:
+            raise ValueError("loop class has no representatives to score against")
+        loop_ids = np.unique(
+            np.asarray([v for rep in self.representatives for v in rep], dtype=np.int64)
+        )
+        self._cached_column_scores = loop_proximity_column_scores(
+            triangle_vertices=boundary_matrix_d1.compute_col_vertices(),
+            embedding=embedding,
+            loop_coords=np.asarray(embedding)[loop_ids].astype(np.float64, copy=False),
+            n_neighbors=n_neighbors,
+        )
+        return self._cached_column_scores
 
     @property
     def persistence_pair(self) -> PersistencePair:

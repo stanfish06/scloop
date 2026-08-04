@@ -453,8 +453,15 @@ def run_single_bootstrap(
                 max_column_diameter=max_column_diameter,
                 cocycle_edge_mask=cocycle_edge_masks[source_idx],
                 column_trim_method=column_trim_method,
-                embedding=embedding,
-                n_neighbors_column_trim=n_neighbors_column_trim,
+                column_scores=(
+                    source_loop.column_proximity_scores(
+                        original_boundary_matrix_d1,
+                        embedding,
+                        n_neighbors_column_trim,
+                    )
+                    if column_trim_method == "loop_proximity"
+                    else None
+                ),
             )
             match.boundary_checked = True
 
@@ -501,6 +508,22 @@ def run_bootstrap_pipeline(
                 thresh=thresh,
             )
         )
+
+    if kwargs.get("column_trim_method", DEFAULT_COLUMN_TRIM_METHOD) == "loop_proximity":
+        assert meta.preprocess is not None
+        assert meta.preprocess.embedding_method is not None
+        warm_embedding = np.array(
+            adata.obsm[f"X_{meta.preprocess.embedding_method}"]
+        )
+        for loop_class in original_loop_classes:
+            if loop_class is not None and loop_class.representatives is not None:
+                loop_class.column_proximity_scores(
+                    original_boundary_matrix_d1,
+                    warm_embedding,
+                    kwargs.get(
+                        "n_neighbors_column_trim", DEFAULT_N_NEIGHBORS_COLUMN_TRIM
+                    ),
+                )
 
     ExecutorClass = ThreadPoolExecutor
 

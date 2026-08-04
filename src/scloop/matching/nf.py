@@ -159,6 +159,7 @@ class NeuralODEregressor(pl.LightningModule):
             accelerator="auto",
             logger=False,
             enable_checkpointing=True,
+            enable_progress_bar=False,
         )
         self.trainer.fit(self, self.data)
 

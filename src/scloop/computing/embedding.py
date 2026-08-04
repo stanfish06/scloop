@@ -371,7 +371,9 @@ class DiffusionMap:
         )
         U_all = np.empty((n, n * len(ts)), dtype=np.float32)
         for i, t_i in enumerate(ts):
-            logger.debug(f"Potential space: diffusion time {i + 1}/{len(ts)} (t={t_i:.4g})")
+            logger.debug(
+                f"Potential space: diffusion time {i + 1}/{len(ts)} (t={t_i:.4g})"
+            )
             eigvals_t = eigvals_clipped**t_i
             P_t = (V_sym * eigvals_t) @ V_sym.T
             P_t *= d_inv_sqrt_safe[:, np.newaxis]

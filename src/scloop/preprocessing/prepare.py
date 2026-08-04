@@ -218,9 +218,7 @@ def prepare_adata(
             logger.info(
                 f"Preparing AnnData with {adata.n_obs} cells and {adata.n_vars} genes"
             )
-        task_prep = (
-            progress.add_task("", total=5) if progress is not None else None
-        )
+        task_prep = progress.add_task("", total=5) if progress is not None else None
 
         if verbose and (library_normalization or needs_hvg):
             logger.info("Step 1/5: Normalization and feature selection")

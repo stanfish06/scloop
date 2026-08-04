@@ -13,6 +13,7 @@ HomotopyCoherenceMethod = Literal["exact", "path_finding"]
 MultipleTestCorrectionMethod = Literal["bonferroni", "benjamini-hochberg"]
 PresenceTestMethod = Literal["fisher", "chi2"]
 CrossMatchModelTypes = Literal["mlp", "nf"]
+CrossMatchRoutes = Literal["geometric", "image"]
 LogLevel = Literal[
     "TRACE",
     "DEBUG",

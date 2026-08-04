@@ -12,7 +12,14 @@ from ..data.constants import (
     DEFAULT_N_PERMUTATIONS,
 )
 from ..data.metadata import CrossDatasetMatchingMeta
-from ..data.types import Count_t, CrossMatchModelTypes, Index_t, LoopDistMethod
+from ..data.types import (
+    Count_t,
+    CrossMatchModelTypes,
+    CrossMatchRoutes,
+    Index_t,
+    LoopDistMethod,
+    PositiveFloat,
+)
 from ..matching import CrossDatasetMatcher
 
 __all__ = ["match_loops"]
@@ -24,6 +31,8 @@ def match_loops(
     reference_embedding_key: str,
     shared_embedding_key: str,
     model_type: CrossMatchModelTypes = "nf",
+    route: CrossMatchRoutes = "geometric",
+    threshold_image: PositiveFloat | None = None,
     distance_method: LoopDistMethod = DEFAULT_LOOP_DIST_METHOD,
     n_permutations: Count_t = DEFAULT_N_PERMUTATIONS,
     reembed_method: Literal["diffmap", "umap", "none"] = "none",
@@ -59,15 +68,32 @@ def match_loops(
             reembed_method=reembed_method,  # type: ignore[arg-type]
         )
 
+    n_pairs = len(adata_list) * (len(adata_list) - 1) // 2
+    verbose = kwargs_match.get("verbose", True)
+    if verbose:
+        logger.info(f"Cross-matching {n_pairs} dataset pair(s) via the {route} route")
+    pair_idx = 0
     for i in range(len(adata_list)):
         for j in range(i + 1, len(adata_list)):
-            matcher._loops_cross_match(
-                n_permute=n_permutations,
-                source_dataset_idx=i,
-                target_dataset_idx=j,
-                method=distance_method,
-                **kwargs_match,
-            )
+            pair_idx += 1
+            if verbose:
+                logger.info(f"[Pair {pair_idx}/{n_pairs}] matching dataset {i} -> {j}")
+            if route == "image":
+                matcher._loops_cross_match_image(
+                    thresh=threshold_image,
+                    source_dataset_idx=i,
+                    target_dataset_idx=j,
+                    method=distance_method,
+                    **kwargs_match,
+                )
+            else:
+                matcher._loops_cross_match(
+                    n_permute=n_permutations,
+                    source_dataset_idx=i,
+                    target_dataset_idx=j,
+                    method=distance_method,
+                    **kwargs_match,
+                )
 
     assert matcher.loop_matching_result is not None
     matcher.loop_matching_result._compute_tracks()

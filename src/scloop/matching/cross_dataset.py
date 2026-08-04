@@ -15,8 +15,10 @@ from scipy.stats import ttest_ind
 
 from ..computing import compute_diffmap
 from ..computing.matching import compute_geometric_distance
+from ..data.base_components import LoopClass, LoopClassEquivalence
 from ..data.constants import (
     CROSS_MATCH_KEY,
+    DEFAULT_AUTO_THRESHOLD_FACTOR,
     DEFAULT_CUTOFF_PVAL,
     DEFAULT_LOOP_DIST_METHOD,
     DEFAULT_N_MAX_WORKERS,
@@ -27,6 +29,7 @@ from ..data.containers import HomologyData
 from ..data.metadata import CrossDatasetMatchingMeta
 from ..data.types import (
     Count_t,
+    CrossMatchRoutes,
     Index_t,
     LoopDistMethod,
     MultipleTestCorrectionMethod,
@@ -36,7 +39,7 @@ from ..data.types import (
 )
 from ..utils.logging import create_console, create_progress, ensure_logging
 from ..utils.pvalues import correct_pvalues
-from .cross_matching import cross_match_loops_image
+from .cross_matching import CrossMatchSide, cross_match_loops_image
 from .data_modules import nnRegressorDataModule
 from .mlp import MLPregressor
 from .nf import NeuralODEregressor
@@ -57,17 +60,20 @@ class CrossLoopMatch:
     target_class_idx: Index_t
     source_class_match_embedding: list[list[list[float]]]
     target_class_match_embedding: list[list[list[float]]]
-    geometric_distance: PositiveFloat
-    null_distribution_geometric_distance: list[PositiveFloat]
-    pvalue_permutation: Percent_t
-    pvalue_corrected_permutation: Percent_t
+    geometric_distance: PositiveFloat | None = None
+    null_distribution_geometric_distance: list[PositiveFloat] | None = None
+    pvalue_permutation: Percent_t | None = None
+    pvalue_corrected_permutation: Percent_t | None = None
+    match_method: CrossMatchRoutes = "geometric"
     t_stats_match: float | None = None
     pvalue_match: Percent_t | None = None
     pvalue_corrected_match: Percent_t | None = None
+    topological_equivalence: LoopClassEquivalence | None = None
+    image_loop_class: LoopClass | None = None
 
 
 @dataclass(eq=False)
-class LoopClass:
+class TrackNode:
     rank: Size_t = 0
 
     def __post_init__(self):
@@ -77,7 +83,7 @@ class LoopClass:
     def is_representative(self):
         return self.parent is self
 
-    def _get_representative(self) -> LoopClass:
+    def _get_representative(self) -> TrackNode:
         # path compression
         if self.parent is not self:
             self.parent = self.parent._get_representative()
@@ -93,7 +99,7 @@ class LoopClassIdx(
 
 @dataclass
 class LoopTrack:
-    loop_classes: dict[LoopClassIdx, LoopClass] = Field(default_factory=dict)
+    loop_classes: dict[LoopClassIdx, TrackNode] = Field(default_factory=dict)
 
     def _union(self, idx_source: LoopClassIdx, idx_target: LoopClassIdx):
         rep_a = self.loop_classes[idx_source]._get_representative()
@@ -153,9 +159,9 @@ class CrossLoopMatchResult:
                     idx_loop_class=loop_match.target_class_idx,
                 )
                 if idx_source not in tracks.loop_classes:
-                    tracks.loop_classes[idx_source] = LoopClass()
+                    tracks.loop_classes[idx_source] = TrackNode()
                 if idx_target not in tracks.loop_classes:
-                    tracks.loop_classes[idx_target] = LoopClass()
+                    tracks.loop_classes[idx_target] = TrackNode()
                 tracks._union(idx_source=idx_source, idx_target=idx_target)
         self.tracks = tracks._get_tracks()
 
@@ -216,7 +222,10 @@ class CrossLoopMatchResult:
                         "dataset_b_idx": m.target_dataset_idx,
                         "loop_a_idx": m.source_class_idx,
                         "loop_b_idx": m.target_class_idx,
-                        "geometric_distance": m.geometric_distance,
+                        "match_method": m.match_method,
+                        "geometric_distance": m.geometric_distance
+                        if m.geometric_distance is not None
+                        else np.nan,
                         "t_statistic": t_stat,
                         "p_value_match": p_val,
                         "p_value_corrected": p_val_corr,
@@ -286,7 +295,25 @@ class CrossDatasetMatcher:
             case _:
                 raise ValueError(f"unknown model_type: {self.meta.model_type}")
 
+        ensure_logging()
+        logger.info(
+            f"Training reference mapping ({self.meta.model_type}): "
+            f"{X.shape[0]} samples, {X.shape[1]}D -> {Y.shape[1]}D, "
+            f"max_epochs={max_epochs}"
+        )
         self.mapping_model.fit(max_epochs=max_epochs)
+        trainer = getattr(self.mapping_model, "trainer", None)
+        final_loss = (
+            trainer.callback_metrics.get("train_loss_epoch")
+            if trainer is not None
+            else None
+        )
+        if final_loss is not None:
+            logger.success(
+                f"Reference mapping trained (final train loss {float(final_loss):.4g})"
+            )
+        else:
+            logger.success("Reference mapping trained")
 
     def _compute_joint_reembedding(
         self,
@@ -602,36 +629,113 @@ class CrossDatasetMatcher:
 
     def _loops_cross_match_image(
         self,
-        thresh: PositiveFloat,
+        thresh: PositiveFloat | None = None,
         source_dataset_idx: Index_t = 0,
         target_dataset_idx: Index_t = 1,
+        method: LoopDistMethod = DEFAULT_LOOP_DIST_METHOD,
+        include_bootstrap: bool = True,
+        kwargs_reconstruct: dict | None = None,
+        kwargs_equivalence: dict | None = None,
+        verbose: bool = True,
         **nei_kwargs,
     ) -> list[tuple[int, int]]:
-        source_hd = self.homology_data_list[source_dataset_idx]
-        target_hd = self.homology_data_list[target_dataset_idx]
-        source_vertex_ids = source_hd._original_vertex_ids
-        target_vertex_ids = target_hd._original_vertex_ids
-        source_embedding = np.asarray(
-            self.adata_list[source_dataset_idx].obsm[CROSS_MATCH_KEY]
-        )[source_vertex_ids]
-        target_embedding = np.asarray(
-            self.adata_list[target_dataset_idx].obsm[CROSS_MATCH_KEY]
-        )[target_vertex_ids]
         ref_idx = self.meta.reference_idx
+        sides: list[CrossMatchSide] = []
+        for dataset_idx in (source_dataset_idx, target_dataset_idx):
+            hd = self.homology_data_list[dataset_idx]
+            sides.append(
+                CrossMatchSide(
+                    embedding=np.asarray(
+                        self.adata_list[dataset_idx].obsm[CROSS_MATCH_KEY]
+                    ),
+                    loop_classes=hd.selected_loop_classes,
+                    vertex_ids=hd._original_vertex_ids,
+                    boundary_matrix_d1=hd.boundary_matrix_d1,
+                    loop_attribute_mode="exact"
+                    if dataset_idx == ref_idx
+                    else "boundary",
+                )
+            )
 
-        return cross_match_loops_image(
-            source_embedding=source_embedding,
-            target_embedding=target_embedding,
-            source_loop_classes=source_hd.selected_loop_classes,
-            target_loop_classes=target_hd.selected_loop_classes,
+        max_loop_death = max(
+            (
+                loop_class.death
+                for side in sides
+                for loop_class in side.loop_classes
+                if loop_class is not None
+            ),
+            default=0.0,
+        )
+        if thresh is None:
+            thresh = max_loop_death * DEFAULT_AUTO_THRESHOLD_FACTOR
+            if verbose:
+                logger.info(
+                    f"Auto-threshold for image matching: largest loop death "
+                    f"{max_loop_death:.4f}, using threshold {thresh:.4f} "
+                    f"(factor={DEFAULT_AUTO_THRESHOLD_FACTOR})"
+                )
+        elif thresh <= max_loop_death:
+            logger.warning(
+                f"Image matching threshold {thresh:.4f} does not exceed the largest "
+                f"loop death {max_loop_death:.4f}: image classes stay essential in the "
+                "union filtration and cannot be paired by death simplex"
+            )
+
+        matches = cross_match_loops_image(
+            source=sides[0],
+            target=sides[1],
             thresh=thresh,
-            source_loop_attribute_mode="exact"
-            if source_dataset_idx == ref_idx
-            else "boundary",
-            target_loop_attribute_mode="exact"
-            if target_dataset_idx == ref_idx
-            else "boundary",
-            source_vertex_ids=source_vertex_ids,
-            target_vertex_ids=target_vertex_ids,
+            kwargs_reconstruct=kwargs_reconstruct,
+            kwargs_equivalence=kwargs_equivalence,
             **nei_kwargs,
         )
+
+        if self.loop_matching_result is None:
+            self.loop_matching_result = CrossLoopMatchResult(n_permute=0)
+
+        dataset_key = frozenset([source_dataset_idx, target_dataset_idx])
+        for source_class_idx, target_class_idx, equivalence, image_lc in matches:
+            source_class_embedding = self._get_loop_class_embedding(
+                dataset_idx=source_dataset_idx,
+                class_idx=source_class_idx,
+                include_bootstrap=include_bootstrap,
+            )
+            target_class_embedding = self._get_loop_class_embedding(
+                dataset_idx=target_dataset_idx,
+                class_idx=target_class_idx,
+                include_bootstrap=include_bootstrap,
+            )
+            geometric_distance = None
+            if source_class_embedding and target_class_embedding:
+                geometric_distance = compute_geometric_distance(
+                    source_coords_list=source_class_embedding,
+                    target_coords_list=target_class_embedding,
+                    method=method,
+                    n_workers=1,
+                )
+            loop_match = CrossLoopMatch(
+                source_dataset_idx=source_dataset_idx,
+                target_dataset_idx=target_dataset_idx,
+                source_class_idx=source_class_idx,
+                target_class_idx=target_class_idx,
+                source_class_match_embedding=source_class_embedding,
+                target_class_match_embedding=target_class_embedding,
+                geometric_distance=geometric_distance,
+                match_method="image",
+                topological_equivalence=equivalence,
+                image_loop_class=image_lc,
+            )
+            if dataset_key not in self.loop_matching_result.matches:
+                self.loop_matching_result.matches[dataset_key] = []
+            self.loop_matching_result.matches[dataset_key].append(loop_match)
+            if verbose:
+                logger.info(
+                    f"Match found: dataset {source_dataset_idx} class {source_class_idx} ↔ "
+                    f"dataset {target_dataset_idx} class {target_class_idx}"
+                )
+
+        if verbose:
+            logger.success(
+                f"Image cross-dataset matching complete: {len(matches)} matches found"
+            )
+        return matches

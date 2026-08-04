@@ -8,13 +8,16 @@ from ..computing.homology import (
     compute_loop_geometric_distance,
     compute_loop_homological_equivalence,
 )
-from ..data.base_components import LoopClassEquivalence
+from ..data.base_components import (
+    LoopClassEquivalence,
+    loop_proximity_column_scores,
+)
 from ..data.boundary import BoundaryMatrixD1
 from ..data.constants import (
     DEFAULT_COLUMN_TRIM_METHOD,
+    DEFAULT_N_NEIGHBORS_COLUMN_TRIM,
     DEFAULT_MAX_N_EDGES_RELAXATION_EQUIVALENCE,
     DEFAULT_N_HUBS_RELAXATION_EQUIVALENCE,
-    DEFAULT_N_NEIGHBORS_COLUMN_TRIM,
     DEFAULT_N_PAIRS_CHECK,
     DEFAULT_WITH_RELAXATION_EQUIVALENCE,
 )
@@ -153,6 +156,7 @@ def check_homological_equivalence(
     homotopy_coherence_method: HomotopyCoherenceMethod = "path_finding",
     max_triangles_homotopy_coherence: int = 18,
     column_trim_method: ColumnTrimMethod = DEFAULT_COLUMN_TRIM_METHOD,
+    column_scores: np.ndarray | None = None,
     embedding: np.ndarray | None = None,
     n_neighbors_column_trim: int = DEFAULT_N_NEIGHBORS_COLUMN_TRIM,
 ) -> LoopClassEquivalence:
@@ -173,14 +177,23 @@ def check_homological_equivalence(
     mask_a = loop_edges_a.mask if isinstance(loop_edges_a, LoopEdges) else loop_edges_a
     mask_b = loop_edges_b.mask if isinstance(loop_edges_b, LoopEdges) else loop_edges_b
 
-    loop_vertex_ids = None
-    if column_trim_method == "loop_proximity":
+    if (
+        column_scores is None
+        and column_trim_method == "loop_proximity"
+        and embedding is not None
+    ):
         ids: list[int] = []
         for loop in source_loops:
-            ids.extend(int(v) for v in loop)
+            ids.extend(v for v in loop)
         for loop in target_loops:
-            ids.extend(int(v) for v in loop)
-        loop_vertex_ids = np.unique(np.asarray(ids, dtype=np.int64))
+            ids.extend(v for v in loop)
+        loop_ids = np.unique(np.asarray(ids, dtype=np.int64))
+        column_scores = loop_proximity_column_scores(
+            triangle_vertices=boundary_matrix_d1.compute_col_vertices(),
+            embedding=embedding,
+            loop_coords=np.asarray(embedding)[loop_ids].astype(np.float64, copy=False),
+            n_neighbors=n_neighbors_column_trim,
+        )
 
     result = compute_loop_homological_equivalence(
         boundary_matrix_d1=boundary_matrix_d1,
@@ -193,9 +206,7 @@ def check_homological_equivalence(
         max_column_diameter=max_column_diameter,
         cocycle_edge_mask=cocycle_edge_mask,
         column_trim_method=column_trim_method,
-        embedding=embedding,
-        loop_vertex_ids=loop_vertex_ids,
-        n_neighbors_column_trim=n_neighbors_column_trim,
+        column_scores=column_scores,
     )
 
     if not compute_homotopy_coherence:
@@ -209,9 +220,14 @@ def check_homological_equivalence(
     )
     row_indices = np.asarray(boundary_matrix_d1.data[0], dtype=int)
     column_indices = np.asarray(boundary_matrix_d1.data[1], dtype=int)
+    edges_per_column = row_edge_ids[
+        row_indices[np.argsort(column_indices, kind="stable")]
+    ].reshape(-1, 3)
     triangle_edges = {
-        triangle_id: tuple(row_edge_ids[row_indices[column_indices == column]].tolist())
-        for column, triangle_id in enumerate(boundary_matrix_d1.col_simplex_ids)
+        triangle_id: tuple(edges)
+        for triangle_id, edges in zip(
+            boundary_matrix_d1.col_simplex_ids, edges_per_column.tolist()
+        )
     }
 
     for (source_index, target_index), deformation in zip(

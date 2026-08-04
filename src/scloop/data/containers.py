@@ -815,8 +815,15 @@ class HomologyData:
             max_column_diameter=max_column_diameter,
             cocycle_edge_mask=cocycle_edge_mask,
             column_trim_method=column_trim_method,
-            embedding=embedding,
-            n_neighbors_column_trim=n_neighbors_column_trim,
+            column_scores=(
+                source_loop_class.column_proximity_scores(
+                    self.boundary_matrix_d1,
+                    embedding,
+                    n_neighbors_column_trim,
+                )
+                if column_trim_method == "loop_proximity" and embedding is not None
+                else None
+            ),
         )
         is_equivalent = result.is_equivalent(relax=with_relaxation)
         return (source_class_idx, target_class_idx, is_equivalent)
@@ -942,7 +949,9 @@ class HomologyData:
             for idx_bootstrap in progress_main.track(range(n_bootstrap)):
                 start_time = time.perf_counter()
                 if verbose:
-                    logger.info(f"[Bootstrap {idx_bootstrap + 1}/{n_bootstrap}] started")
+                    logger.info(
+                        f"[Bootstrap {idx_bootstrap + 1}/{n_bootstrap}] started"
+                    )
                 if verbose:
                     logger.info("Computing bootstrapped homology")
                 pairwise_distance_matrix = self._compute_homology(

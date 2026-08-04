@@ -8,7 +8,7 @@ import numpy as np
 from anndata import AnnData
 from numba import jit
 from scipy.sparse import csr_matrix
-from scipy.spatial.distance import cdist, directed_hausdorff
+from scipy.spatial.distance import directed_hausdorff
 from sklearn.neighbors import radius_neighbors_graph
 
 from ..data.base_components import LoopClassEquivalence, PersistencePair
@@ -16,10 +16,10 @@ from ..data.constants import (
     DEFAULT_COLUMN_TRIM_METHOD,
     DEFAULT_LOOP_DIST_METHOD,
     DEFAULT_N_MAX_WORKERS,
-    DEFAULT_N_NEIGHBORS_COLUMN_TRIM,
 )
 from ..data.metadata import ScloopMeta
 from ..data.ripser_lib import (  # type: ignore[import-not-found]
+    ImageRipserResults,
     get_boundary_matrix,
     ripser,
     ripser_image,
@@ -62,9 +62,15 @@ class ImageBootstrapHomologyResult:
 
 @dataclass
 class CrossDatasetImageHomologyResult:
-    source_image_result: object
-    target_image_result: object
+    source_image_result: ImageRipserResults
+    target_image_result: ImageRipserResults
     n_source_vertices: int
+    source_distance_matrix: csr_matrix
+    target_distance_matrix: csr_matrix
+    source_image_pair_simplices: list
+    target_image_pair_simplices: list
+    source_image_cocycles: list
+    target_image_cocycles: list
 
 
 def _cap_infinite_deaths(diagrams: list, cap: float | None) -> list:
@@ -178,9 +184,7 @@ def select_bootstrap_sample(
                 replace=True if bootstrap_sampling == "resample" else False,
             )
         case "fps":
-            n_keep = max(
-                2, int(round(len(source_indices) * bootstrap_downsample_fraction))
-            )
+            n_keep = max(2, round(len(source_indices) * bootstrap_downsample_fraction))
             n_keep = min(n_keep, len(source_indices))
             sample_idx = sample_farthest_points(source_embedding, n_keep)
         case "fps_random":
@@ -188,9 +192,7 @@ def select_bootstrap_sample(
                 raise ValueError("bootstrap_fps_top_k must be > 0.")
             if bootstrap_fps_alpha < 0:
                 raise ValueError("bootstrap_fps_alpha must be >= 0.")
-            n_keep = max(
-                2, int(round(len(source_indices) * bootstrap_downsample_fraction))
-            )
+            n_keep = max(2, round(len(source_indices) * bootstrap_downsample_fraction))
             n_keep = min(n_keep, len(source_indices))
             sample_idx = sample_farthest_points_randomized(
                 source_embedding,
@@ -199,18 +201,16 @@ def select_bootstrap_sample(
                 alpha=bootstrap_fps_alpha,
             )
         case "herding":
-            n_keep = max(
-                2, int(round(len(source_indices) * bootstrap_downsample_fraction))
-            )
+            n_keep = max(2, round(len(source_indices) * bootstrap_downsample_fraction))
             n_keep = min(n_keep, len(source_indices))
             if bootstrap_herding_seed is None:
-                bootstrap_herding_seed = int(np.random.randint(0, 1_000_000))
+                bootstrap_herding_seed = np.random.randint(0, 1_000_000)
             sample_idx = kernel_herding_main(
                 sample_set_ind=np.arange(len(source_indices)),
                 X=source_embedding,
                 num_subsamples=n_keep,
                 frequency_seed=bootstrap_herding_seed,
-                n_features=int(bootstrap_herding_n_features),
+                n_features=bootstrap_herding_n_features,
             )
     return [source_indices[int(i)] for i in sample_idx.tolist()]
 
@@ -307,6 +307,36 @@ def _remap_subfiltration_cocycles_to_local(
                     for simplex_vertices, coefficient in cocycle
                 ]
             )
+        remapped.append(remapped_dim)
+    return remapped
+
+
+def _localize_image_pair_simplices(simplices_by_dim: list, vertex_offset: int) -> list:
+    remapped = []
+    for births, deaths in simplices_by_dim:
+        remapped.append(
+            [
+                [[int(v) - vertex_offset for v in simplex] for simplex in births],
+                [[int(v) for v in simplex] for simplex in deaths],
+            ]
+        )
+    return remapped
+
+
+def _restrict_image_cocycles_to_local(
+    cocycles_by_dim: list, vertex_offset: int, n_vertices: int
+) -> list:
+    remapped = []
+    for dim_cocycles in cocycles_by_dim:
+        remapped_dim = []
+        for cocycle in dim_cocycles:
+            restricted = []
+            for simplex_vertices, coefficient in cocycle:
+                local = [int(v) - vertex_offset for v in simplex_vertices]
+                if any(v < 0 or v >= n_vertices for v in local):
+                    continue
+                restricted.append([local, int(coefficient)])
+            remapped_dim.append(restricted)
         remapped.append(remapped_dim)
     return remapped
 
@@ -457,6 +487,30 @@ def compute_cross_dataset_image_homology(
         source_image_result=source_image_result,
         target_image_result=target_image_result,
         n_source_vertices=n_source_vertices,
+        source_distance_matrix=union_distance_matrix[
+            :n_source_vertices, :n_source_vertices
+        ].tocsr(),
+        target_distance_matrix=union_distance_matrix[
+            n_source_vertices:, n_source_vertices:
+        ].tocsr(),
+        source_image_pair_simplices=_localize_image_pair_simplices(
+            simplices_by_dim=source_image_result.image.births_and_deaths_simplex_by_dim,
+            vertex_offset=0,
+        ),
+        target_image_pair_simplices=_localize_image_pair_simplices(
+            simplices_by_dim=target_image_result.image.births_and_deaths_simplex_by_dim,
+            vertex_offset=n_source_vertices,
+        ),
+        source_image_cocycles=_restrict_image_cocycles_to_local(
+            cocycles_by_dim=source_image_result.image.cocycles_by_dim,
+            vertex_offset=0,
+            n_vertices=n_source_vertices,
+        ),
+        target_image_cocycles=_restrict_image_cocycles_to_local(
+            cocycles_by_dim=target_image_result.image.cocycles_by_dim,
+            vertex_offset=n_source_vertices,
+            n_vertices=len(target_embedding),
+        ),
     )
 
 
@@ -513,12 +567,10 @@ def compute_boundary_matrix_data(
             vertex_indices_np = np.arange(sparse_pairwise_distance_matrix.shape[0])
         else:
             vertex_indices_np = np.asarray(vertex_indices, dtype=np.int64)
-        # important: must convert triangle vertex ids to global indices
         triangles = vertex_indices_np[triangles_local]
-        # CRITICAL: sort triangle vertices to ensure consistent orientation
-        # Without this, d1 @ d2 != 0 when downsampling is used
-        triangles = np.sort(triangles, axis=1)
-        # NOTE: edges and triangles are encoded based on the total number of vertices, not the downsampled number
+        order = np.argsort(triangles, axis=1)
+        triangles = np.take_along_axis(triangles, order, axis=1)
+        triangles_local = np.take_along_axis(triangles_local, order, axis=1)
         edge_ids, trig_ids = encode_triangles_and_edges(
             triangles, meta.preprocess.num_vertices
         )
@@ -582,34 +634,6 @@ def _decode_deformation(
     }
 
 
-def _loop_proximity_column_scores(
-    centroids: np.ndarray,
-    loop_coords: np.ndarray,
-    n_neighbors: int,
-) -> np.ndarray:
-    """Mean distance from each triangle centroid to its k nearest loop points."""
-    n_tri = centroids.shape[0]
-    n_loop = loop_coords.shape[0]
-    if n_tri == 0:
-        return np.empty(0, dtype=np.float64)
-    if n_loop == 0:
-        return np.full(n_tri, np.inf, dtype=np.float64)
-
-    k = max(1, min(int(n_neighbors), n_loop))
-    if n_loop <= 64:
-        d = cdist(centroids, loop_coords)
-        if k == n_loop:
-            return d.mean(axis=1)
-        idx = np.argpartition(d, kth=k - 1, axis=1)[:, :k]
-        return np.take_along_axis(d, idx, axis=1).mean(axis=1)
-
-    from pynndescent import NNDescent
-
-    index = NNDescent(loop_coords, n_neighbors=k)
-    _, dists = index.query(centroids, k=k)
-    return np.asarray(dists, dtype=np.float64).mean(axis=1)
-
-
 def compute_loop_homological_equivalence(
     boundary_matrix_d1: "BoundaryMatrixD1",
     loop_mask_a: np.ndarray,
@@ -621,9 +645,7 @@ def compute_loop_homological_equivalence(
     max_column_diameter: float | None = None,
     cocycle_edge_mask: np.ndarray | None = None,
     column_trim_method: ColumnTrimMethod = DEFAULT_COLUMN_TRIM_METHOD,
-    embedding: np.ndarray | None = None,
-    loop_vertex_ids: np.ndarray | None = None,
-    n_neighbors_column_trim: int = DEFAULT_N_NEIGHBORS_COLUMN_TRIM,
+    column_scores: np.ndarray | None = None,
 ) -> LoopClassEquivalence:
     """
     Parameters
@@ -638,20 +660,11 @@ def compute_loop_homological_equivalence(
     column_trim_method: {"diameter", "loop_proximity"}
         When more triangle columns remain than edge rows, trim to ``nrow`` columns.
         ``diameter`` keeps the largest-diameter triangles (legacy).
-        ``loop_proximity`` keeps triangles whose centroids are nearest to the
-        loop vertices (requires ``embedding`` and ``loop_vertex_ids``).
+        ``loop_proximity`` keeps the columns nearest to the loops, ranked by
+        ``column_scores`` (one score per boundary-matrix column, lower is nearer).
     """
     assert loop_mask_a.shape[1] == boundary_matrix_d1.shape[0]
     assert loop_mask_b.shape[1] == boundary_matrix_d1.shape[0]
-    if column_trim_method not in ("diameter", "loop_proximity"):
-        raise ValueError(f"unknown column_trim_method: {column_trim_method}")
-    if column_trim_method == "loop_proximity":
-        if embedding is None:
-            raise ValueError("column_trim_method='loop_proximity' requires embedding")
-        if loop_vertex_ids is None:
-            raise ValueError(
-                "column_trim_method='loop_proximity' requires loop_vertex_ids"
-            )
 
     # in F2, sum is just xor
     loop_sums = loop_mask_a[:, None, :] ^ loop_mask_b[None, :, :]
@@ -689,9 +702,11 @@ def compute_loop_homological_equivalence(
     col_diams = np.asarray(boundary_matrix_d1.col_simplex_diams, dtype=float)
     col_simplex_ids = np.asarray(boundary_matrix_d1.col_simplex_ids, dtype=int)
     row_simplex_ids = np.asarray(boundary_matrix_d1.row_simplex_ids, dtype=int)
-    column_rows = [one_ridx_A[one_cidx_A == i] for i in range(ncol_A)]
-    if any(len(rows) != 3 for rows in column_rows):
+    if one_cidx_A.size != 3 * ncol_A or not np.all(
+        np.bincount(one_cidx_A, minlength=ncol_A) == 3
+    ):
         raise ValueError("every D1 boundary-matrix column must contain three edges")
+    column_rows = one_ridx_A[np.argsort(one_cidx_A, kind="stable")].reshape(ncol_A, 3)
 
     cols_keep = np.arange(ncol_A, dtype=int)
     if max_column_diameter is not None:
@@ -701,17 +716,18 @@ def compute_loop_homological_equivalence(
 
     if cols_keep.size > nrow_A:
         if column_trim_method == "loop_proximity":
-            assert embedding is not None and loop_vertex_ids is not None
-            centroids = boundary_matrix_d1.compute_col_centroids(embedding)[cols_keep]
-            loop_ids = np.unique(np.asarray(loop_vertex_ids, dtype=np.int64))
-            loop_coords = np.asarray(embedding)[loop_ids].astype(np.float64, copy=False)
-            scores = _loop_proximity_column_scores(
-                centroids=centroids,
-                loop_coords=loop_coords,
-                n_neighbors=n_neighbors_column_trim,
-            )
+            if column_scores is None:
+                raise ValueError(
+                    "column_trim_method='loop_proximity' requires column_scores"
+                )
+            scores = np.asarray(column_scores)
+            if scores.shape[0] != boundary_matrix_d1.shape[1]:
+                raise ValueError(
+                    f"column_scores has {scores.shape[0]} entries but the boundary "
+                    f"matrix has {boundary_matrix_d1.shape[1]} columns"
+                )
             # keep nearest (lowest score); stable for ties
-            keep_order = np.argsort(scores, kind="stable")[:nrow_A]
+            keep_order = np.argsort(scores[cols_keep], kind="stable")[:nrow_A]
             cols_keep = cols_keep[keep_order]
         else:
             # legacy: keep the larger remaining triangles
@@ -720,12 +736,8 @@ def compute_loop_homological_equivalence(
 
     # order columns by increasing diameter (relaxation replaces the largest tail)
     cols_keep = cols_keep[np.argsort(col_diams[cols_keep], kind="stable")]
-    ncol_A = int(cols_keep.size)
-    one_ridx_A = (
-        np.concatenate([column_rows[i] for i in cols_keep])
-        if ncol_A > 0
-        else np.empty(0, dtype=int)
-    )
+    ncol_A = cols_keep.size
+    one_ridx_A = column_rows[cols_keep].ravel()
     one_cidx_A = np.repeat(np.arange(ncol_A, dtype=int), 3)
     solver_column_ids = [int(col_simplex_ids[i]) for i in cols_keep]
     solver_columns_are_triangles = [True] * ncol_A
