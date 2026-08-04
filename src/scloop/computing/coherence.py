@@ -66,11 +66,14 @@ def _greedy_reversal(
             current_remaining_cost = abs(target_length - length)
             next_length = _perimeter(next_cycle, edge_lengths)
             next_remaining_cost = abs(target_length - next_length)
-            step_reversal = max(
-                next_remaining_cost - current_remaining_cost,
-                0.0,
+            step_reversal = (
+                max(
+                    next_remaining_cost - current_remaining_cost,
+                    0.0,
+                )
+                / length
             )
-            step_abs = abs(next_length - length)
+            step_abs = abs(next_length - length) / length
             key = (next_remaining_cost, triangle_index)
             if best_key is None or key < best_key:
                 best_key = key
