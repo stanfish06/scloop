@@ -87,7 +87,7 @@ def _greedy_reversal(
 
         triangle_index, cycle, length, step_reversal, step_abs = best_step
         remaining.remove(triangle_index)
-        reversal += step_reversal**2
+        reversal += step_reversal
         total_step_abs += step_abs
 
     return 1 - reversal / total_step_abs if cycle == target else None
