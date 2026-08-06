@@ -157,6 +157,7 @@ def check_homological_equivalence(
     column_trim_method: ColumnTrimMethod = DEFAULT_COLUMN_TRIM_METHOD,
     column_scores: np.ndarray | None = None,
     embedding: np.ndarray | None = None,
+    death_scale: float | None = None,
     n_neighbors_column_trim: int = DEFAULT_N_NEIGHBORS_COLUMN_TRIM,
 ) -> LoopClassEquivalence:
     if len(source_loops) == 0 or len(target_loops) == 0:
@@ -208,7 +209,7 @@ def check_homological_equivalence(
         column_scores=column_scores,
     )
 
-    if not compute_homotopy_coherence:
+    if not compute_homotopy_coherence or embedding is None:
         return result
 
     assert isinstance(loop_edges_a, LoopEdges)
@@ -243,6 +244,8 @@ def check_homological_equivalence(
                 ],
                 edge_lengths=edge_lengths,
                 num_vertices=boundary_matrix_d1.num_vertices,
+                embedding=embedding,
+                death_scale=death_scale,
                 method=homotopy_coherence_method,
             )
         )
@@ -262,16 +265,18 @@ def check_homological_equivalence(
                 source_edges=tuple(source ^ relaxation_edges),
                 target_edges=tuple(target),
                 triangles=triangles,
-                edge_lengths=edge_lengths,
                 num_vertices=boundary_matrix_d1.num_vertices,
+                embedding=embedding,
+                death_scale=death_scale,
                 method=homotopy_coherence_method,
             ),
             compute_coherence(
                 source_edges=tuple(source),
                 target_edges=tuple(target ^ relaxation_edges),
                 triangles=triangles,
-                edge_lengths=edge_lengths,
                 num_vertices=boundary_matrix_d1.num_vertices,
+                embedding=embedding,
+                death_scale=death_scale,
                 method=homotopy_coherence_method,
             ),
         ]

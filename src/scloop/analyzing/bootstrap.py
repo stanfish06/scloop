@@ -201,6 +201,7 @@ def run_single_bootstrap(
     extra_diameter_homology_equivalence: float = DEFAULT_EXTRA_DIAM_EQUIVALENCE,
     filter_column_homology_equivalence: bool = True,
     column_trim_method: ColumnTrimMethod = DEFAULT_COLUMN_TRIM_METHOD,
+    death_scale: float | None = None,
     n_neighbors_column_trim: int = DEFAULT_N_NEIGHBORS_COLUMN_TRIM,
     full_pairwise_distance_matrix: csr_matrix | None = None,
     full_vertex_ids: list[int] | None = None,
@@ -453,6 +454,8 @@ def run_single_bootstrap(
                 max_column_diameter=max_column_diameter,
                 cocycle_edge_mask=cocycle_edge_masks[source_idx],
                 column_trim_method=column_trim_method,
+                embedding=embedding,
+                death_scale=death_scale,
                 column_scores=(
                     source_loop.column_proximity_scores(
                         original_boundary_matrix_d1,
@@ -496,6 +499,10 @@ def run_bootstrap_pipeline(
     **kwargs,
 ) -> list[BootstrapResult]:
     results: list[BootstrapResult] = []
+    _original_deaths = [lc.death for lc in original_loop_classes if lc is not None]
+    global_death_scale = (
+        max(_original_deaths) if _original_deaths else meta.bootstrap.threshold_homology
+    )
 
     full_pairwise_distance_matrix: csr_matrix | None = None
     full_vertex_ids: list[int] | None = None
@@ -512,9 +519,7 @@ def run_bootstrap_pipeline(
     if kwargs.get("column_trim_method", DEFAULT_COLUMN_TRIM_METHOD) == "loop_proximity":
         assert meta.preprocess is not None
         assert meta.preprocess.embedding_method is not None
-        warm_embedding = np.array(
-            adata.obsm[f"X_{meta.preprocess.embedding_method}"]
-        )
+        warm_embedding = np.array(adata.obsm[f"X_{meta.preprocess.embedding_method}"])
         for loop_class in original_loop_classes:
             if loop_class is not None and loop_class.representatives is not None:
                 loop_class.column_proximity_scores(
@@ -537,6 +542,7 @@ def run_bootstrap_pipeline(
                 meta=meta,
                 original_loop_classes=original_loop_classes,
                 original_boundary_matrix_d1=original_boundary_matrix_d1,
+                death_scale=global_death_scale,
                 full_pairwise_distance_matrix=full_pairwise_distance_matrix,
                 full_vertex_ids=full_vertex_ids,
                 reconstruct_on_full_data=reconstruct_on_full_data,

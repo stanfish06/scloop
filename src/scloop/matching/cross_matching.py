@@ -153,6 +153,11 @@ def _attribute_to_loop_class(
                     + extra_diameter * max_lifetime,
                     cocycle_edge_mask=cocycle_edge_mask,
                     column_scores=column_scores,
+                    embedding=side.embedding,
+                    death_scale=max(
+                        (lc.death for lc in side.loop_classes if lc is not None),
+                        default=None,
+                    ),
                     **kwargs_equivalence,
                 )
                 if equivalence.is_equivalent(relax=with_relaxation):

@@ -147,6 +147,8 @@ def find_loops(
         boundary_thresh = threshold_boundary
         if boundary_thresh is None:
             boundary_thresh = threshold_homology
+        meta.bootstrap.threshold_homology = threshold_homology
+        meta.bootstrap.threshold_boundary = threshold_boundary
         hd._compute_boundary_matrix_d1(
             adata=adata, thresh=boundary_thresh, verbose=verbose
         )

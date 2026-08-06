@@ -14,6 +14,7 @@ from .types import (
     FeatureSelectionMethod,
     IndexListDownSample,
     Percent_t,
+    PositiveFloat,
     Size_t,
 )
 
@@ -172,6 +173,8 @@ class PreprocessMeta(BaseModel):
 class BootstrapMeta(BaseModel):
     indices_resample: list[IndexListDownSample] | None = None
     life_pct: Percent_t | None = None
+    threshold_homology: PositiveFloat | None = None
+    threshold_boundary: PositiveFloat | None = None
 
     def to_hdf5_group(self, group: h5py.Group, compress: bool = True) -> None:
         group.attrs["_type"] = "BootstrapMeta"

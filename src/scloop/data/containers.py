@@ -27,6 +27,7 @@ from ..computing.homology import (
     compute_persistence_diagram_and_cocycles,
 )
 from ..computing.loops import compute_loop_representatives
+from ..computing.coherence import global_h1_death_scale
 from ..computing.matching import (
     check_homological_equivalence,
     cocycle_to_edge_mask,
@@ -815,6 +816,8 @@ class HomologyData:
             max_column_diameter=max_column_diameter,
             cocycle_edge_mask=cocycle_edge_mask,
             column_trim_method=column_trim_method,
+            embedding=embedding,
+            death_scale=global_h1_death_scale(self.persistence_diagram),
             column_scores=(
                 source_loop_class.column_proximity_scores(
                     self.boundary_matrix_d1,
