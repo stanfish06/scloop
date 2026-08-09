@@ -94,7 +94,7 @@ def _greedy_reversal(
     triangles: tuple[frozenset[int], ...],
     num_vertices: int,
     embedding: np.ndarray,
-    death_scale: float | None = None,
+    death_scale: float,
 ) -> float | None:
     target_coords = _cycle_coords(target, num_vertices, embedding)
     source_coords = _cycle_coords(source, num_vertices, embedding)
@@ -165,7 +165,7 @@ def path_finding_coherence(
     triangles: Sequence[Sequence[int]],
     num_vertices: int,
     embedding: np.ndarray,
-    death_scale: float | None = None,
+    death_scale: float,
 ) -> float | None:
 
     source = frozenset(source_edges)
@@ -201,7 +201,7 @@ def compute_coherence(
     triangles: Sequence[Sequence[int]],
     num_vertices: int,
     embedding: np.ndarray,
-    death_scale: float | None = None,
+    death_scale: float,
     method: HomotopyCoherenceMethod = "path_finding",
 ) -> float | None:
     return path_finding_coherence(

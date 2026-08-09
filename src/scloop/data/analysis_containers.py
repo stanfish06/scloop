@@ -7,7 +7,7 @@ import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.dataclasses import dataclass
 from pynndescent import NNDescent
-from scipy.stats import chi2_contingency, fisher_exact, gamma
+from scipy.stats import chi2_contingency, fisher_exact, gamma, wilcoxon
 from scipy.stats.contingency import odds_ratio
 
 from ..computing import compute_weighted_hodge_embedding
@@ -501,15 +501,15 @@ class LoopTrack:
         self,
         mode: Literal["full", "mean", "median"] = "full",
         mode_match: Literal["max", "mean", "median"] = "max",
-    ) -> list[Percent_t | None] | Percent_t | None:
+    ) -> list[tuple] | Percent_t | None:
         values = [
-            match.summarize_homotopy_coherence(mode=mode_match)
+            (match.idx_bootstrap, match.summarize_homotopy_coherence(mode=mode_match))
             for match in self.filter_matches(keep="equivalent")
         ]
         if mode == "full":
             return values
 
-        valid_values = [value for value in values if value is not None]
+        valid_values = [value[1] for value in values if value[1] is not None]
         if not valid_values:
             return None
         match mode:
@@ -748,6 +748,35 @@ class BootstrapAnalysis:
         return PresenceTestResult(
             probabilities=probs_presence,
             odds_ratios=odds_ratio_presence,
+            pvalues_raw=pvalues_raw_presence,
+            pvalues_corrected=pvalues_corrected_presence,
+        )
+
+    def wilcoxon_test_presence(
+        self, method_pval_correction: MultipleTestCorrectionMethod
+    ):
+        n_tracks = len(self.loop_tracks)
+        presence_matrix = np.zeros([self.num_bootstraps, n_tracks])
+        for ti, trk in self.loop_tracks.items():
+            coherence_values = trk.summarize_homotopy_coherence(
+                mode="full",
+                mode_match="mean",
+            )
+            for bi, cv in coherence_values:
+                presence_matrix[bi, ti] = cv if cv else 0
+        presence_global = np.mean(presence_matrix, axis=1)
+        pvalues_raw_presence = []
+        for i in range(n_tracks):
+            result = wilcoxon(
+                x=presence_matrix[:, i], y=presence_global, alternative="greater"
+            )
+            pvalues_raw_presence.append(result.pvalue)
+        pvalues_corrected_presence = correct_pvalues(
+            pvalues_raw_presence, method=method_pval_correction
+        )
+        return PresenceTestResult(
+            probabilities=[],
+            odds_ratios=[],
             pvalues_raw=pvalues_raw_presence,
             pvalues_corrected=pvalues_corrected_presence,
         )
