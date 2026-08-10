@@ -762,7 +762,7 @@ class BootstrapAnalysis:
                 mode="full",
                 mode_match="mean",
             )
-            for bi, cv in coherence_values:
+            for bi, cv in coherence_values:  # type: ignore
                 presence_matrix[bi, ti] = cv if cv else 0
         presence_global = np.mean(presence_matrix, axis=1)
         pvalues_raw_presence = []
@@ -770,7 +770,7 @@ class BootstrapAnalysis:
             result = wilcoxon(
                 x=presence_matrix[:, i], y=presence_global, alternative="greater"
             )
-            pvalues_raw_presence.append(result.pvalue)
+            pvalues_raw_presence.append(result.pvalue)  # type: ignore
         pvalues_corrected_presence = correct_pvalues(
             pvalues_raw_presence, method=method_pval_correction
         )
