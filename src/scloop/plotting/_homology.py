@@ -357,17 +357,14 @@ def persistence_diagram(
                 s=s,
                 **(kwargs_scatter or {}),
             )
-            max_val = float(
-                max(
-                    max_val,
-                    max(np.percentile(births_boot, 90), np.percentile(deaths_boot, 90)),
-                )
+            max_val = max(
+                max_val,
+                max(np.percentile(births_boot, 90), np.percentile(deaths_boot, 90)),
             )
-            min_val = float(
-                min(
-                    min_val,
-                    min(np.percentile(births_boot, 10), np.percentile(deaths_boot, 10)),
-                )
+
+            min_val = min(
+                min_val,
+                min(np.percentile(births_boot, 10), np.percentile(deaths_boot, 10)),
             )
 
     track_ids = track_ids or []
@@ -391,16 +388,16 @@ def persistence_diagram(
                 )
 
     num_ticks = 6
-    ax.set_xlim(float(max(min_val, 0)), max_val)
-    ax.set_ylim(float(max(min_val, 0)), max_val)
+    ax.set_xlim(max(min_val, 0), max_val)
+    ax.set_ylim(max(min_val, 0), max_val)
     ticks = np.linspace(max(min_val, 0), max_val, num_ticks)
     tick_labs = [round(i, 3) for i in np.linspace(max(min_val, 0), max_val, num_ticks)]
     ax.set_xticks(ticks, tick_labs)
     ax.set_yticks(ticks, tick_labs)
 
     ax.plot(
-        [float(max(min_val, 0)), max_val],
-        [float(max(min_val, 0)), max_val],
+        [max(min_val, 0), max_val],
+        [max(min_val, 0), max_val],
         color="red",
         linestyle="--",
         **(kwargs_line or {}),
