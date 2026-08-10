@@ -106,7 +106,7 @@ jobs:
           CIBW_CONFIG_SETTINGS_WINDOWS: ${{ matrix.config_settings_windows || '' }}
 
       - name: Upload wheels
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: wheels-${{ matrix.label }}
           path: wheelhouse/*.whl
@@ -136,7 +136,7 @@ jobs:
           python -m build --sdist
 
       - name: Upload sdist
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sdist
           path: dist/*.tar.gz
