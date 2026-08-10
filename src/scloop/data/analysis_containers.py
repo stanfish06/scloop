@@ -755,22 +755,36 @@ class BootstrapAnalysis:
     def wilcoxon_test_presence(
         self, method_pval_correction: MultipleTestCorrectionMethod
     ):
-        n_tracks = len(self.loop_tracks)
-        presence_matrix = np.zeros([self.num_bootstraps, n_tracks])
-        for ti, trk in self.loop_tracks.items():
-            coherence_values = trk.summarize_homotopy_coherence(
+        track_ids = sorted(self.loop_tracks)
+        coherence_per_track: dict[Index_t, list[tuple]] = {  # type: ignore[misc]
+            tid: self.loop_tracks[tid].summarize_homotopy_coherence(
                 mode="full",
                 mode_match="mean",
             )
-            for bi, cv in coherence_values:  # type: ignore
-                presence_matrix[bi, ti] = cv if cv else 0
+            for tid in track_ids
+        }
+        rows_bootstrap = {
+            bi: ri
+            for ri, bi in enumerate(
+                sorted(
+                    {bi for values in coherence_per_track.values() for bi, _ in values}
+                )
+            )
+        }
+        presence_matrix = np.zeros([len(rows_bootstrap), len(track_ids)])
+        for ti, tid in enumerate(track_ids):
+            for bi, cv in coherence_per_track[tid]:
+                presence_matrix[rows_bootstrap[bi], ti] = cv if cv else 0
         presence_global = np.mean(presence_matrix, axis=1)
         pvalues_raw_presence = []
-        for i in range(n_tracks):
-            result = wilcoxon(
-                x=presence_matrix[:, i], y=presence_global, alternative="greater"
-            )
-            pvalues_raw_presence.append(result.pvalue)  # type: ignore
+        for i in range(len(track_ids)):
+            column = presence_matrix[:, i]
+            if np.allclose(column, presence_global):
+                pvalues_raw_presence.append(1.0)
+                continue
+            result = wilcoxon(x=column, y=presence_global, alternative="greater")
+            pvalue = float(result.pvalue)  # type: ignore[attr-defined]
+            pvalues_raw_presence.append(pvalue if np.isfinite(pvalue) else 1.0)
         pvalues_corrected_presence = correct_pvalues(
             pvalues_raw_presence, method=method_pval_correction
         )

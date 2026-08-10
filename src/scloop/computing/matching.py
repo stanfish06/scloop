@@ -157,7 +157,7 @@ def check_homological_equivalence(
     column_trim_method: ColumnTrimMethod = DEFAULT_COLUMN_TRIM_METHOD,
     column_scores: np.ndarray | None = None,
     embedding: np.ndarray | None = None,
-    death_scale: float | None = None,
+    death_scale: float = 1.0,
     n_neighbors_column_trim: int = DEFAULT_N_NEIGHBORS_COLUMN_TRIM,
 ) -> LoopClassEquivalence:
     if len(source_loops) == 0 or len(target_loops) == 0:
@@ -215,9 +215,6 @@ def check_homological_equivalence(
     assert isinstance(loop_edges_a, LoopEdges)
     assert isinstance(loop_edges_b, LoopEdges)
     row_edge_ids = np.asarray(boundary_matrix_d1.row_simplex_ids, dtype=int)
-    edge_lengths = dict(
-        zip(row_edge_ids.tolist(), boundary_matrix_d1.row_simplex_diams)
-    )
     row_indices = np.asarray(boundary_matrix_d1.data[0], dtype=int)
     column_indices = np.asarray(boundary_matrix_d1.data[1], dtype=int)
     edges_per_column = row_edge_ids[
@@ -242,7 +239,6 @@ def check_homological_equivalence(
                     triangle_edges[triangle_id]
                     for triangle_id in deformation["triangle_ids"]
                 ],
-                edge_lengths=edge_lengths,
                 num_vertices=boundary_matrix_d1.num_vertices,
                 embedding=embedding,
                 death_scale=death_scale,
