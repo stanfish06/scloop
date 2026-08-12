@@ -1,4 +1,5 @@
 # Copyright 2025 Zhiyuan Yu (Heemskerk's lab, University of Michigan)
+from scloop.preprocessing.delve.kh import _density_to_weights
 from __future__ import annotations
 
 import math
@@ -379,7 +380,7 @@ def reconstruct_n_loop_representatives(
     if foreign_cocycle_edges and foreign_chord_mult > 1.0:
         own_chord_keys = {(min(e), max(e)) for e in all_cocycle_edges}
         foreign_keys = {
-            (min(int(u), int(v)), max(int(u), int(v))) for u, v in foreign_cocycle_edges
+            (min(u, v), max(u, v)) for u, v in foreign_cocycle_edges
         } - own_chord_keys
         for idx, e in enumerate(edge_list):
             if e in foreign_keys:
@@ -472,7 +473,7 @@ def _select_diverse_loops(
     max_perimeter_mult: float = DEFAULT_MAX_PERIMETER_MULT,
 ) -> Tuple[List[List[int]], List[float]]:
     pairs = sorted(
-        [(float(d), list(c)) for d, c in zip(distances, cycles) if math.isfinite(d)],
+        [(d, list(c)) for d, c in zip(distances, cycles) if math.isfinite(d)],
         key=lambda x: x[0],
     )
     if not pairs:
@@ -496,10 +497,152 @@ def _select_diverse_loops(
         idxs = []
         for i in range(n_return):
             pct = (lower_pct + step * i) / 100
-            idx = min(int(math.floor(n_total * pct)), n_total - 1)
+            idx = min(math.floor(n_total * pct), n_total - 1)
             idxs.append(idx)
 
     selected = [pairs[i] for i in idxs]
     dists = [p[0] for p in selected]
     loops = [p[1] for p in selected]
     return loops, dists
+
+
+def _distance_to_edge(p, a, b):
+    ab = b - a
+    denom = float(ab @ ab)
+    if denom == 0.0:
+        return float(np.linalg.norm(p - a))
+    s = float(np.clip((p - a) @ ab / denom, 0.0, 1.0))
+    return float(np.linalg.norm(p - (a + s * ab)))
+
+
+def _select_split_point(
+    a: int,
+    b: int,
+    u: int,
+    v: int,
+    embedding: np.ndarray,
+    used: set[int],
+    max_diameter: float,
+    limit: float | None,
+) -> int | None:
+    d_a = np.linalg.norm(embedding - embedding[a], axis=1)
+    d_b = np.linalg.norm(embedding - embedding[b], axis=1)
+    candidates = np.arange(embedding.shape[0], dtype=np.int64)[
+        (d_a <= max_diameter) & (d_b <= max_diameter)
+    ]
+    candidates = np.array([p for p in candidates if p not in used], dtype=np.int64)
+
+    if limit is not None:
+        offset = np.array(
+            [
+                _distance_to_edge(embedding[int(w)], embedding[u], embedding[v])
+                for w in candidates
+            ]
+        )
+        candidates = candidates[offset <= limit]
+        if candidates.size == 0:
+            return None
+
+    midpoint = 0.5 * (embedding[a] + embedding[b])
+    return int(
+        candidates[np.argmin(np.linalg.norm(embedding[candidates] - midpoint, axis=1))]
+    )
+
+
+def _densify_loops(
+    vertices: list[int],
+    embedding: np.ndarray,
+    local_scale: np.ndarray,
+    max_diameter: float,
+    max_insert_per_edge: int,
+    split_edge_length_mult: float | None = None,
+    split_point_distance_mult: float | None = None,
+) -> list[int]:
+    if len(vertices) < 2:
+        return list(vertices)
+
+    refined: list[int] = [vertices[0]]
+    used = {v for v in vertices}
+
+    for u, v in zip(vertices[:-1], vertices[1:]):
+        poly = [u, v]
+        limit = (
+            split_point_distance_mult * 0.5 * (local_scale[u] + local_scale[v])
+            if split_point_distance_mult is not None
+            else None
+        )
+        stalled_pairs: set[tuple[int, int]] = set()
+        n_inserted = 0
+        while n_inserted < max_insert_per_edge:
+            edges_to_split = []
+            for i in range(len(poly) - 1):
+                a, b = poly[i], poly[i + 1]
+                if (a, b) in stalled_pairs:
+                    continue
+                edge_length = float(np.linalg.norm(embedding[a] - embedding[b]))
+                target_edge_length = (
+                    split_edge_length_mult * 0.5 * (local_scale[a] + local_scale[b])
+                    if split_edge_length_mult is not None
+                    else 0.5 * (local_scale[a] + local_scale[b])
+                )
+                if edge_length > target_edge_length:
+                    edges_to_split.append((target_edge_length / edge_length, i, a, b))
+            if not edges_to_split:
+                break
+            edges_to_split.sort(key=lambda x: -x[0])
+
+            inserted_this_round = False
+            for _, i, a, b in edges_to_split:
+                p = _select_split_point(
+                    a=a,
+                    b=b,
+                    u=u,
+                    v=v,
+                    embedding=embedding,
+                    used=used,
+                    max_diameter=max_diameter,
+                    limit=limit,
+                )
+                if p is None:
+                    stalled_pairs.add((a, b))
+                    continue
+                poly.insert(i + 1, p)
+                used.add(p)
+                n_inserted += 1
+                inserted_this_round = True
+                break
+            if not inserted_this_round:
+                break
+        refined.extend(poly[1:])
+
+    return refined
+
+
+def refine_loop_classes(
+    loop_classes: list[LoopClass],
+    embedding: np.ndarray,
+    local_scale: np.ndarray,
+    max_insert_per_edge: int,
+    split_edge_length_mult: float | None = None,
+    split_point_distance_mult: float | None = None,
+    life_pct: float = 0.0,
+) -> None:
+    for loop_class in loop_classes:
+        if loop_class is None or not loop_class.representatives:
+            continue
+        max_diameter = loop_class.birth + life_pct * (
+            loop_class.death - loop_class.birth
+        )
+        refined_all = []
+        for rep in loop_class.representatives:
+            refined = _densify_loops(
+                vertices=list(rep),
+                embedding=embedding,
+                local_scale=local_scale,
+                max_diameter=max_diameter,
+                max_insert_per_edge=max_insert_per_edge,
+                split_edge_length_mult=split_edge_length_mult,
+                split_point_distance_mult=split_point_distance_mult,
+            )
+            refined_all.append(refined)
+        loop_class.representatives_refined = refined_all

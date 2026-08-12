@@ -116,6 +116,7 @@ class LoopClass(BaseModel):
     death_simplex: list[Index_t] = Field(default_factory=list)
     cocycles: list | None = None
     representatives: list[list[Index_t]] | None = None
+    representatives_refined: list[list[Index_t]] | None = None
     coordinates_vertices_representatives: list[list[list[float]]] | None = None
 
     _cached_column_scores: np.ndarray | None = None
