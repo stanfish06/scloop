@@ -453,8 +453,10 @@ class LogDisplay(BaseModel):
 
         self._in_jupyter = _is_in_jupyter()
         console = self.console
-        if not self._in_jupyter and console is not None and (
-            not console.is_terminal or console.is_dumb_terminal
+        if (
+            not self._in_jupyter
+            and console is not None
+            and (not console.is_terminal or console.is_dumb_terminal)
         ):
             return self.cache
 

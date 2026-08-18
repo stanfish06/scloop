@@ -563,6 +563,7 @@ class BootstrapAnalysis:
         idx_track: Index_t,
         embedding_alt: np.ndarray | None = None,
         keep_matches: str = "equivalent",
+        use_refined: bool = False,
     ) -> list[np.ndarray]:
         assert idx_track in self.loop_tracks
         loops = []
@@ -579,11 +580,17 @@ class BootstrapAnalysis:
                                 loop_class.coordinates_vertices_representatives
                             )
                     else:
-                        if loop_class.representatives is not None:
+                        reps = loop_class.representatives
+                        if (
+                            use_refined
+                            and loop_class.representatives_refined is not None
+                        ):
+                            reps = loop_class.representatives_refined
+                        if reps is not None:
                             loops.extend(
                                 loops_to_coords(
                                     embedding=embedding_alt,
-                                    loops_vertices=loop_class.representatives,
+                                    loops_vertices=reps,
                                 )
                             )
         return loops
@@ -594,6 +601,7 @@ class BootstrapAnalysis:
         idx_loop_class: Index_t,
         idx_loop: Index_t | None = None,
         embedding_alt: np.ndarray | None = None,
+        use_refined: bool = False,
     ) -> list[list[list[float]]]:
         if idx_bootstrap < len(self.selected_loop_classes) and idx_loop_class < len(
             self.selected_loop_classes[idx_bootstrap]
@@ -614,17 +622,20 @@ class BootstrapAnalysis:
                                 ]
                             ]
                 else:
-                    if loop_class.representatives is not None:
+                    reps = loop_class.representatives
+                    if use_refined and loop_class.representatives_refined is not None:
+                        reps = loop_class.representatives_refined
+                    if reps is not None:
                         if idx_loop is None:
                             return loops_to_coords(
                                 embedding=embedding_alt,
-                                loops_vertices=loop_class.representatives,
+                                loops_vertices=reps,
                             )
                         else:
-                            assert idx_loop < len(loop_class.representatives)
+                            assert idx_loop < len(reps)
                             return loops_to_coords(
                                 embedding=embedding_alt,
-                                loops_vertices=[loop_class.representatives[idx_loop]],
+                                loops_vertices=[reps[idx_loop]],
                             )
 
         return []

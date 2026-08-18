@@ -659,6 +659,7 @@ class HomologyData:
         embedding_alt: np.ndarray | None = None,
         include_bootstrap: bool = True,
         keep_matches: str = "equivalent",
+        use_refined: bool = False,
     ) -> list[list[list[float]]]:
         """
         Use embedding stored in LoopClass by default
@@ -688,22 +689,26 @@ class HomologyData:
                                     ]
                                 )
                     else:
-                        if loop_class.representatives is not None:
+                        reps = loop_class.representatives
+                        if (
+                            use_refined
+                            and loop_class.representatives_refined is not None
+                        ):
+                            reps = loop_class.representatives_refined
+                        if reps is not None:
                             if idx_loop is None or include_bootstrap:
                                 loops.extend(
                                     loops_to_coords(
                                         embedding=embedding_alt,
-                                        loops_vertices=loop_class.representatives,
+                                        loops_vertices=reps,
                                     )
                                 )
                             else:
-                                assert idx_loop < len(loop_class.representatives)
+                                assert idx_loop < len(reps)
                                 loops.extend(
                                     loops_to_coords(
                                         embedding=embedding_alt,
-                                        loops_vertices=[
-                                            loop_class.representatives[idx_loop]
-                                        ],
+                                        loops_vertices=[reps[idx_loop]],
                                     )
                                 )
 
@@ -715,6 +720,7 @@ class HomologyData:
                                 idx_track=selector,
                                 embedding_alt=embedding_alt,
                                 keep_matches=keep_matches,
+                                use_refined=use_refined,
                             )
                         )
                     else:
@@ -737,6 +743,7 @@ class HomologyData:
                         idx_loop_class=selector[1],
                         idx_loop=idx_loop,
                         embedding_alt=embedding_alt,
+                        use_refined=use_refined,
                     )
                 )
         return loops
