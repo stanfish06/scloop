@@ -79,6 +79,7 @@ def find_loops(
     kwargs_bootstrap: dict[str, Any] | None = None,
     kwargs_loop_test: dict[str, Any] | None = None,
     kwargs_loop_representatives: dict[str, Any] | None = None,
+    kwargs_loop_refinement: dict[str, Any] | None = None,
 ) -> None:
     use_log_display = verbose and max_log_messages is not None
     if verbose:
@@ -253,6 +254,18 @@ def find_loops(
             use_log_display=use_log_display,
             use_parallel=use_parallel,
             **bootstrap_kwargs,
+        )
+        """
+        ========= loop refinement =========
+        - refine loops against full data
+        ===================================
+        """
+        if verbose:
+            logger.info("Refining loop representatives on full data")
+        hd._refine_loop_representatives(
+            embedding=embedding,
+            include_bootstrap=True,
+            **(kwargs_loop_refinement or {}),
         )
 
         """

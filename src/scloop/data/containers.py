@@ -20,14 +20,14 @@ from ..computing.boundary import (
     compute_boundary_matrix_d0,
     compute_boundary_matrix_d1,
 )
+from ..computing.coherence import global_h1_death_scale
 from ..computing.hodge_decomposition import (
     compute_hodge_matrix,
 )
 from ..computing.homology import (
     compute_persistence_diagram_and_cocycles,
 )
-from ..computing.loops import compute_loop_representatives
-from ..computing.coherence import global_h1_death_scale
+from ..computing.loops import compute_loop_representatives, refine_loop_representatives
 from ..computing.matching import (
     check_homological_equivalence,
     cocycle_to_edge_mask,
@@ -54,6 +54,7 @@ from .constants import (
     DEFAULT_K_YEN,
     DEFAULT_LIFE_PCT,
     DEFAULT_LOOP_DIST_METHOD,
+    DEFAULT_MAX_INSERT_PER_EDGE,
     DEFAULT_MAX_N_EDGES_RELAXATION_EQUIVALENCE,
     DEFAULT_MAX_PERIMETER_MULT,
     DEFAULT_MAXITER_EIGENDECOMPOSITION,
@@ -486,6 +487,46 @@ class HomologyData:
             maxiter_eigendecomposition=maxiter_eigendecomposition,
             kwargs_trajectory=kwargs_trajectory,
             kwargs_gene_trends=kwargs_gene_trends,
+        )
+
+    def _refine_loop_representatives(
+        self,
+        embedding: np.ndarray,
+        local_scale: np.ndarray | None = None,
+        max_insert_per_edge: int = DEFAULT_MAX_INSERT_PER_EDGE,
+        split_edge_length_mult: float | None = None,
+        split_point_distance_mult: float | None = None,
+        life_pct: float = 0.0,
+        include_bootstrap: bool = True,
+    ) -> None:
+        assert self.selected_loop_classes is not None
+        loop_classes_refined = []
+        for i, c in enumerate(self.selected_loop_classes):
+            if c is None:
+                continue
+            loop_classes_refined.append(c)
+            if include_bootstrap and self.bootstrap_data is not None:
+                if i in self.bootstrap_data.loop_tracks:
+                    for boot_id, loop_id in self.bootstrap_data.loop_tracks[
+                        i
+                    ].track_ipairs:
+                        if boot_id < len(
+                            self.bootstrap_data.selected_loop_classes
+                        ) and loop_id < len(
+                            self.bootstrap_data.selected_loop_classes[boot_id]
+                        ):
+                            cm = self.bootstrap_data.selected_loop_classes[boot_id][
+                                loop_id
+                            ]
+                            loop_classes_refined.append(cm)
+        refine_loop_representatives(
+            loop_classes=loop_classes_refined,
+            embedding=embedding,
+            local_scale=local_scale,
+            max_insert_per_edge=max_insert_per_edge,
+            split_edge_length_mult=split_edge_length_mult,
+            split_point_distance_mult=split_point_distance_mult,
+            life_pct=life_pct,
         )
 
     def _compute_loop_representatives(

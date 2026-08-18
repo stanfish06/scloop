@@ -1080,6 +1080,11 @@ class LoopClassAnalysis(LoopClass):
             for coords in super_obj.coordinates_vertices_representatives
         ]
         representatives = [list(rep) for rep in super_obj.representatives]
+        representatives_refined = (
+            [list(rep) for rep in super_obj.representatives_refined]
+            if super_obj.representatives_refined is not None
+            else None
+        )
 
         if len(coordinates_vertices) > 0:
             if ref_area is None:
@@ -1089,6 +1094,12 @@ class LoopClassAnalysis(LoopClass):
                     if ref_area * signed_area_2d(coordinates_vertices[i]) < 0:
                         coordinates_vertices[i] = coordinates_vertices[i][::-1]
                         representatives[i] = representatives[i][::-1]
+                        if representatives_refined is not None and i < len(
+                            representatives_refined
+                        ):
+                            representatives_refined[i] = representatives_refined[i][
+                                ::-1
+                            ]
 
         coordinates_edges = [
             (emb[0:-1, :] + emb[1:, :]) / 2 for emb in coordinates_vertices
@@ -1121,6 +1132,7 @@ class LoopClassAnalysis(LoopClass):
             death_simplex=super_obj.death_simplex,
             cocycles=super_obj.cocycles,
             representatives=representatives,
+            representatives_refined=representatives_refined,
             coordinates_vertices_representatives=[
                 c.tolist() for c in coordinates_vertices
             ],

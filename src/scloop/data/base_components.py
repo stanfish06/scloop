@@ -211,6 +211,13 @@ class LoopClass(BaseModel):
                     str(i), data=np.array(rep, dtype=np.int64), **kw
                 )
 
+        if self.representatives_refined is not None:
+            reps_ref_grp = group.create_group("representatives_refined")
+            for i, rep in enumerate(self.representatives_refined):
+                reps_ref_grp.create_dataset(
+                    str(i), data=np.array(rep, dtype=np.int64), **kw
+                )
+
         if self.coordinates_vertices_representatives is not None:
             coords_grp = group.create_group("coordinates_vertices_representatives")
             for i, coords in enumerate(self.coordinates_vertices_representatives):
@@ -258,6 +265,15 @@ class LoopClass(BaseModel):
             for i in range(len(reps_grp)):
                 representatives.append(np.asarray(reps_grp[str(i)]).tolist())
 
+        representatives_refined = None
+        if "representatives_refined" in group:
+            reps_ref_grp: h5py.Group = group["representatives_refined"]  # type: ignore[assignment]
+            representatives_refined = []
+            for i in range(len(reps_ref_grp)):
+                representatives_refined.append(
+                    np.asarray(reps_ref_grp[str(i)]).tolist()
+                )
+
         coordinates_vertices_representatives = None
         if "coordinates_vertices_representatives" in group:
             coords_grp: h5py.Group = group["coordinates_vertices_representatives"]  # type: ignore[assignment]
@@ -276,6 +292,7 @@ class LoopClass(BaseModel):
             death_simplex=death_simplex,
             cocycles=cocycles,
             representatives=representatives,
+            representatives_refined=representatives_refined,
             coordinates_vertices_representatives=coordinates_vertices_representatives,
         )
 

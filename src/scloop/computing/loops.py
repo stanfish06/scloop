@@ -1,5 +1,4 @@
 # Copyright 2025 Zhiyuan Yu (Heemskerk's lab, University of Michigan)
-from scloop.preprocessing.delve.kh import _density_to_weights
 from __future__ import annotations
 
 import math
@@ -11,13 +10,16 @@ from loguru import logger
 from numba import jit
 from pydantic import PositiveFloat
 from scipy.sparse import csr_matrix, triu
+from sklearn.neighbors import NearestNeighbors
 
 from ..data.base_components import LoopClass
 from ..data.boundary import BoundaryMatrixD1
 from ..data.constants import (
     DEFAULT_FOREIGN_CHORD_MULT,
+    DEFAULT_K_LOCAL_SCALE,
     DEFAULT_K_YEN,
     DEFAULT_LIFE_PCT,
+    DEFAULT_MAX_INSERT_PER_EDGE,
     DEFAULT_MAX_PERIMETER_MULT,
     DEFAULT_N_COCYCLES_USED,
     DEFAULT_N_FORCE_DEVIATE,
@@ -618,15 +620,20 @@ def _densify_loops(
     return refined
 
 
-def refine_loop_classes(
+def refine_loop_representatives(
     loop_classes: list[LoopClass],
     embedding: np.ndarray,
-    local_scale: np.ndarray,
-    max_insert_per_edge: int,
+    local_scale: np.ndarray | None = None,
+    max_insert_per_edge: int = DEFAULT_MAX_INSERT_PER_EDGE,
     split_edge_length_mult: float | None = None,
     split_point_distance_mult: float | None = None,
     life_pct: float = 0.0,
+    k_local_scale: int = DEFAULT_K_LOCAL_SCALE,
 ) -> None:
+    if local_scale is None:
+        nn = NearestNeighbors(n_neighbors=k_local_scale + 1).fit(embedding)
+        knn_distances, _ = nn.kneighbors(embedding)
+        local_scale = np.asarray(knn_distances[:, 1:].mean(axis=1), dtype=np.float64)
     for loop_class in loop_classes:
         if loop_class is None or not loop_class.representatives:
             continue
