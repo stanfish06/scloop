@@ -9,7 +9,9 @@ from pydantic.dataclasses import dataclass
 from scipy.spatial.distance import cdist
 from typing_extensions import Self
 
-from .types import Diameter_t, Index_t, Percent_t, PositiveFloat
+from ..computing.coherence import compute_loop_fillings
+from ..computing.matching import loops_to_edge_mask
+from .types import ColumnTrimMethod, Diameter_t, Index_t, Percent_t, PositiveFloat
 
 if TYPE_CHECKING:
     import h5py
@@ -120,6 +122,7 @@ class LoopClass(BaseModel):
     coordinates_vertices_representatives: list[list[list[float]]] | None = None
 
     _cached_column_scores: np.ndarray | None = None
+    _cached_fillings: list[tuple[Index_t, ...] | None] | None = None
 
     model_config = {"arbitrary_types_allowed": True}
 
@@ -154,6 +157,29 @@ class LoopClass(BaseModel):
             n_neighbors=n_neighbors,
         )
         return self._cached_column_scores
+
+    def fillings(
+        self,
+        boundary_matrix_d1: BoundaryMatrixD1,
+        column_trim_method: ColumnTrimMethod,
+        column_scores: np.ndarray | None = None,
+    ) -> list[tuple[Index_t, ...] | None]:
+        if self._cached_fillings is not None:
+            return self._cached_fillings
+
+        if self.representatives is None:
+            raise ValueError("loop class has no representatives to fill")
+
+        loop_mask = loops_to_edge_mask(self.representatives, boundary_matrix_d1)
+        assert isinstance(loop_mask, np.ndarray)
+        self._cached_fillings = compute_loop_fillings(
+            loop_mask=loop_mask,
+            boundary_matrix_d1=boundary_matrix_d1,
+            death=self.death,
+            column_trim_method=column_trim_method,
+            column_scores=column_scores,
+        )
+        return self._cached_fillings
 
     @property
     def persistence_pair(self) -> PersistencePair:

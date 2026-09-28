@@ -201,7 +201,6 @@ def run_single_bootstrap(
     extra_diameter_homology_equivalence: float = DEFAULT_EXTRA_DIAM_EQUIVALENCE,
     filter_column_homology_equivalence: bool = True,
     column_trim_method: ColumnTrimMethod = DEFAULT_COLUMN_TRIM_METHOD,
-    death_scale: float | None = None,
     n_neighbors_column_trim: int = DEFAULT_N_NEIGHBORS_COLUMN_TRIM,
     full_pairwise_distance_matrix: csr_matrix | None = None,
     full_vertex_ids: list[int] | None = None,
@@ -443,6 +442,15 @@ def run_single_bootstrap(
                     max(source_loop.death, target_loop.death)
                     + float(extra_diameter_homology_equivalence) * max_lifetime
                 )
+            column_scores = (
+                source_loop.column_proximity_scores(
+                    original_boundary_matrix_d1,
+                    embedding,
+                    n_neighbors_column_trim,
+                )
+                if column_trim_method == "loop_proximity"
+                else None
+            )
             match.topological_equivalence = check_homological_equivalence(
                 source_loops=source_loop.representatives,
                 target_loops=target_loop.representatives,
@@ -453,18 +461,12 @@ def run_single_bootstrap(
                 max_n_edges_relaxation=max_n_edges_relaxation_equivalence,
                 max_column_diameter=max_column_diameter,
                 cocycle_edge_mask=cocycle_edge_masks[source_idx],
+                source_fillings=source_loop.fillings(
+                    original_boundary_matrix_d1, column_trim_method, column_scores
+                ),
                 column_trim_method=column_trim_method,
                 embedding=embedding,
-                death_scale=death_scale,
-                column_scores=(
-                    source_loop.column_proximity_scores(
-                        original_boundary_matrix_d1,
-                        embedding,
-                        n_neighbors_column_trim,
-                    )
-                    if column_trim_method == "loop_proximity"
-                    else None
-                ),
+                column_scores=column_scores,
             )
             match.boundary_checked = True
 
@@ -499,10 +501,6 @@ def run_bootstrap_pipeline(
     **kwargs,
 ) -> list[BootstrapResult]:
     results: list[BootstrapResult] = []
-    _original_deaths = [lc.death for lc in original_loop_classes if lc is not None]
-    global_death_scale = (
-        max(_original_deaths) if _original_deaths else meta.bootstrap.threshold_homology
-    )
 
     full_pairwise_distance_matrix: csr_matrix | None = None
     full_vertex_ids: list[int] | None = None
@@ -516,19 +514,28 @@ def run_bootstrap_pipeline(
             )
         )
 
-    if kwargs.get("column_trim_method", DEFAULT_COLUMN_TRIM_METHOD) == "loop_proximity":
+    column_trim_method = kwargs.get("column_trim_method", DEFAULT_COLUMN_TRIM_METHOD)
+    warm_embedding = None
+    if column_trim_method == "loop_proximity":
         assert meta.preprocess is not None
         assert meta.preprocess.embedding_method is not None
         warm_embedding = np.array(adata.obsm[f"X_{meta.preprocess.embedding_method}"])
-        for loop_class in original_loop_classes:
-            if loop_class is not None and loop_class.representatives is not None:
-                loop_class.column_proximity_scores(
-                    original_boundary_matrix_d1,
-                    warm_embedding,
-                    kwargs.get(
-                        "n_neighbors_column_trim", DEFAULT_N_NEIGHBORS_COLUMN_TRIM
-                    ),
-                )
+    for loop_class in original_loop_classes:
+        if loop_class is None or loop_class.representatives is None:
+            continue
+        column_scores = (
+            loop_class.column_proximity_scores(
+                original_boundary_matrix_d1,
+                warm_embedding,
+                kwargs.get("n_neighbors_column_trim", DEFAULT_N_NEIGHBORS_COLUMN_TRIM),
+            )
+            if warm_embedding is not None
+            else None
+        )
+        if kwargs.get("require_homological_equivalence", True):
+            loop_class.fillings(
+                original_boundary_matrix_d1, column_trim_method, column_scores
+            )
 
     ExecutorClass = ThreadPoolExecutor
 
@@ -542,7 +549,6 @@ def run_bootstrap_pipeline(
                 meta=meta,
                 original_loop_classes=original_loop_classes,
                 original_boundary_matrix_d1=original_boundary_matrix_d1,
-                death_scale=global_death_scale,
                 full_pairwise_distance_matrix=full_pairwise_distance_matrix,
                 full_vertex_ids=full_vertex_ids,
                 reconstruct_on_full_data=reconstruct_on_full_data,

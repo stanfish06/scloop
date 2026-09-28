@@ -20,7 +20,6 @@ from ..computing.boundary import (
     compute_boundary_matrix_d0,
     compute_boundary_matrix_d1,
 )
-from ..computing.coherence import global_h1_death_scale
 from ..computing.hodge_decomposition import (
     compute_hodge_matrix,
 )
@@ -859,6 +858,15 @@ class HomologyData:
                 boundary_matrix_d1=self.boundary_matrix_d1,
                 vertex_ids=self._original_vertex_ids,
             )
+        column_scores = (
+            source_loop_class.column_proximity_scores(
+                self.boundary_matrix_d1,
+                embedding,
+                n_neighbors_column_trim,
+            )
+            if column_trim_method == "loop_proximity" and embedding is not None
+            else None
+        )
         result = check_homological_equivalence(
             source_loops=source_loops,
             target_loops=target_loops,
@@ -869,18 +877,12 @@ class HomologyData:
             max_n_edges_relaxation=max_n_edges_relaxation,
             max_column_diameter=max_column_diameter,
             cocycle_edge_mask=cocycle_edge_mask,
+            source_fillings=source_loop_class.fillings(
+                self.boundary_matrix_d1, column_trim_method, column_scores
+            ),
             column_trim_method=column_trim_method,
             embedding=embedding,
-            death_scale=global_h1_death_scale(self.persistence_diagram),
-            column_scores=(
-                source_loop_class.column_proximity_scores(
-                    self.boundary_matrix_d1,
-                    embedding,
-                    n_neighbors_column_trim,
-                )
-                if column_trim_method == "loop_proximity" and embedding is not None
-                else None
-            ),
+            column_scores=column_scores,
         )
         is_equivalent = result.is_equivalent(relax=with_relaxation)
         return (source_class_idx, target_class_idx, is_equivalent)

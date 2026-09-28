@@ -24,7 +24,6 @@ from ..data.constants import (
 from ..data.types import (
     ColumnTrimMethod,
     Count_t,
-    HomotopyCoherenceMethod,
     LoopDistMethod,
     LoopEdges,
     PositiveFloat,
@@ -153,29 +152,22 @@ def check_homological_equivalence(
     max_column_diameter: PositiveFloat | None = None,
     cocycle_edge_mask: np.ndarray | None = None,
     compute_homotopy_coherence: bool = True,
-    homotopy_coherence_method: HomotopyCoherenceMethod = "path_finding",
+    source_fillings: list[tuple[int, ...] | None] | None = None,
     column_trim_method: ColumnTrimMethod = DEFAULT_COLUMN_TRIM_METHOD,
     column_scores: np.ndarray | None = None,
     embedding: np.ndarray | None = None,
-    death_scale: float = 1.0,
     n_neighbors_column_trim: int = DEFAULT_N_NEIGHBORS_COLUMN_TRIM,
 ) -> LoopClassEquivalence:
     if len(source_loops) == 0 or len(target_loops) == 0:
         return LoopClassEquivalence()
 
-    loop_edges_a = loops_to_edge_mask(
-        loops=source_loops,
-        boundary_matrix_d1=boundary_matrix_d1,
-        return_valid_indices=compute_homotopy_coherence,
+    mask_a = loops_to_edge_mask(
+        loops=source_loops, boundary_matrix_d1=boundary_matrix_d1
     )
-    loop_edges_b = loops_to_edge_mask(
-        loops=target_loops,
-        boundary_matrix_d1=boundary_matrix_d1,
-        return_valid_indices=compute_homotopy_coherence,
+    mask_b = loops_to_edge_mask(
+        loops=target_loops, boundary_matrix_d1=boundary_matrix_d1
     )
-
-    mask_a = loop_edges_a.mask if isinstance(loop_edges_a, LoopEdges) else loop_edges_a
-    mask_b = loop_edges_b.mask if isinstance(loop_edges_b, LoopEdges) else loop_edges_b
+    assert isinstance(mask_a, np.ndarray) and isinstance(mask_b, np.ndarray)
 
     if (
         column_scores is None
@@ -209,76 +201,29 @@ def check_homological_equivalence(
         column_scores=column_scores,
     )
 
-    if not compute_homotopy_coherence or embedding is None:
+    if not compute_homotopy_coherence or source_fillings is None:
         return result
 
-    assert isinstance(loop_edges_a, LoopEdges)
-    assert isinstance(loop_edges_b, LoopEdges)
-    row_edge_ids = np.asarray(boundary_matrix_d1.row_simplex_ids, dtype=int)
-    row_indices = np.asarray(boundary_matrix_d1.data[0], dtype=int)
-    column_indices = np.asarray(boundary_matrix_d1.data[1], dtype=int)
-    edges_per_column = row_edge_ids[
-        row_indices[np.argsort(column_indices, kind="stable")]
-    ].reshape(-1, 3)
-    triangle_edges = {
-        triangle_id: tuple(edges)
-        for triangle_id, edges in zip(
-            boundary_matrix_d1.col_simplex_ids, edges_per_column.tolist()
+    triangle_areas = boundary_matrix_d1.compute_col_areas()
+    result.homotopy_coherence_matched = [
+        compute_coherence(
+            filling=source_fillings[source_index],
+            deformation=deformation["triangle_ids"],
+            triangle_areas=triangle_areas,
         )
-    }
-
-    for (source_index, target_index), deformation in zip(
-        result.loop_pairs_matched,
-        result.mapping_deformation_matched,
-    ):
-        result.homotopy_coherence_matched.append(
-            compute_coherence(
-                source_edges=loop_edges_a.edge_ids_per_rep[source_index],
-                target_edges=loop_edges_b.edge_ids_per_rep[target_index],
-                triangles=[
-                    triangle_edges[triangle_id]
-                    for triangle_id in deformation["triangle_ids"]
-                ],
-                num_vertices=boundary_matrix_d1.num_vertices,
-                embedding=embedding,
-                death_scale=death_scale,
-                method=homotopy_coherence_method,
-            )
+        for (source_index, _), deformation in zip(
+            result.loop_pairs_matched, result.mapping_deformation_matched
         )
-
-    for (source_index, target_index), deformation in zip(
-        result.loop_pairs_matched_relax,
-        result.mapping_deformation_matched_relax,
-    ):
-        source = set(loop_edges_a.edge_ids_per_rep[source_index])
-        target = set(loop_edges_b.edge_ids_per_rep[target_index])
-        relaxation_edges = set(deformation["relaxation_edge_ids"])
-        triangles = [
-            triangle_edges[triangle_id] for triangle_id in deformation["triangle_ids"]
-        ]
-        scores = [
-            compute_coherence(
-                source_edges=tuple(source ^ relaxation_edges),
-                target_edges=tuple(target),
-                triangles=triangles,
-                num_vertices=boundary_matrix_d1.num_vertices,
-                embedding=embedding,
-                death_scale=death_scale,
-                method=homotopy_coherence_method,
-            ),
-            compute_coherence(
-                source_edges=tuple(source),
-                target_edges=tuple(target ^ relaxation_edges),
-                triangles=triangles,
-                num_vertices=boundary_matrix_d1.num_vertices,
-                embedding=embedding,
-                death_scale=death_scale,
-                method=homotopy_coherence_method,
-            ),
-        ]
-        valid_scores = [score for score in scores if score is not None]
-        result.homotopy_coherence_matched_relax.append(
-            float(np.mean(valid_scores)) if valid_scores else None
+    ]
+    result.homotopy_coherence_matched_relax = [
+        compute_coherence(
+            filling=source_fillings[source_index],
+            deformation=deformation["triangle_ids"],
+            triangle_areas=triangle_areas,
         )
+        for (source_index, _), deformation in zip(
+            result.loop_pairs_matched_relax, result.mapping_deformation_matched_relax
+        )
+    ]
 
     return result
