@@ -24,6 +24,8 @@ from ..data.constants import (
     DEFAULT_N_COCYCLES_USED,
     DEFAULT_N_FORCE_DEVIATE,
     DEFAULT_N_REPS_PER_LOOP,
+    DEFAULT_SPLIT_EDGE_LENGTH_MULT,
+    DEFAULT_SPLIT_POINT_DISTANCE_MULT,
     NUMERIC_EPSILON,
 )
 from ..data.types import Count_t, Percent_t
@@ -508,13 +510,13 @@ def _select_diverse_loops(
     return loops, dists
 
 
-def _distance_to_edge(p, a, b):
+def _distances_to_edge(points: np.ndarray, a: np.ndarray, b: np.ndarray) -> np.ndarray:
     ab = b - a
     denom = float(ab @ ab)
     if denom == 0.0:
-        return float(np.linalg.norm(p - a))
-    s = float(np.clip((p - a) @ ab / denom, 0.0, 1.0))
-    return float(np.linalg.norm(p - (a + s * ab)))
+        return np.linalg.norm(points - a, axis=1)
+    s = np.clip((points - a) @ ab / denom, 0.0, 1.0)
+    return np.linalg.norm(points - (a + s[:, None] * ab), axis=1)
 
 
 def _select_split_point(
@@ -523,31 +525,36 @@ def _select_split_point(
     u: int,
     v: int,
     embedding: np.ndarray,
-    used: set[int],
+    used_mask: np.ndarray,
     max_diameter: float,
     limit: float | None,
+    pool: np.ndarray | None,
+    pool_embedding: np.ndarray,
 ) -> int | None:
-    d_a = np.linalg.norm(embedding - embedding[a], axis=1)
-    d_b = np.linalg.norm(embedding - embedding[b], axis=1)
-    candidates = np.arange(embedding.shape[0], dtype=np.int64)[
-        (d_a <= max_diameter) & (d_b <= max_diameter)
-    ]
-    candidates = np.array([p for p in candidates if p not in used], dtype=np.int64)
+    points = pool_embedding
+    d_a = np.linalg.norm(points - embedding[a], axis=1)
+    mask = d_a <= max_diameter
+    mask &= ~used_mask if pool is None else ~used_mask[pool]
+    idx = np.flatnonzero(mask)
+    if idx.size == 0:
+        return None
+    candidate_points = points[idx]
+    keep = np.linalg.norm(candidate_points - embedding[b], axis=1) <= max_diameter
+    if not keep.any():
+        return None
+    candidates = (idx if pool is None else pool[idx])[keep]
+    candidate_points = candidate_points[keep]
 
     if limit is not None:
-        offset = np.array(
-            [
-                _distance_to_edge(embedding[int(w)], embedding[u], embedding[v])
-                for w in candidates
-            ]
-        )
-        candidates = candidates[offset <= limit]
-        if candidates.size == 0:
+        keep = _distances_to_edge(candidate_points, embedding[u], embedding[v]) <= limit
+        if not keep.any():
             return None
+        candidates = candidates[keep]
+        candidate_points = candidate_points[keep]
 
     midpoint = 0.5 * (embedding[a] + embedding[b])
     return int(
-        candidates[np.argmin(np.linalg.norm(embedding[candidates] - midpoint, axis=1))]
+        candidates[np.argmin(np.linalg.norm(candidate_points - midpoint, axis=1))]
     )
 
 
@@ -564,15 +571,32 @@ def _densify_loops(
         return list(vertices)
 
     refined: list[int] = [vertices[0]]
-    used = {v for v in vertices}
+    used_mask = np.zeros(embedding.shape[0], dtype=bool)
+    used_mask[vertices] = True
+
+    if split_edge_length_mult is None:
+        split_edge_length_mult = 1.0
+
+    ball_cutoff = 0.25 * float(
+        np.linalg.norm(embedding.max(axis=0) - embedding.min(axis=0))
+    )
+
+    def _target_length(a: int, b: int) -> float:
+        return float(split_edge_length_mult * 0.5 * (local_scale[a] + local_scale[b]))
 
     for u, v in zip(vertices[:-1], vertices[1:]):
         poly = [u, v]
+        lengths = [float(np.linalg.norm(embedding[u] - embedding[v]))]
+        targets = [_target_length(u, v)]
         limit = (
             split_point_distance_mult * 0.5 * (local_scale[u] + local_scale[v])
             if split_point_distance_mult is not None
             else None
         )
+        pool: np.ndarray | None = None
+        pool_embedding: np.ndarray = embedding
+        limit_select = limit
+        pool_ready = limit is None
         stalled_pairs: set[tuple[int, int]] = set()
         n_inserted = 0
         while n_inserted < max_insert_per_edge:
@@ -581,17 +605,30 @@ def _densify_loops(
                 a, b = poly[i], poly[i + 1]
                 if (a, b) in stalled_pairs:
                     continue
-                edge_length = float(np.linalg.norm(embedding[a] - embedding[b]))
-                target_edge_length = (
-                    split_edge_length_mult * 0.5 * (local_scale[a] + local_scale[b])
-                    if split_edge_length_mult is not None
-                    else 0.5 * (local_scale[a] + local_scale[b])
-                )
-                if edge_length > target_edge_length:
-                    edges_to_split.append((target_edge_length / edge_length, i, a, b))
+                if lengths[i] > targets[i]:
+                    edges_to_split.append((targets[i] / lengths[i], i, a, b))
             if not edges_to_split:
                 break
             edges_to_split.sort(key=lambda x: -x[0])
+            if not pool_ready:
+                assert limit is not None
+                half_len = 0.5 * float(np.linalg.norm(embedding[u] - embedding[v]))
+                if limit + half_len < ball_cutoff:
+                    mid_uv = 0.5 * (embedding[u] + embedding[v])
+                    near_mask = np.linalg.norm(embedding - mid_uv, axis=1) <= (
+                        limit + half_len
+                    ) * (1.0 + 1e-12)
+                    if 2 * int(near_mask.sum()) <= embedding.shape[0]:
+                        near = np.flatnonzero(near_mask)
+                        pool = near[
+                            _distances_to_edge(
+                                embedding[near], embedding[u], embedding[v]
+                            )
+                            <= limit
+                        ]
+                        pool_embedding = embedding[pool]
+                        limit_select = None
+                pool_ready = True
 
             inserted_this_round = False
             for _, i, a, b in edges_to_split:
@@ -601,15 +638,23 @@ def _densify_loops(
                     u=u,
                     v=v,
                     embedding=embedding,
-                    used=used,
+                    used_mask=used_mask,
                     max_diameter=max_diameter,
-                    limit=limit,
+                    limit=limit_select,
+                    pool=pool,
+                    pool_embedding=pool_embedding,
                 )
                 if p is None:
                     stalled_pairs.add((a, b))
                     continue
                 poly.insert(i + 1, p)
-                used.add(p)
+                lengths[i] = float(np.linalg.norm(embedding[a] - embedding[p]))
+                lengths.insert(
+                    i + 1, float(np.linalg.norm(embedding[p] - embedding[b]))
+                )
+                targets[i] = _target_length(a, p)
+                targets.insert(i + 1, _target_length(p, b))
+                used_mask[p] = True
                 n_inserted += 1
                 inserted_this_round = True
                 break
@@ -625,8 +670,8 @@ def refine_loop_representatives(
     embedding: np.ndarray,
     local_scale: np.ndarray | None = None,
     max_insert_per_edge: int = DEFAULT_MAX_INSERT_PER_EDGE,
-    split_edge_length_mult: float | None = None,
-    split_point_distance_mult: float | None = None,
+    split_edge_length_mult: float | None = DEFAULT_SPLIT_EDGE_LENGTH_MULT,
+    split_point_distance_mult: float | None = DEFAULT_SPLIT_POINT_DISTANCE_MULT,
     life_pct: float = 0.0,
     k_local_scale: int = DEFAULT_K_LOCAL_SCALE,
 ) -> None:

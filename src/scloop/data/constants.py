@@ -41,6 +41,8 @@ DEFAULT_FOREIGN_CHORD_MULT: float = 1.0
 # sampling. math.inf disables the gate. Typical range: 1.5–3.
 DEFAULT_MAX_PERIMETER_MULT: float = float("inf")
 DEFAULT_MAX_INSERT_PER_EDGE: int = 20
+DEFAULT_SPLIT_EDGE_LENGTH_MULT: float = 1.25
+DEFAULT_SPLIT_POINT_DISTANCE_MULT: float = 4.0
 DEFAULT_K_LOCAL_SCALE: int = 10
 DEFAULT_N_PAIRS_CHECK_EQUIVALENCE: int = 4
 # typically one neighbor is sufficient for checking

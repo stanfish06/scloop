@@ -69,6 +69,8 @@ from .constants import (
     DEFAULT_N_PAIRS_CHECK_EQUIVALENCE,
     DEFAULT_N_REPS_PER_LOOP,
     DEFAULT_NOISE_SCALE,
+    DEFAULT_SPLIT_EDGE_LENGTH_MULT,
+    DEFAULT_SPLIT_POINT_DISTANCE_MULT,
     DEFAULT_TIMEOUT_EIGENDECOMPOSITION,
     DEFAULT_WEIGHT_HODGE,
     DEFAULT_WITH_RELAXATION_EQUIVALENCE,
@@ -494,13 +496,14 @@ class HomologyData:
         embedding: np.ndarray,
         local_scale: np.ndarray | None = None,
         max_insert_per_edge: int = DEFAULT_MAX_INSERT_PER_EDGE,
-        split_edge_length_mult: float | None = None,
-        split_point_distance_mult: float | None = None,
+        split_edge_length_mult: float | None = DEFAULT_SPLIT_EDGE_LENGTH_MULT,
+        split_point_distance_mult: float | None = DEFAULT_SPLIT_POINT_DISTANCE_MULT,
         life_pct: float = 0.0,
         include_bootstrap: bool = True,
     ) -> None:
         assert self.selected_loop_classes is not None
         loop_classes_refined = []
+        seen_ids: set[int] = set()
         for i, c in enumerate(self.selected_loop_classes):
             if c is None:
                 continue
@@ -518,6 +521,9 @@ class HomologyData:
                             cm = self.bootstrap_data.selected_loop_classes[boot_id][
                                 loop_id
                             ]
+                            if id(cm) in seen_ids:
+                                continue
+                            seen_ids.add(id(cm))
                             loop_classes_refined.append(cm)
         refine_loop_representatives(
             loop_classes=loop_classes_refined,
