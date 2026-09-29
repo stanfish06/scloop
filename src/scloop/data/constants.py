@@ -5,7 +5,13 @@ import os
 
 from IPython.display import Javascript
 
-from .types import ColumnTrimMethod, LoopDistMethod, PositiveFloat
+from .types import (
+    CandidateMethod,
+    ColumnTrimMethod,
+    LoopDistMethod,
+    PositiveFloat,
+    PresenceTestMethod,
+)
 
 CROSS_MATCH_KEY = "X_scloop_aligned"
 CROSS_MATCH_RESULT_KEY = "scloop_cross_match"
@@ -28,6 +34,8 @@ DEFAULT_N_PERMUTATIONS: int = 1000
 DEFAULT_CUTOFF_PVAL: float = 0.05
 DEFAULT_MAX_ROWS_BOUNDARY_MATRIX: int = 30000
 DEFAULT_N_BOOTSTRAP: int = 10
+DEFAULT_CANDIDATE_METHOD: CandidateMethod = "image"
+DEFAULT_PRESENCE_METHOD: PresenceTestMethod = "chi2"
 
 DEFAULT_AUTO_THRESHOLD_FACTOR: float = 1.75
 

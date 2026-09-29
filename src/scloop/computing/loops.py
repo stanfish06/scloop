@@ -153,6 +153,7 @@ def compute_loop_representatives(
     do_clean_cocycle_region: bool = False,
     foreign_chord_mult: float = DEFAULT_FOREIGN_CHORD_MULT,
     max_perimeter_mult: float = DEFAULT_MAX_PERIMETER_MULT,
+    validate_representatives: bool = True,
 ) -> list[LoopClass | None]:
     assert pairwise_distance_matrix.shape is not None
 
@@ -183,8 +184,18 @@ def compute_loop_representatives(
     results: list[LoopClass | None] = [None] * len(indices_top_k)
 
     build_foreign = foreign_chord_mult > 1.0
+    check_reps = validate_representatives and persistence_pair_simplices is not None
+    death_keys: list[tuple[float, tuple[int, ...]]] = []
+    if check_reps:
+        assert persistence_pair_simplices is not None
+        death_keys = [
+            (float(loop_deaths[c]), tuple(-v for v in sorted(simplex, reverse=True)))
+            if len(simplex) > 0
+            else (math.inf, ())
+            for c, simplex in enumerate(persistence_pair_simplices[1])
+        ]
     cocycle_edges_per_class: dict[int, set[tuple[int, int]]] = {}
-    if build_foreign:
+    if build_foreign or check_reps:
         for cls_idx in range(len(cocycles)):
             cocycle_edges_per_class[cls_idx] = {
                 (min(a, b), max(a, b))
@@ -281,6 +292,19 @@ def compute_loop_representatives(
             max_perimeter_mult=max_perimeter_mult,
         )
 
+        representatives_valid = None
+        if check_reps:
+            own_key = death_keys[loop_idx]
+            alive = [
+                c
+                for c in range(len(death_keys))
+                if loop_births[c] <= own_key[0] and death_keys[c] >= own_key
+            ]
+            representatives_valid = [
+                _is_death_cycle(loop, int(loop_idx), alive, cocycle_edges_per_class)
+                for loop in loops_local
+            ]
+
         loops = [[vertex_ids[v] for v in loop] for loop in loops_local]
         loops_coords = loops_to_coords(embedding=embedding, loops_vertices=loops)
 
@@ -293,10 +317,27 @@ def compute_loop_representatives(
             death_simplex=death_simplex,
             cocycles=cocycles[loop_idx],
             representatives=loops,
+            representatives_valid=representatives_valid,
             coordinates_vertices_representatives=loops_coords,
         )
 
     return results
+
+
+def _is_death_cycle(
+    loop: Sequence[int],
+    own_class: int,
+    alive_classes: list[int],
+    cocycle_edges: dict[int, set[tuple[int, int]]],
+) -> bool:
+    """[loop] = [∂τ] just before the death triangle τ enters, via the alive cocycle basis."""
+    edges: set[tuple[int, int]] = set()
+    for u, v in zip(loop, [*loop[1:], loop[0]]):
+        if u != v:
+            edges ^= {(min(u, v), max(u, v))}
+    return all(
+        len(edges & cocycle_edges[c]) % 2 == int(c == own_class) for c in alive_classes
+    )
 
 
 def reconstruct_n_loop_representatives(

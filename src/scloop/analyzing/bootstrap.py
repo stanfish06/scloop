@@ -207,6 +207,8 @@ def run_single_bootstrap(
     reconstruct_on_full_data: bool = False,
     candidate_method: Literal["geometric", "image"] = "geometric",
     require_homological_equivalence: bool = True,
+    compute_homotopy_coherence: bool = True,
+    source_cocycle_bases: list[tuple[float, np.ndarray] | None] | None = None,
     **kwargs,
 ) -> BootstrapResult:
     if candidate_method not in {"geometric", "image"}:
@@ -295,6 +297,7 @@ def run_single_bootstrap(
             do_clean_cocycle_region=True,
             foreign_chord_mult=foreign_chord_mult,
             max_perimeter_mult=max_perimeter_mult,
+            validate_representatives=False,
         )
     else:
         bootstrap_loop_classes = compute_loop_representatives(
@@ -322,6 +325,7 @@ def run_single_bootstrap(
             bootstrap=True,
             foreign_chord_mult=foreign_chord_mult,
             max_perimeter_mult=max_perimeter_mult,
+            validate_representatives=True,
         )
 
     if image_homology_result is not None:
@@ -431,6 +435,8 @@ def run_single_bootstrap(
                 or target_loop.representatives is None
             ):
                 continue
+            source_loops = source_loop.filter_valid(source_loop.representatives)
+            target_loops = target_loop.filter_valid(target_loop.representatives)
             max_column_diameter = None
             if filter_column_homology_equivalence:
                 if extra_diameter_homology_equivalence < 0:
@@ -442,6 +448,11 @@ def run_single_bootstrap(
                     max(source_loop.death, target_loop.death)
                     + float(extra_diameter_homology_equivalence) * max_lifetime
                 )
+            cocycle_basis_masks = None
+            if not compute_homotopy_coherence and source_cocycle_bases is not None:
+                cocycle_basis = source_cocycle_bases[source_idx]
+                if cocycle_basis is not None:
+                    max_column_diameter, cocycle_basis_masks = cocycle_basis
             column_scores = (
                 source_loop.column_proximity_scores(
                     original_boundary_matrix_d1,
@@ -449,11 +460,21 @@ def run_single_bootstrap(
                     n_neighbors_column_trim,
                 )
                 if column_trim_method == "loop_proximity"
+                and cocycle_basis_masks is None
+                else None
+            )
+            source_fillings = (
+                source_loop.filter_valid(
+                    source_loop.fillings(
+                        original_boundary_matrix_d1, column_trim_method, column_scores
+                    )
+                )
+                if compute_homotopy_coherence
                 else None
             )
             match.topological_equivalence = check_homological_equivalence(
-                source_loops=source_loop.representatives,
-                target_loops=target_loop.representatives,
+                source_loops=source_loops,
+                target_loops=target_loops,
                 boundary_matrix_d1=original_boundary_matrix_d1,
                 n_pairs_check=n_pairs_check_equivalence,
                 with_relaxation=with_relaxation_equivalence,
@@ -461,9 +482,9 @@ def run_single_bootstrap(
                 max_n_edges_relaxation=max_n_edges_relaxation_equivalence,
                 max_column_diameter=max_column_diameter,
                 cocycle_edge_mask=cocycle_edge_masks[source_idx],
-                source_fillings=source_loop.fillings(
-                    original_boundary_matrix_d1, column_trim_method, column_scores
-                ),
+                compute_homotopy_coherence=compute_homotopy_coherence,
+                cocycle_basis_masks=cocycle_basis_masks,
+                source_fillings=source_fillings,
                 column_trim_method=column_trim_method,
                 embedding=embedding,
                 column_scores=column_scores,
@@ -515,8 +536,11 @@ def run_bootstrap_pipeline(
         )
 
     column_trim_method = kwargs.get("column_trim_method", DEFAULT_COLUMN_TRIM_METHOD)
+    warm_fillings = kwargs.get("require_homological_equivalence", True) and kwargs.get(
+        "compute_homotopy_coherence", True
+    )
     warm_embedding = None
-    if column_trim_method == "loop_proximity":
+    if column_trim_method == "loop_proximity" and warm_fillings:
         assert meta.preprocess is not None
         assert meta.preprocess.embedding_method is not None
         warm_embedding = np.array(adata.obsm[f"X_{meta.preprocess.embedding_method}"])
@@ -532,7 +556,7 @@ def run_bootstrap_pipeline(
             if warm_embedding is not None
             else None
         )
-        if kwargs.get("require_homological_equivalence", True):
+        if warm_fillings:
             loop_class.fillings(
                 original_boundary_matrix_d1, column_trim_method, column_scores
             )

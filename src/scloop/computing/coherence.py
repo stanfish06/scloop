@@ -28,6 +28,7 @@ def compute_loop_fillings(
         max_column_diameter=death,
         column_trim_method=column_trim_method,
         column_scores=column_scores,
+        compute_filling=True,
     )
     fillings: list[tuple[int, ...] | None] = [None] * n_loops
     for (loop_index, _), deformation in zip(

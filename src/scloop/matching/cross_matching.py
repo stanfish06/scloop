@@ -87,6 +87,7 @@ def _reconstruct_image_loop_classes(
             [birth_simplices[idx] for idx in selected],
             [death_simplices[idx] for idx in selected],
         ),
+        validate_representatives=False,
         **kwargs_reconstruct,
     )
     return {

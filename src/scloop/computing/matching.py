@@ -126,6 +126,28 @@ def cocycle_to_edge_mask(
     return mask
 
 
+def cocycle_basis_to_edge_masks(
+    cocycles: list,
+    persistence_diagram: list,
+    persistence_pair_simplices: list,
+    diameter: float,
+    boundary_matrix_d1: BoundaryMatrixD1,
+    vertex_ids: list[int],
+) -> np.ndarray:
+    births, deaths = persistence_diagram
+    _, death_simplices = persistence_pair_simplices
+    masks = []
+    for cocycle, birth, death, death_simplex in zip(
+        cocycles, births, deaths, death_simplices
+    ):
+        if birth > diameter or (len(death_simplex) > 0 and death <= diameter):
+            continue
+        mask = cocycle_to_edge_mask(cocycle, boundary_matrix_d1, vertex_ids)
+        if mask is not None:
+            masks.append(mask)
+    return np.array(masks, dtype=bool).reshape(len(masks), boundary_matrix_d1.shape[0])
+
+
 def compute_geometric_distance(
     source_coords_list: list[list[list[float]]],
     target_coords_list: list[list[list[float]]],
@@ -152,6 +174,7 @@ def check_homological_equivalence(
     max_column_diameter: PositiveFloat | None = None,
     cocycle_edge_mask: np.ndarray | None = None,
     compute_homotopy_coherence: bool = True,
+    cocycle_basis_masks: np.ndarray | None = None,
     source_fillings: list[tuple[int, ...] | None] | None = None,
     column_trim_method: ColumnTrimMethod = DEFAULT_COLUMN_TRIM_METHOD,
     column_scores: np.ndarray | None = None,
@@ -199,6 +222,8 @@ def check_homological_equivalence(
         cocycle_edge_mask=cocycle_edge_mask,
         column_trim_method=column_trim_method,
         column_scores=column_scores,
+        compute_filling=compute_homotopy_coherence or cocycle_basis_masks is None,
+        cocycle_basis_masks=cocycle_basis_masks,
     )
 
     if not compute_homotopy_coherence or source_fillings is None:

@@ -13,6 +13,7 @@ MultipleTestCorrectionMethod = Literal["bonferroni", "benjamini-hochberg"]
 PresenceTestMethod = Literal["fisher", "chi2", "wilcoxon"]
 CrossMatchModelTypes = Literal["mlp", "nf"]
 CrossMatchRoutes = Literal["geometric", "image"]
+CandidateMethod = Literal["geometric", "image"]
 LogLevel = Literal[
     "TRACE",
     "DEBUG",
