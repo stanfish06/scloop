@@ -153,9 +153,7 @@ def _attribute_to_loop_class(
                     max_column_diameter=max(image_loop_class.death, loop_class.death)
                     + extra_diameter * max_lifetime,
                     cocycle_edge_mask=cocycle_edge_mask,
-                    source_fillings=image_loop_class.fillings(
-                        side.boundary_matrix_d1, column_trim_method, column_scores
-                    ),
+                    compute_homotopy_coherence=False,
                     column_scores=column_scores,
                     embedding=side.embedding,
                     **kwargs_equivalence,
