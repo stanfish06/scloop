@@ -76,7 +76,7 @@ def find_loops(
     n_check_per_candidate: NonZeroCount_t = 1,
     max_rows_boundary_matrix: NonZeroCount_t = DEFAULT_MAX_ROWS_BOUNDARY_MATRIX,
     auto_shrink_boundary_matrix: bool = True,
-    auto_shrink_factor: Percent_t = 0.9,
+    auto_shrink_factor: Percent_t = 0.5,
     n_max_workers: NonZeroCount_t = DEFAULT_N_MAX_WORKERS,
     use_parallel: bool = True,
     verbose: bool = False,

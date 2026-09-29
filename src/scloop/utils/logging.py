@@ -14,9 +14,10 @@ from typing import Any, Callable, Literal
 from loguru import logger
 from pydantic import BaseModel, ConfigDict, Field
 from rich import box
-from rich.console import Console
+from rich.console import Console, ConsoleOptions, RenderResult
 from rich.layout import Layout
 from rich.live import Live
+from rich.measure import Measurement
 from rich.panel import Panel
 from rich.progress import (
     MofNCompleteColumn,
@@ -27,7 +28,7 @@ from rich.progress import (
     TextColumn,
     TimeElapsedColumn,
 )
-from rich.table import Table
+from rich.table import Column, Table
 from rich.text import Text
 from rich.theme import Theme
 
@@ -189,36 +190,61 @@ def create_console(*, width: int | None = None, height: int | None = None) -> Co
     )
 
 
+class _BlockBar:
+    def __init__(
+        self, ratio: float, style: str, back_style: str, width: int | None
+    ) -> None:
+        self.ratio = ratio
+        self.style = style
+        self.back_style = back_style
+        self.width = width
+
+    def __rich_console__(
+        self, console: Console, options: ConsoleOptions
+    ) -> RenderResult:
+        width = self.width or options.max_width
+        n_done = int(self.ratio * width)
+        bar = Text(no_wrap=True)
+        bar.append(" " * n_done, style=self.style)
+        bar.append(" " * (width - n_done), style=self.back_style)
+        yield bar
+
+    def __rich_measure__(
+        self, console: Console, options: ConsoleOptions
+    ) -> Measurement:
+        return Measurement(1, self.width or options.max_width)
+
+
 class BlockBarColumn(ProgressColumn):
     def __init__(
         self,
-        bar_width: int = 40,
-        complete_style: str = "default",
-        finished_style: str = "default",
-        back_style: str = "grey58",
+        bar_width: int | None = None,
+        complete_style: str = "on black",
+        finished_style: str = "on black",
+        back_style: str = "on gray85",
     ) -> None:
         self.bar_width = bar_width
         self.complete_style = complete_style
         self.finished_style = finished_style
         self.back_style = back_style
-        super().__init__()
+        super().__init__(
+            table_column=Column(ratio=1, no_wrap=True) if bar_width is None else None
+        )
 
-    def render(self, task: Task) -> Text:
+    def render(self, task: Task) -> _BlockBar:
         ratio = 0.0
         if task.total:
             ratio = min(max(task.completed / task.total, 0.0), 1.0)
-        n_done = int(ratio * self.bar_width)
         style = self.finished_style if task.finished else self.complete_style
-        bar = Text(no_wrap=True)
-        bar.append("█" * n_done, style=style)
-        bar.append("░" * (self.bar_width - n_done), style=self.back_style)
-        return bar
+        return _BlockBar(ratio, style, self.back_style, self.bar_width)
 
 
 def create_progress(
-    *, console: Console | None = None, disable: bool = False
+    *,
+    console: Console | None = None,
+    disable: bool = False,
 ) -> Progress:
-    progress_kwargs: dict[str, Any] = {"disable": disable}
+    progress_kwargs: dict[str, Any] = {"disable": disable, "refresh_per_second": 30}
     if console is not None:
         progress_kwargs["console"] = console
 
@@ -228,6 +254,7 @@ def create_progress(
         BlockBarColumn(),
         MofNCompleteColumn(),
         TimeElapsedColumn(),
+        expand=True,
         **progress_kwargs,
     )
 
@@ -481,7 +508,7 @@ class LogDisplay(BaseModel):
                 self._layout,
                 console=self.console,
                 auto_refresh=True,
-                refresh_per_second=self.refresh_per_second or 4,
+                refresh_per_second=self.refresh_per_second or 30,
                 transient=True,
                 vertical_overflow="crop",
             )
