@@ -87,6 +87,7 @@ def _reconstruct_image_loop_classes(
             [birth_simplices[idx] for idx in selected],
             [death_simplices[idx] for idx in selected],
         ),
+        validate_representatives=False,
         **kwargs_reconstruct,
     )
     return {
@@ -122,10 +123,10 @@ def _attribute_to_loop_class(
                 return None, None, None
             assert side.boundary_matrix_d1 is not None
             column_scores = None
-            if (
-                kwargs_equivalence.get("column_trim_method", DEFAULT_COLUMN_TRIM_METHOD)
-                == "loop_proximity"
-            ):
+            column_trim_method = kwargs_equivalence.get(
+                "column_trim_method", DEFAULT_COLUMN_TRIM_METHOD
+            )
+            if column_trim_method == "loop_proximity":
                 column_scores = image_loop_class.column_proximity_scores(
                     side.boundary_matrix_d1,
                     side.embedding,
@@ -152,12 +153,9 @@ def _attribute_to_loop_class(
                     max_column_diameter=max(image_loop_class.death, loop_class.death)
                     + extra_diameter * max_lifetime,
                     cocycle_edge_mask=cocycle_edge_mask,
+                    compute_homotopy_coherence=False,
                     column_scores=column_scores,
                     embedding=side.embedding,
-                    death_scale=max(
-                        (lc.death for lc in side.loop_classes if lc is not None),
-                        default=None,
-                    ),
                     **kwargs_equivalence,
                 )
                 if equivalence.is_equivalent(relax=with_relaxation):

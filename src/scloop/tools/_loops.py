@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from contextlib import nullcontext
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any
 
 import numpy as np
 from anndata import AnnData
@@ -12,6 +12,7 @@ from scipy.spatial.distance import pdist
 
 from ..data.constants import (
     DEFAULT_AUTO_THRESHOLD_FACTOR,
+    DEFAULT_CANDIDATE_METHOD,
     DEFAULT_K_NEIGHBORS_CHECK_EQUIVALENCE,
     DEFAULT_MAX_ROWS_BOUNDARY_MATRIX,
     DEFAULT_MAXITER_EIGENDECOMPOSITION,
@@ -19,6 +20,7 @@ from ..data.constants import (
     DEFAULT_N_HODGE_COMPONENTS,
     DEFAULT_N_MAX_WORKERS,
     DEFAULT_N_NEIGHBORS_EDGE_EMBEDDING,
+    DEFAULT_PRESENCE_METHOD,
     DEFAULT_TIMEOUT_EIGENDECOMPOSITION,
     SCLOOP_META_UNS_KEY,
     SCLOOP_UNS_KEY,
@@ -26,10 +28,12 @@ from ..data.constants import (
 from ..data.containers import HomologyData
 from ..data.metadata import ScloopMeta
 from ..data.types import (
+    CandidateMethod,
     Index_t,
     NonZeroCount_t,
     Percent_t,
     PositiveFloat,
+    PresenceTestMethod,
     Size_t,
 )
 from ..preprocessing.downsample import sample
@@ -66,7 +70,8 @@ def find_loops(
     bootstrap_fps_alpha: float = 1.0,
     bootstrap_herding_n_features: int = 1000,
     bootstrap_herding_seed: int | None = None,
-    bootstrap_candidate_method: Literal["geometric", "image"] = "geometric",
+    bootstrap_candidate_method: CandidateMethod = DEFAULT_CANDIDATE_METHOD,
+    bootstrap_presence_test_method: PresenceTestMethod = DEFAULT_PRESENCE_METHOD,
     require_bootstrap_homological_equivalence: bool = True,
     n_check_per_candidate: NonZeroCount_t = 1,
     max_rows_boundary_matrix: NonZeroCount_t = DEFAULT_MAX_ROWS_BOUNDARY_MATRIX,
@@ -79,6 +84,7 @@ def find_loops(
     kwargs_bootstrap: dict[str, Any] | None = None,
     kwargs_loop_test: dict[str, Any] | None = None,
     kwargs_loop_representatives: dict[str, Any] | None = None,
+    kwargs_loop_refinement: dict[str, Any] | None = None,
 ) -> None:
     use_log_display = verbose and max_log_messages is not None
     if verbose:
@@ -229,6 +235,14 @@ def find_loops(
             "require_homological_equivalence",
             require_bootstrap_homological_equivalence,
         )
+        loop_test_kwargs = dict(kwargs_loop_test or {})
+        presence_test_method = loop_test_kwargs.pop(
+            "presence_test_method", bootstrap_presence_test_method
+        )
+        # only the wilcoxon presence test needs coherence score
+        compute_homotopy_coherence = bootstrap_kwargs.pop(
+            "compute_homotopy_coherence", presence_test_method == "wilcoxon"
+        )
         if verbose:
             logger.info(f"Bootstrap validation: {n_bootstrap} resamples")
         hd._bootstrap(
@@ -248,11 +262,24 @@ def find_loops(
             bootstrap_herding_seed=bootstrap_herding_seed,
             candidate_method=bootstrap_candidate_method,
             require_homological_equivalence=(require_bootstrap_homological_equivalence),
+            compute_homotopy_coherence=compute_homotopy_coherence,
             verbose=verbose,
             progress_main=progress_main,
             use_log_display=use_log_display,
             use_parallel=use_parallel,
             **bootstrap_kwargs,
+        )
+        """
+        ========= loop refinement =========
+        - refine loops against full data
+        ===================================
+        """
+        if verbose:
+            logger.info("Refining loop representatives on full data")
+        hd._refine_loop_representatives(
+            embedding=embedding,
+            include_bootstrap=True,
+            **(kwargs_loop_refinement or {}),
         )
 
         """
@@ -264,7 +291,7 @@ def find_loops(
         assert hd.bootstrap_data is not None
         if verbose:
             logger.info("Statistical testing (presence + persistence)")
-        hd._test_loops(**(kwargs_loop_test or {}))
+        hd._test_loops(presence_test_method=presence_test_method, **loop_test_kwargs)
         if verbose:
             presence = hd.bootstrap_data.presence_test_result
             if presence is not None:

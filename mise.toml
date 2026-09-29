@@ -1,5 +1,6 @@
 [tools]
 uv = "latest"
+lefthook = "latest"
 
 [env]
 CPLUS_INCLUDE_PATH = "{{config_root}}/src/scloop/data"
@@ -54,6 +55,7 @@ run = [
 
 [tasks.bump]
 run = [
+    "lefthook run pre-bump",
     "uv version --bump patch",
     "git add uv.lock pyproject.toml",
     'git commit -m "new tag"',

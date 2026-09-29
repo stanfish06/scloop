@@ -1,0 +1,24 @@
+pre-commit:
+  parallel: true
+  jobs:
+    - name: ruff
+      glob: "*.{py,pyi}"
+      stage_fixed: true
+      run: uv run --no-sync ruff check --select I --fix {staged_files} && uv run --no-sync ruff format {staged_files}
+    - name: pyproject-fmt
+      glob: "pyproject.toml"
+      stage_fixed: true
+      run: pyproject-fmt {staged_files} || true
+
+pre-bump:
+  fail_on_changes: always
+  jobs:
+    - name: ruff check
+      glob: "*.{py,pyi}"
+      run: uv run --no-sync ruff check --fix {all_files}
+    - name: ruff format
+      glob: "*.{py,pyi}"
+      run: uv run --no-sync ruff format {all_files}
+    - name: pyproject-fmt
+      glob: "pyproject.toml"
+      run: pyproject-fmt {all_files} || true

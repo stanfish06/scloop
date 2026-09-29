@@ -26,10 +26,10 @@ from ..computing.hodge_decomposition import (
 from ..computing.homology import (
     compute_persistence_diagram_and_cocycles,
 )
-from ..computing.loops import compute_loop_representatives
-from ..computing.coherence import global_h1_death_scale
+from ..computing.loops import compute_loop_representatives, refine_loop_representatives
 from ..computing.matching import (
     check_homological_equivalence,
+    cocycle_basis_to_edge_masks,
     cocycle_to_edge_mask,
     compute_geometric_distance,
     loops_to_edge_mask,
@@ -54,6 +54,7 @@ from .constants import (
     DEFAULT_K_YEN,
     DEFAULT_LIFE_PCT,
     DEFAULT_LOOP_DIST_METHOD,
+    DEFAULT_MAX_INSERT_PER_EDGE,
     DEFAULT_MAX_N_EDGES_RELAXATION_EQUIVALENCE,
     DEFAULT_MAX_PERIMETER_MULT,
     DEFAULT_MAXITER_EIGENDECOMPOSITION,
@@ -68,6 +69,8 @@ from .constants import (
     DEFAULT_N_PAIRS_CHECK_EQUIVALENCE,
     DEFAULT_N_REPS_PER_LOOP,
     DEFAULT_NOISE_SCALE,
+    DEFAULT_SPLIT_EDGE_LENGTH_MULT,
+    DEFAULT_SPLIT_POINT_DISTANCE_MULT,
     DEFAULT_TIMEOUT_EIGENDECOMPOSITION,
     DEFAULT_WEIGHT_HODGE,
     DEFAULT_WITH_RELAXATION_EQUIVALENCE,
@@ -359,6 +362,34 @@ class HomologyData:
             **nei_kwargs,
         )
 
+    def _cocycle_bases_before_death(self) -> list[tuple[float, np.ndarray] | None]:
+        assert self.boundary_matrix_d1 is not None
+        assert self.persistence_diagram is not None
+        assert self.persistence_pair_simplices is not None
+        assert self.cocycles is not None
+        bases: list[tuple[float, np.ndarray] | None] = []
+        for loop_class in self.selected_loop_classes:
+            if loop_class is None:
+                bases.append(None)
+                continue
+            scale = float(
+                np.nextafter(np.float32(loop_class.death), np.float32(-np.inf))
+            )
+            bases.append(
+                (
+                    scale,
+                    cocycle_basis_to_edge_masks(
+                        cocycles=self.cocycles[1],
+                        persistence_diagram=self.persistence_diagram[1],
+                        persistence_pair_simplices=self.persistence_pair_simplices[1],
+                        diameter=scale,
+                        boundary_matrix_d1=self.boundary_matrix_d1,
+                        vertex_ids=self._original_vertex_ids,
+                    ),
+                )
+            )
+        return bases
+
     @property
     def _original_vertex_ids(self):
         assert self.meta.preprocess is not None
@@ -486,6 +517,50 @@ class HomologyData:
             maxiter_eigendecomposition=maxiter_eigendecomposition,
             kwargs_trajectory=kwargs_trajectory,
             kwargs_gene_trends=kwargs_gene_trends,
+        )
+
+    def _refine_loop_representatives(
+        self,
+        embedding: np.ndarray,
+        local_scale: np.ndarray | None = None,
+        max_insert_per_edge: int = DEFAULT_MAX_INSERT_PER_EDGE,
+        split_edge_length_mult: float | None = DEFAULT_SPLIT_EDGE_LENGTH_MULT,
+        split_point_distance_mult: float | None = DEFAULT_SPLIT_POINT_DISTANCE_MULT,
+        life_pct: float = 0.0,
+        include_bootstrap: bool = True,
+    ) -> None:
+        assert self.selected_loop_classes is not None
+        loop_classes_refined = []
+        seen_ids: set[int] = set()
+        for i, c in enumerate(self.selected_loop_classes):
+            if c is None:
+                continue
+            loop_classes_refined.append(c)
+            if include_bootstrap and self.bootstrap_data is not None:
+                if i in self.bootstrap_data.loop_tracks:
+                    for boot_id, loop_id in self.bootstrap_data.loop_tracks[
+                        i
+                    ].track_ipairs:
+                        if boot_id < len(
+                            self.bootstrap_data.selected_loop_classes
+                        ) and loop_id < len(
+                            self.bootstrap_data.selected_loop_classes[boot_id]
+                        ):
+                            cm = self.bootstrap_data.selected_loop_classes[boot_id][
+                                loop_id
+                            ]
+                            if id(cm) in seen_ids:
+                                continue
+                            seen_ids.add(id(cm))
+                            loop_classes_refined.append(cm)
+        refine_loop_representatives(
+            loop_classes=loop_classes_refined,
+            embedding=embedding,
+            local_scale=local_scale,
+            max_insert_per_edge=max_insert_per_edge,
+            split_edge_length_mult=split_edge_length_mult,
+            split_point_distance_mult=split_point_distance_mult,
+            life_pct=life_pct,
         )
 
     def _compute_loop_representatives(
@@ -618,6 +693,7 @@ class HomologyData:
         embedding_alt: np.ndarray | None = None,
         include_bootstrap: bool = True,
         keep_matches: str = "equivalent",
+        use_refined: bool = False,
     ) -> list[list[list[float]]]:
         """
         Use embedding stored in LoopClass by default
@@ -631,38 +707,38 @@ class HomologyData:
                 if loop_class is not None:
                     if embedding_alt is None:
                         if loop_class.coordinates_vertices_representatives is not None:
+                            coords = loop_class.filter_valid(
+                                loop_class.coordinates_vertices_representatives
+                            )
                             if (
                                 idx_loop is None or include_bootstrap
                             ):  # if include bootstrap, then idx_loop means loop index among all loops in a track
-                                loops.extend(
-                                    loop_class.coordinates_vertices_representatives
-                                )
+                                loops.extend(coords)
                             else:
-                                assert idx_loop < len(
-                                    loop_class.coordinates_vertices_representatives
-                                )
-                                loops.append(
-                                    loop_class.coordinates_vertices_representatives[
-                                        idx_loop
-                                    ]
-                                )
+                                assert idx_loop < len(coords)
+                                loops.append(coords[idx_loop])
                     else:
-                        if loop_class.representatives is not None:
+                        reps = loop_class.representatives
+                        if (
+                            use_refined
+                            and loop_class.representatives_refined is not None
+                        ):
+                            reps = loop_class.representatives_refined
+                        if reps is not None:
+                            reps = loop_class.filter_valid(reps)
                             if idx_loop is None or include_bootstrap:
                                 loops.extend(
                                     loops_to_coords(
                                         embedding=embedding_alt,
-                                        loops_vertices=loop_class.representatives,
+                                        loops_vertices=reps,
                                     )
                                 )
                             else:
-                                assert idx_loop < len(loop_class.representatives)
+                                assert idx_loop < len(reps)
                                 loops.extend(
                                     loops_to_coords(
                                         embedding=embedding_alt,
-                                        loops_vertices=[
-                                            loop_class.representatives[idx_loop]
-                                        ],
+                                        loops_vertices=[reps[idx_loop]],
                                     )
                                 )
 
@@ -674,6 +750,7 @@ class HomologyData:
                                 idx_track=selector,
                                 embedding_alt=embedding_alt,
                                 keep_matches=keep_matches,
+                                use_refined=use_refined,
                             )
                         )
                     else:
@@ -696,6 +773,7 @@ class HomologyData:
                         idx_loop_class=selector[1],
                         idx_loop=idx_loop,
                         embedding_alt=embedding_alt,
+                        use_refined=use_refined,
                     )
                 )
         return loops
@@ -751,6 +829,8 @@ class HomologyData:
         column_trim_method: ColumnTrimMethod = DEFAULT_COLUMN_TRIM_METHOD,
         embedding: np.ndarray | None = None,
         n_neighbors_column_trim: Count_t = DEFAULT_N_NEIGHBORS_COLUMN_TRIM,
+        compute_homotopy_coherence: bool = True,
+        cocycle_basis: tuple[float, np.ndarray] | None = None,
     ) -> tuple[int, int, bool]:
         assert self.bootstrap_data is not None
         self._ensure_loop_tracks()
@@ -776,9 +856,8 @@ class HomologyData:
             or target_loop_class.representatives is None
         ):
             return (source_class_idx, target_class_idx, False)
-
-        source_loops = source_loop_class.representatives
-        target_loops = target_loop_class.representatives
+        source_loops = source_loop_class.filter_valid(source_loop_class.representatives)
+        target_loops = target_loop_class.filter_valid(target_loop_class.representatives)
         if len(source_loops) == 0 or len(target_loops) == 0:
             return (source_class_idx, target_class_idx, False)
 
@@ -805,6 +884,29 @@ class HomologyData:
                 boundary_matrix_d1=self.boundary_matrix_d1,
                 vertex_ids=self._original_vertex_ids,
             )
+        cocycle_basis_masks = None
+        if not compute_homotopy_coherence and cocycle_basis is not None:
+            max_column_diameter, cocycle_basis_masks = cocycle_basis
+        column_scores = (
+            source_loop_class.column_proximity_scores(
+                self.boundary_matrix_d1,
+                embedding,
+                n_neighbors_column_trim,
+            )
+            if column_trim_method == "loop_proximity"
+            and embedding is not None
+            and cocycle_basis_masks is None
+            else None
+        )
+        source_fillings = (
+            source_loop_class.filter_valid(
+                source_loop_class.fillings(
+                    self.boundary_matrix_d1, column_trim_method, column_scores
+                )
+            )
+            if compute_homotopy_coherence
+            else None
+        )
         result = check_homological_equivalence(
             source_loops=source_loops,
             target_loops=target_loops,
@@ -815,18 +917,12 @@ class HomologyData:
             max_n_edges_relaxation=max_n_edges_relaxation,
             max_column_diameter=max_column_diameter,
             cocycle_edge_mask=cocycle_edge_mask,
+            compute_homotopy_coherence=compute_homotopy_coherence,
+            cocycle_basis_masks=cocycle_basis_masks,
+            source_fillings=source_fillings,
             column_trim_method=column_trim_method,
             embedding=embedding,
-            death_scale=global_h1_death_scale(self.persistence_diagram),
-            column_scores=(
-                source_loop_class.column_proximity_scores(
-                    self.boundary_matrix_d1,
-                    embedding,
-                    n_neighbors_column_trim,
-                )
-                if column_trim_method == "loop_proximity" and embedding is not None
-                else None
-            ),
+            column_scores=column_scores,
         )
         is_equivalent = result.is_equivalent(relax=with_relaxation)
         return (source_class_idx, target_class_idx, is_equivalent)
@@ -880,6 +976,7 @@ class HomologyData:
         method_geometric_equivalence: LoopDistMethod = DEFAULT_LOOP_DIST_METHOD,
         candidate_method: Literal["geometric", "image"] = "geometric",
         require_homological_equivalence: bool = True,
+        compute_homotopy_coherence: bool = True,
         reconstruct_on_full_data: bool = False,
         verbose: bool = False,
         progress_main: Progress | None = None,
@@ -896,6 +993,11 @@ class HomologyData:
             else:
                 self.meta.bootstrap.indices_resample.clear()
 
+        cocycle_bases: list[tuple[float, np.ndarray] | None] = (
+            self._cocycle_bases_before_death()
+            if require_homological_equivalence and not compute_homotopy_coherence
+            else [None] * len(self.selected_loop_classes)
+        )
         if (
             use_parallel
             or candidate_method == "image"
@@ -935,6 +1037,8 @@ class HomologyData:
                 method_geometric_equivalence=method_geometric_equivalence,
                 candidate_method=candidate_method,
                 require_homological_equivalence=require_homological_equivalence,
+                compute_homotopy_coherence=compute_homotopy_coherence,
+                source_cocycle_bases=cocycle_bases,
                 reconstruct_on_full_data=reconstruct_on_full_data,
                 verbose=verbose,
                 progress_main=progress_main,
@@ -1085,6 +1189,8 @@ class HomologyData:
                                     column_trim_method=column_trim_method,
                                     embedding=embedding,
                                     n_neighbors_column_trim=n_neighbors_column_trim,
+                                    compute_homotopy_coherence=compute_homotopy_coherence,
+                                    cocycle_basis=cocycle_bases[si],
                                 )
                                 tasks[task] = (si, tj, neighbor_distances[si, k], k)
 
@@ -1155,6 +1261,8 @@ class HomologyData:
         method_geometric_equivalence: LoopDistMethod = DEFAULT_LOOP_DIST_METHOD,
         candidate_method: Literal["geometric", "image"] = "geometric",
         require_homological_equivalence: bool = True,
+        compute_homotopy_coherence: bool = True,
+        source_cocycle_bases: list[tuple[float, np.ndarray] | None] | None = None,
         reconstruct_on_full_data: bool = False,
         verbose: bool = False,
         progress_main: Progress | None = None,
@@ -1194,6 +1302,8 @@ class HomologyData:
             method_geometric_equivalence=method_geometric_equivalence,
             candidate_method=candidate_method,
             require_homological_equivalence=require_homological_equivalence,
+            compute_homotopy_coherence=compute_homotopy_coherence,
+            source_cocycle_bases=source_cocycle_bases,
             n_pairs_check_equivalence=n_pairs_check_equivalence,
             with_relaxation_equivalence=with_relaxation_equivalence,
             n_hubs_relaxation_equivalence=n_hubs_relaxation_equivalence,

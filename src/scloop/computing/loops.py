@@ -10,17 +10,22 @@ from loguru import logger
 from numba import jit
 from pydantic import PositiveFloat
 from scipy.sparse import csr_matrix, triu
+from sklearn.neighbors import NearestNeighbors
 
 from ..data.base_components import LoopClass
 from ..data.boundary import BoundaryMatrixD1
 from ..data.constants import (
     DEFAULT_FOREIGN_CHORD_MULT,
+    DEFAULT_K_LOCAL_SCALE,
     DEFAULT_K_YEN,
     DEFAULT_LIFE_PCT,
+    DEFAULT_MAX_INSERT_PER_EDGE,
     DEFAULT_MAX_PERIMETER_MULT,
     DEFAULT_N_COCYCLES_USED,
     DEFAULT_N_FORCE_DEVIATE,
     DEFAULT_N_REPS_PER_LOOP,
+    DEFAULT_SPLIT_EDGE_LENGTH_MULT,
+    DEFAULT_SPLIT_POINT_DISTANCE_MULT,
     NUMERIC_EPSILON,
 )
 from ..data.types import Count_t, Percent_t
@@ -148,6 +153,7 @@ def compute_loop_representatives(
     do_clean_cocycle_region: bool = False,
     foreign_chord_mult: float = DEFAULT_FOREIGN_CHORD_MULT,
     max_perimeter_mult: float = DEFAULT_MAX_PERIMETER_MULT,
+    validate_representatives: bool = True,
 ) -> list[LoopClass | None]:
     assert pairwise_distance_matrix.shape is not None
 
@@ -178,8 +184,18 @@ def compute_loop_representatives(
     results: list[LoopClass | None] = [None] * len(indices_top_k)
 
     build_foreign = foreign_chord_mult > 1.0
+    check_reps = validate_representatives and persistence_pair_simplices is not None
+    death_keys: list[tuple[float, tuple[int, ...]]] = []
+    if check_reps:
+        assert persistence_pair_simplices is not None
+        death_keys = [
+            (float(loop_deaths[c]), tuple(-v for v in sorted(simplex, reverse=True)))
+            if len(simplex) > 0
+            else (math.inf, ())
+            for c, simplex in enumerate(persistence_pair_simplices[1])
+        ]
     cocycle_edges_per_class: dict[int, set[tuple[int, int]]] = {}
-    if build_foreign:
+    if build_foreign or check_reps:
         for cls_idx in range(len(cocycles)):
             cocycle_edges_per_class[cls_idx] = {
                 (min(a, b), max(a, b))
@@ -276,6 +292,19 @@ def compute_loop_representatives(
             max_perimeter_mult=max_perimeter_mult,
         )
 
+        representatives_valid = None
+        if check_reps:
+            own_key = death_keys[loop_idx]
+            alive = [
+                c
+                for c in range(len(death_keys))
+                if loop_births[c] <= own_key[0] and death_keys[c] >= own_key
+            ]
+            representatives_valid = [
+                _is_death_cycle(loop, int(loop_idx), alive, cocycle_edges_per_class)
+                for loop in loops_local
+            ]
+
         loops = [[vertex_ids[v] for v in loop] for loop in loops_local]
         loops_coords = loops_to_coords(embedding=embedding, loops_vertices=loops)
 
@@ -288,10 +317,27 @@ def compute_loop_representatives(
             death_simplex=death_simplex,
             cocycles=cocycles[loop_idx],
             representatives=loops,
+            representatives_valid=representatives_valid,
             coordinates_vertices_representatives=loops_coords,
         )
 
     return results
+
+
+def _is_death_cycle(
+    loop: Sequence[int],
+    own_class: int,
+    alive_classes: list[int],
+    cocycle_edges: dict[int, set[tuple[int, int]]],
+) -> bool:
+    """[loop] = [∂τ] just before the death triangle τ enters, via the alive cocycle basis."""
+    edges: set[tuple[int, int]] = set()
+    for u, v in zip(loop, [*loop[1:], loop[0]]):
+        if u != v:
+            edges ^= {(min(u, v), max(u, v))}
+    return all(
+        len(edges & cocycle_edges[c]) % 2 == int(c == own_class) for c in alive_classes
+    )
 
 
 def reconstruct_n_loop_representatives(
@@ -379,7 +425,7 @@ def reconstruct_n_loop_representatives(
     if foreign_cocycle_edges and foreign_chord_mult > 1.0:
         own_chord_keys = {(min(e), max(e)) for e in all_cocycle_edges}
         foreign_keys = {
-            (min(int(u), int(v)), max(int(u), int(v))) for u, v in foreign_cocycle_edges
+            (min(u, v), max(u, v)) for u, v in foreign_cocycle_edges
         } - own_chord_keys
         for idx, e in enumerate(edge_list):
             if e in foreign_keys:
@@ -472,7 +518,7 @@ def _select_diverse_loops(
     max_perimeter_mult: float = DEFAULT_MAX_PERIMETER_MULT,
 ) -> Tuple[List[List[int]], List[float]]:
     pairs = sorted(
-        [(float(d), list(c)) for d, c in zip(distances, cycles) if math.isfinite(d)],
+        [(d, list(c)) for d, c in zip(distances, cycles) if math.isfinite(d)],
         key=lambda x: x[0],
     )
     if not pairs:
@@ -496,10 +542,200 @@ def _select_diverse_loops(
         idxs = []
         for i in range(n_return):
             pct = (lower_pct + step * i) / 100
-            idx = min(int(math.floor(n_total * pct)), n_total - 1)
+            idx = min(math.floor(n_total * pct), n_total - 1)
             idxs.append(idx)
 
     selected = [pairs[i] for i in idxs]
     dists = [p[0] for p in selected]
     loops = [p[1] for p in selected]
     return loops, dists
+
+
+def _distances_to_edge(points: np.ndarray, a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    ab = b - a
+    denom = float(ab @ ab)
+    if denom == 0.0:
+        return np.linalg.norm(points - a, axis=1)
+    s = np.clip((points - a) @ ab / denom, 0.0, 1.0)
+    return np.linalg.norm(points - (a + s[:, None] * ab), axis=1)
+
+
+def _select_split_point(
+    a: int,
+    b: int,
+    u: int,
+    v: int,
+    embedding: np.ndarray,
+    used_mask: np.ndarray,
+    max_diameter: float,
+    limit: float | None,
+    pool: np.ndarray | None,
+    pool_embedding: np.ndarray,
+) -> int | None:
+    points = pool_embedding
+    d_a = np.linalg.norm(points - embedding[a], axis=1)
+    mask = d_a <= max_diameter
+    mask &= ~used_mask if pool is None else ~used_mask[pool]
+    idx = np.flatnonzero(mask)
+    if idx.size == 0:
+        return None
+    candidate_points = points[idx]
+    keep = np.linalg.norm(candidate_points - embedding[b], axis=1) <= max_diameter
+    if not keep.any():
+        return None
+    candidates = (idx if pool is None else pool[idx])[keep]
+    candidate_points = candidate_points[keep]
+
+    if limit is not None:
+        keep = _distances_to_edge(candidate_points, embedding[u], embedding[v]) <= limit
+        if not keep.any():
+            return None
+        candidates = candidates[keep]
+        candidate_points = candidate_points[keep]
+
+    midpoint = 0.5 * (embedding[a] + embedding[b])
+    return int(
+        candidates[np.argmin(np.linalg.norm(candidate_points - midpoint, axis=1))]
+    )
+
+
+def _densify_loops(
+    vertices: list[int],
+    embedding: np.ndarray,
+    local_scale: np.ndarray,
+    max_diameter: float,
+    max_insert_per_edge: int,
+    split_edge_length_mult: float | None = None,
+    split_point_distance_mult: float | None = None,
+) -> list[int]:
+    if len(vertices) < 2:
+        return list(vertices)
+
+    refined: list[int] = [vertices[0]]
+    used_mask = np.zeros(embedding.shape[0], dtype=bool)
+    used_mask[vertices] = True
+
+    if split_edge_length_mult is None:
+        split_edge_length_mult = 1.0
+
+    ball_cutoff = 0.25 * float(
+        np.linalg.norm(embedding.max(axis=0) - embedding.min(axis=0))
+    )
+
+    def _target_length(a: int, b: int) -> float:
+        return float(split_edge_length_mult * 0.5 * (local_scale[a] + local_scale[b]))
+
+    for u, v in zip(vertices[:-1], vertices[1:]):
+        poly = [u, v]
+        lengths = [float(np.linalg.norm(embedding[u] - embedding[v]))]
+        targets = [_target_length(u, v)]
+        limit = (
+            split_point_distance_mult * 0.5 * (local_scale[u] + local_scale[v])
+            if split_point_distance_mult is not None
+            else None
+        )
+        pool: np.ndarray | None = None
+        pool_embedding: np.ndarray = embedding
+        limit_select = limit
+        pool_ready = limit is None
+        stalled_pairs: set[tuple[int, int]] = set()
+        n_inserted = 0
+        while n_inserted < max_insert_per_edge:
+            edges_to_split = []
+            for i in range(len(poly) - 1):
+                a, b = poly[i], poly[i + 1]
+                if (a, b) in stalled_pairs:
+                    continue
+                if lengths[i] > targets[i]:
+                    edges_to_split.append((targets[i] / lengths[i], i, a, b))
+            if not edges_to_split:
+                break
+            edges_to_split.sort(key=lambda x: x[0])
+            if not pool_ready:
+                assert limit is not None
+                half_len = 0.5 * float(np.linalg.norm(embedding[u] - embedding[v]))
+                if limit + half_len < ball_cutoff:
+                    mid_uv = 0.5 * (embedding[u] + embedding[v])
+                    near_mask = np.linalg.norm(embedding - mid_uv, axis=1) <= (
+                        limit + half_len
+                    ) * (1.0 + 1e-12)
+                    if 2 * int(near_mask.sum()) <= embedding.shape[0]:
+                        near = np.flatnonzero(near_mask)
+                        pool = near[
+                            _distances_to_edge(
+                                embedding[near], embedding[u], embedding[v]
+                            )
+                            <= limit
+                        ]
+                        pool_embedding = embedding[pool]
+                        limit_select = None
+                pool_ready = True
+
+            inserted_this_round = False
+            for _, i, a, b in edges_to_split:
+                p = _select_split_point(
+                    a=a,
+                    b=b,
+                    u=u,
+                    v=v,
+                    embedding=embedding,
+                    used_mask=used_mask,
+                    max_diameter=max_diameter,
+                    limit=limit_select,
+                    pool=pool,
+                    pool_embedding=pool_embedding,
+                )
+                if p is None:
+                    stalled_pairs.add((a, b))
+                    continue
+                poly.insert(i + 1, p)
+                lengths[i] = float(np.linalg.norm(embedding[a] - embedding[p]))
+                lengths.insert(
+                    i + 1, float(np.linalg.norm(embedding[p] - embedding[b]))
+                )
+                targets[i] = _target_length(a, p)
+                targets.insert(i + 1, _target_length(p, b))
+                used_mask[p] = True
+                n_inserted += 1
+                inserted_this_round = True
+                break
+            if not inserted_this_round:
+                break
+        refined.extend(poly[1:])
+
+    return refined
+
+
+def refine_loop_representatives(
+    loop_classes: list[LoopClass],
+    embedding: np.ndarray,
+    local_scale: np.ndarray | None = None,
+    max_insert_per_edge: int = DEFAULT_MAX_INSERT_PER_EDGE,
+    split_edge_length_mult: float | None = DEFAULT_SPLIT_EDGE_LENGTH_MULT,
+    split_point_distance_mult: float | None = DEFAULT_SPLIT_POINT_DISTANCE_MULT,
+    life_pct: float = 0.0,
+    k_local_scale: int = DEFAULT_K_LOCAL_SCALE,
+) -> None:
+    if local_scale is None:
+        nn = NearestNeighbors(n_neighbors=k_local_scale + 1).fit(embedding)
+        knn_distances, _ = nn.kneighbors(embedding)
+        local_scale = np.asarray(knn_distances[:, 1:].mean(axis=1), dtype=np.float64)
+    for loop_class in loop_classes:
+        if loop_class is None or not loop_class.representatives:
+            continue
+        max_diameter = loop_class.birth + life_pct * (
+            loop_class.death - loop_class.birth
+        )
+        refined_all = []
+        for rep in loop_class.representatives:
+            refined = _densify_loops(
+                vertices=list(rep),
+                embedding=embedding,
+                local_scale=local_scale,
+                max_diameter=max_diameter,
+                max_insert_per_edge=max_insert_per_edge,
+                split_edge_length_mult=split_edge_length_mult,
+                split_point_distance_mult=split_point_distance_mult,
+            )
+            refined_all.append(refined)
+        loop_class.representatives_refined = refined_all

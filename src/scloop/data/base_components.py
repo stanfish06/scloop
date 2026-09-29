@@ -1,15 +1,15 @@
 # Copyright 2025 Zhiyuan Yu (Heemskerk's lab, University of Michigan)
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from itertools import compress
+from typing import TYPE_CHECKING, Self
 
 import numpy as np
 from pydantic import BaseModel, Field, model_validator
 from pydantic.dataclasses import dataclass
 from scipy.spatial.distance import cdist
-from typing_extensions import Self
 
-from .types import Diameter_t, Index_t, Percent_t, PositiveFloat
+from .types import ColumnTrimMethod, Diameter_t, Index_t, Percent_t, PositiveFloat
 
 if TYPE_CHECKING:
     import h5py
@@ -116,9 +116,12 @@ class LoopClass(BaseModel):
     death_simplex: list[Index_t] = Field(default_factory=list)
     cocycles: list | None = None
     representatives: list[list[Index_t]] | None = None
+    representatives_refined: list[list[Index_t]] | None = None
+    representatives_valid: list[bool] | None = None
     coordinates_vertices_representatives: list[list[list[float]]] | None = None
 
     _cached_column_scores: np.ndarray | None = None
+    _cached_fillings: list[tuple[Index_t, ...] | None] | None = None
 
     model_config = {"arbitrary_types_allowed": True}
 
@@ -127,6 +130,12 @@ class LoopClass(BaseModel):
         if self.birth > self.death:
             raise ValueError("loop dies before its birth")
         return self
+
+    def filter_valid[T](self, per_rep: list[T]) -> list[T]:
+        valid = self.representatives_valid
+        if valid and len(valid) == len(per_rep):
+            return list(compress(per_rep, valid))
+        return per_rep
 
     @property
     def lifetime(self):
@@ -153,6 +162,31 @@ class LoopClass(BaseModel):
             n_neighbors=n_neighbors,
         )
         return self._cached_column_scores
+
+    def fillings(
+        self,
+        boundary_matrix_d1: BoundaryMatrixD1,
+        column_trim_method: ColumnTrimMethod,
+        column_scores: np.ndarray | None = None,
+    ) -> list[tuple[Index_t, ...] | None]:
+        if self._cached_fillings is not None:
+            return self._cached_fillings
+
+        if self.representatives is None:
+            raise ValueError("loop class has no representatives to fill")
+        from ..computing.coherence import compute_loop_fillings
+        from ..computing.matching import loops_to_edge_mask
+
+        loop_mask = loops_to_edge_mask(self.representatives, boundary_matrix_d1)
+        assert isinstance(loop_mask, np.ndarray)
+        self._cached_fillings = compute_loop_fillings(
+            loop_mask=loop_mask,
+            boundary_matrix_d1=boundary_matrix_d1,
+            death=self.death,
+            column_trim_method=column_trim_method,
+            column_scores=column_scores,
+        )
+        return self._cached_fillings
 
     @property
     def persistence_pair(self) -> PersistencePair:
@@ -210,6 +244,20 @@ class LoopClass(BaseModel):
                     str(i), data=np.array(rep, dtype=np.int64), **kw
                 )
 
+        if self.representatives_refined is not None:
+            reps_ref_grp = group.create_group("representatives_refined")
+            for i, rep in enumerate(self.representatives_refined):
+                reps_ref_grp.create_dataset(
+                    str(i), data=np.array(rep, dtype=np.int64), **kw
+                )
+
+        if self.representatives_valid is not None:
+            group.create_dataset(
+                "representatives_valid",
+                data=np.asarray(self.representatives_valid, dtype=bool),
+                **kw,
+            )
+
         if self.coordinates_vertices_representatives is not None:
             coords_grp = group.create_group("coordinates_vertices_representatives")
             for i, coords in enumerate(self.coordinates_vertices_representatives):
@@ -257,6 +305,21 @@ class LoopClass(BaseModel):
             for i in range(len(reps_grp)):
                 representatives.append(np.asarray(reps_grp[str(i)]).tolist())
 
+        representatives_refined = None
+        if "representatives_refined" in group:
+            reps_ref_grp: h5py.Group = group["representatives_refined"]  # type: ignore[assignment]
+            representatives_refined = []
+            for i in range(len(reps_ref_grp)):
+                representatives_refined.append(
+                    np.asarray(reps_ref_grp[str(i)]).tolist()
+                )
+
+        representatives_valid = (
+            np.asarray(group["representatives_valid"], dtype=bool).tolist()
+            if "representatives_valid" in group
+            else None
+        )
+
         coordinates_vertices_representatives = None
         if "coordinates_vertices_representatives" in group:
             coords_grp: h5py.Group = group["coordinates_vertices_representatives"]  # type: ignore[assignment]
@@ -275,6 +338,8 @@ class LoopClass(BaseModel):
             death_simplex=death_simplex,
             cocycles=cocycles,
             representatives=representatives,
+            representatives_refined=representatives_refined,
+            representatives_valid=representatives_valid,
             coordinates_vertices_representatives=coordinates_vertices_representatives,
         )
 

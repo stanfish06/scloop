@@ -450,6 +450,7 @@ def loops(
     components: tuple[Index_t, Index_t] | list[Index_t] = (0, 1),
     ax: Axes | None = None,
     *,
+    use_refined: bool = False,
     pointsize: PositiveFloat = 1,
     figsize: tuple[PositiveFloat, PositiveFloat] = DEFAULT_FIGSIZE,
     dpi: PositiveFloat = DEFAULT_DPI,
@@ -529,6 +530,7 @@ def loops(
                             selector=selector,
                             include_bootstrap=False,
                             embedding_alt=emb,
+                            use_refined=use_refined,
                         )
                     else:
                         return data._get_loop_embedding(
@@ -536,6 +538,7 @@ def loops(
                             include_bootstrap=True,
                             embedding_alt=emb,
                             keep_matches=keep_matches,
+                            use_refined=use_refined,
                         )
                 case IdxLoopInTrack(idx_track, idx_loop):
                     return data._get_loop_embedding(
@@ -544,6 +547,7 @@ def loops(
                         idx_loop=idx_loop,
                         embedding_alt=emb,
                         keep_matches=keep_matches,
+                        use_refined=use_refined,
                     )
                 case IdxLoopInClassOrig(idx_loop_class, idx_loop):
                     return data._get_loop_embedding(
@@ -551,17 +555,20 @@ def loops(
                         include_bootstrap=False,
                         idx_loop=idx_loop,
                         embedding_alt=emb,
+                        use_refined=use_refined,
                     )
                 case IdxClassInBootstrap(idx_bootstrap, idx_loop_class):
                     return data._get_loop_embedding(
                         selector=(idx_bootstrap, idx_loop_class),
                         embedding_alt=emb,
+                        use_refined=use_refined,
                     )
                 case IdxLoopInClassInBootstrap(idx_bootstrap, idx_loop_class, idx_loop):
                     return data._get_loop_embedding(
                         selector=(idx_bootstrap, idx_loop_class),
                         idx_loop=idx_loop,
                         embedding_alt=emb,
+                        use_refined=use_refined,
                     )
         except AssertionError:
             return []

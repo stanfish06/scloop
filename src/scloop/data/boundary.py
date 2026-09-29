@@ -104,6 +104,7 @@ class BoundaryMatrix(BaseModel, ABC):
 class BoundaryMatrixD1(BoundaryMatrix):
     _cached_edge_set: set[tuple[Index_t, Index_t]] | None = None
     _cached_col_vertices: np.ndarray | None = None
+    _cached_col_areas: dict[Index_t, float] | None = None
 
     @property
     def row_simplex_decode(self) -> list[tuple[Index_t, Index_t]]:
@@ -136,6 +137,22 @@ class BoundaryMatrixD1(BoundaryMatrix):
             )
         self._cached_col_vertices = verts
         return self._cached_col_vertices
+
+    def compute_col_areas(self) -> dict[Index_t, float]:
+        if self._cached_col_areas is not None:
+            return self._cached_col_areas
+
+        row_indices = np.asarray(self.data[0], dtype=np.int64)
+        col_indices = np.asarray(self.data[1], dtype=np.int64)
+        sides = np.asarray(self.row_simplex_diams, dtype=np.float64)[
+            row_indices[np.argsort(col_indices, kind="stable")]
+        ].reshape(-1, 3)
+        a, b, c = sides.T
+        # Heron's formula
+        heron = (a + b + c) * (-a + b + c) * (a - b + c) * (a + b - c)
+        areas = 0.25 * np.sqrt(np.clip(heron, 0.0, None))
+        self._cached_col_areas = dict(zip(self.col_simplex_ids, areas.tolist()))
+        return self._cached_col_areas
 
     def to_hdf5_group(self, group: h5py.Group, compress: bool = True) -> None:
         group.attrs["_type"] = "BoundaryMatrixD1"

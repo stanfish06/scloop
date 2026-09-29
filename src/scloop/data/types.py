@@ -9,11 +9,11 @@ EmbeddingMethod = Literal["pca", "diffmap", "scvi"]
 EmbeddingNeighbors = Literal["pca", "scvi"]
 LoopDistMethod = Literal["hausdorff", "frechet"]
 ColumnTrimMethod = Literal["diameter", "loop_proximity"]
-HomotopyCoherenceMethod = Literal["path_finding"]
 MultipleTestCorrectionMethod = Literal["bonferroni", "benjamini-hochberg"]
 PresenceTestMethod = Literal["fisher", "chi2", "wilcoxon"]
 CrossMatchModelTypes = Literal["mlp", "nf"]
 CrossMatchRoutes = Literal["geometric", "image"]
+CandidateMethod = Literal["geometric", "image"]
 LogLevel = Literal[
     "TRACE",
     "DEBUG",

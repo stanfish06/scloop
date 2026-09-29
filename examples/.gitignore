@@ -1,1 +1,6 @@
 *.png
+*.md
+/*_SCVI_*/
+/checkpoints/
+/examples/
+/*data*

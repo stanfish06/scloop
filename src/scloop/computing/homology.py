@@ -646,6 +646,8 @@ def compute_loop_homological_equivalence(
     cocycle_edge_mask: np.ndarray | None = None,
     column_trim_method: ColumnTrimMethod = DEFAULT_COLUMN_TRIM_METHOD,
     column_scores: np.ndarray | None = None,
+    compute_filling: bool = True,
+    cocycle_basis_masks: np.ndarray | None = None,
 ) -> LoopClassEquivalence:
     """
     Parameters
@@ -662,6 +664,11 @@ def compute_loop_homological_equivalence(
         ``diameter`` keeps the largest-diameter triangles (legacy).
         ``loop_proximity`` keeps the columns nearest to the loops, ranked by
         ``column_scores`` (one score per boundary-matrix column, lower is nearer).
+    compute_filling: bool
+        Solves d2 x = a + b over GF2
+    cocycle_basis_masks: np.ndarray | None
+        Boolean mask of shape (n_classes, n_edges), one row per H1 class alive in the
+        complex up to ``max_column_diameter``
     """
     assert loop_mask_a.shape[1] == boundary_matrix_d1.shape[0]
     assert loop_mask_b.shape[1] == boundary_matrix_d1.shape[0]
@@ -693,6 +700,20 @@ def compute_loop_homological_equivalence(
         np.flatnonzero(loop_sums[i]).astype(int).tolist() for i in range(n_pairs_check)
     ]
     result.n_loop_pairs_checked = n_pairs_check
+
+    if not compute_filling:
+        if cocycle_basis_masks is None:
+            raise ValueError("compute_filling=False requires cocycle_basis_masks")
+        sums = loop_sums[:n_pairs_check]
+        parities = (
+            sums.astype(np.int64) @ np.asarray(cocycle_basis_masks, dtype=np.int64).T
+        ) % 2
+        is_boundary = ~parities.any(axis=1)
+        if max_column_diameter is not None:
+            row_diams = np.asarray(boundary_matrix_d1.row_simplex_diams, dtype=float)
+            is_boundary &= ~(sums & (row_diams > max_column_diameter)).any(axis=1)
+        result.loop_pairs_matched = [pairs_kept[i] for i in np.flatnonzero(is_boundary)]
+        return result
 
     one_ridx_A = np.asarray(boundary_matrix_d1.data[0], dtype=int)
     one_cidx_A = np.asarray(boundary_matrix_d1.data[1], dtype=int)

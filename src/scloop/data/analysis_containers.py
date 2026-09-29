@@ -563,6 +563,7 @@ class BootstrapAnalysis:
         idx_track: Index_t,
         embedding_alt: np.ndarray | None = None,
         keep_matches: str = "equivalent",
+        use_refined: bool = False,
     ) -> list[np.ndarray]:
         assert idx_track in self.loop_tracks
         loops = []
@@ -576,14 +577,22 @@ class BootstrapAnalysis:
                     if embedding_alt is None:
                         if loop_class.coordinates_vertices_representatives is not None:
                             loops.extend(
-                                loop_class.coordinates_vertices_representatives
+                                loop_class.filter_valid(
+                                    loop_class.coordinates_vertices_representatives
+                                )
                             )
                     else:
-                        if loop_class.representatives is not None:
+                        reps = loop_class.representatives
+                        if (
+                            use_refined
+                            and loop_class.representatives_refined is not None
+                        ):
+                            reps = loop_class.representatives_refined
+                        if reps is not None:
                             loops.extend(
                                 loops_to_coords(
                                     embedding=embedding_alt,
-                                    loops_vertices=loop_class.representatives,
+                                    loops_vertices=loop_class.filter_valid(reps),
                                 )
                             )
         return loops
@@ -594,6 +603,7 @@ class BootstrapAnalysis:
         idx_loop_class: Index_t,
         idx_loop: Index_t | None = None,
         embedding_alt: np.ndarray | None = None,
+        use_refined: bool = False,
     ) -> list[list[list[float]]]:
         if idx_bootstrap < len(self.selected_loop_classes) and idx_loop_class < len(
             self.selected_loop_classes[idx_bootstrap]
@@ -602,29 +612,30 @@ class BootstrapAnalysis:
             if loop_class is not None:
                 if embedding_alt is None:
                     if loop_class.coordinates_vertices_representatives is not None:
+                        coords = loop_class.filter_valid(
+                            loop_class.coordinates_vertices_representatives
+                        )
                         if idx_loop is None:
-                            return loop_class.coordinates_vertices_representatives
+                            return coords
                         else:
-                            assert idx_loop < len(
-                                loop_class.coordinates_vertices_representatives
-                            )
-                            return [
-                                loop_class.coordinates_vertices_representatives[
-                                    idx_loop
-                                ]
-                            ]
+                            assert idx_loop < len(coords)
+                            return [coords[idx_loop]]
                 else:
-                    if loop_class.representatives is not None:
+                    reps = loop_class.representatives
+                    if use_refined and loop_class.representatives_refined is not None:
+                        reps = loop_class.representatives_refined
+                    if reps is not None:
+                        reps = loop_class.filter_valid(reps)
                         if idx_loop is None:
                             return loops_to_coords(
                                 embedding=embedding_alt,
-                                loops_vertices=loop_class.representatives,
+                                loops_vertices=reps,
                             )
                         else:
-                            assert idx_loop < len(loop_class.representatives)
+                            assert idx_loop < len(reps)
                             return loops_to_coords(
                                 embedding=embedding_alt,
-                                loops_vertices=[loop_class.representatives[idx_loop]],
+                                loops_vertices=[reps[idx_loop]],
                             )
 
         return []
@@ -1080,6 +1091,11 @@ class LoopClassAnalysis(LoopClass):
             for coords in super_obj.coordinates_vertices_representatives
         ]
         representatives = [list(rep) for rep in super_obj.representatives]
+        representatives_refined = (
+            [list(rep) for rep in super_obj.representatives_refined]
+            if super_obj.representatives_refined is not None
+            else None
+        )
 
         if len(coordinates_vertices) > 0:
             if ref_area is None:
@@ -1089,6 +1105,12 @@ class LoopClassAnalysis(LoopClass):
                     if ref_area * signed_area_2d(coordinates_vertices[i]) < 0:
                         coordinates_vertices[i] = coordinates_vertices[i][::-1]
                         representatives[i] = representatives[i][::-1]
+                        if representatives_refined is not None and i < len(
+                            representatives_refined
+                        ):
+                            representatives_refined[i] = representatives_refined[i][
+                                ::-1
+                            ]
 
         coordinates_edges = [
             (emb[0:-1, :] + emb[1:, :]) / 2 for emb in coordinates_vertices
@@ -1121,6 +1143,8 @@ class LoopClassAnalysis(LoopClass):
             death_simplex=super_obj.death_simplex,
             cocycles=super_obj.cocycles,
             representatives=representatives,
+            representatives_refined=representatives_refined,
+            representatives_valid=super_obj.representatives_valid,
             coordinates_vertices_representatives=[
                 c.tolist() for c in coordinates_vertices
             ],

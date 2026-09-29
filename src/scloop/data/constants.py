@@ -5,7 +5,13 @@ import os
 
 from IPython.display import Javascript
 
-from .types import ColumnTrimMethod, LoopDistMethod, PositiveFloat
+from .types import (
+    CandidateMethod,
+    ColumnTrimMethod,
+    LoopDistMethod,
+    PositiveFloat,
+    PresenceTestMethod,
+)
 
 CROSS_MATCH_KEY = "X_scloop_aligned"
 CROSS_MATCH_RESULT_KEY = "scloop_cross_match"
@@ -28,6 +34,8 @@ DEFAULT_N_PERMUTATIONS: int = 1000
 DEFAULT_CUTOFF_PVAL: float = 0.05
 DEFAULT_MAX_ROWS_BOUNDARY_MATRIX: int = 30000
 DEFAULT_N_BOOTSTRAP: int = 10
+DEFAULT_CANDIDATE_METHOD: CandidateMethod = "image"
+DEFAULT_PRESENCE_METHOD: PresenceTestMethod = "chi2"
 
 DEFAULT_AUTO_THRESHOLD_FACTOR: float = 1.75
 
@@ -40,6 +48,10 @@ DEFAULT_FOREIGN_CHORD_MULT: float = 1.0
 # Keep reconstructed reps with perimeter <= α * L_min before diversity
 # sampling. math.inf disables the gate. Typical range: 1.5–3.
 DEFAULT_MAX_PERIMETER_MULT: float = float("inf")
+DEFAULT_MAX_INSERT_PER_EDGE: int = 20
+DEFAULT_SPLIT_EDGE_LENGTH_MULT: float = 1.25
+DEFAULT_SPLIT_POINT_DISTANCE_MULT: float = 4.0
+DEFAULT_K_LOCAL_SCALE: int = 10
 DEFAULT_N_PAIRS_CHECK_EQUIVALENCE: int = 4
 # typically one neighbor is sufficient for checking
 DEFAULT_K_NEIGHBORS_CHECK_EQUIVALENCE: int = 1

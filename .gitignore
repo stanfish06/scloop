@@ -7,6 +7,11 @@ wheels/
 *.egg-info
 *.so
 
+*.a
+*.la
+src/scloop/utils/linear_algebra_gf2/include/
+src/scloop/utils/linear_algebra_gf2/pkgconfig/
+
 # Virtual environments
 .venv
 
@@ -16,10 +21,21 @@ wheels/
 
 .claude/
 .specify/
+.ccb/
+.codex
+.cursor/
+graphify-out/
 todo/
 *.ipynb
+*.ipynb.bak*
 .vscode/
 *.h5ad
+*.csv
+*.pdf
+*.pkl
+*.tar
 
-# Refactor planning
-REFACTOR_PLAN.md
+/*.md
+!/README.md
+/*.png
+/tmp/
