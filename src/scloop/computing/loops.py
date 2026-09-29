@@ -650,7 +650,7 @@ def _densify_loops(
                     edges_to_split.append((targets[i] / lengths[i], i, a, b))
             if not edges_to_split:
                 break
-            edges_to_split.sort(key=lambda x: -x[0])
+            edges_to_split.sort(key=lambda x: x[0])
             if not pool_ready:
                 assert limit is not None
                 half_len = 0.5 * float(np.linalg.norm(embedding[u] - embedding[v]))
