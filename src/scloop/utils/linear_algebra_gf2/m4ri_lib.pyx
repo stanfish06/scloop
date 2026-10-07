@@ -51,34 +51,6 @@ cdef int solve_gf2_nogil(
     return result
 
 
-cdef int solve_gf2_nogil_single_b(
-    mzd_t* A_base,
-    rci_t nrow_A,
-    rci_t ncol_A,
-    const rci_t[:] one_idx_b,
-    BIT* solution_out
-) noexcept nogil:
-    cdef mzd_t *A = mzd_init(nrow_A, ncol_A)
-    cdef mzd_t *b = mzd_init(nrow_A, 1)
-    cdef size_t i, nnz_b = one_idx_b.shape[0]
-    cdef int result
-
-    mzd_copy(A, A_base)
-
-    for i in range(nnz_b):
-        mzd_write_bit(b, one_idx_b[i], 0, 1)
-
-    result = mzd_solve_left(A, b, 0, 1)
-
-    if result == 0:
-        for i in range(<size_t>ncol_A):
-            solution_out[i] = mzd_read_bit(b, i, 0)
-
-    mzd_free(A)
-    mzd_free(b)
-    return result
-
-
 def solve_gf2(one_ridx_A, one_cidx_A, nrow_A, ncol_A, one_idx_b):
     assert nrow_A >= ncol_A, "number of rows must be greater than or equal to the number of columns"
 
@@ -134,70 +106,74 @@ def solve_gf2(one_ridx_A, one_cidx_A, nrow_A, ncol_A, one_idx_b):
 
 
 def solve_multiple_gf2(one_ridx_A, one_cidx_A, nrow_A, ncol_A, one_idx_b_list):
-    cdef rci_t[:] ridx_view
-    cdef rci_t[:] cidx_view
-    cdef mzd_t *A_base
+    """Solve A x = b over GF2 for every b in one_idx_b_list with one PLUQ of A.
+
+    Returns (states, solutions): state 0 with x as a list of bits, or -1 with
+    None when A x = b has no solution.
+    """
+    import numpy as np
+
     cdef mzd_t *A
-    cdef mzd_t *b
-    cdef BIT* solution
-    cdef int result
-    cdef size_t i, j, n_systems = len(one_idx_b_list)
-    cdef rci_t[:] b_idx_view
-    cdef rci_t nrow_c
-    cdef rci_t ncol_c
+    cdef mzd_t *B
+    cdef Py_ssize_t i, j
+    cdef rci_t m_c, ncol_c, k_c
+    cdef rci_t[::1] a_r, a_c, b_r, b_c
+    cdef unsigned char[:, ::1] x_view
 
-    results = []
-    sols = []
+    n_systems = len(one_idx_b_list)
+    if n_systems == 0:
+        return [], []
+    if ncol_A == 0:
+        states = [0 if len(b) == 0 else -1 for b in one_idx_b_list]
+        return states, [[] if s == 0 else None for s in states]
 
-    try:
-        import numpy as np
-        ridx_view = np.asarray(one_ridx_A, dtype=np.int32)
-        cidx_view = np.asarray(one_cidx_A, dtype=np.int32)
-        nrow_c = nrow_A
-        ncol_c = ncol_A
-        solution = <BIT*>malloc(ncol_A * sizeof(BIT))
-        if solution == NULL:
-            raise MemoryError("Failed to allocate solution array")
-        try:
-            A_base = mzd_init(nrow_A, ncol_A)
-            for i in range(ridx_view.shape[0]):
-                mzd_write_bit(A_base, ridx_view[i], cidx_view[i], 1)
-            for one_idx_b in one_idx_b_list:
-                b_idx_view = np.asarray(one_idx_b, dtype=np.int32)
-                with nogil:
-                    result = solve_gf2_nogil_single_b(A_base, nrow_c, ncol_c, b_idx_view, solution)
-                if result == 0:
-                    sol = [solution[j] for j in range(ncol_A)]
-                else:
-                    sol = None
-                results.append(result)
-                sols.append(sol)
-            mzd_free(A_base)
-            return results, sols
-        finally:
-            free(solution)
-    except:
-        A_base = mzd_init(nrow_A, ncol_A)
-        for (i, j) in zip(one_ridx_A, one_cidx_A):
-            mzd_write_bit(A_base, i, j, 1)
-        try:
-            for one_idx_b in one_idx_b_list:
-                A = mzd_init(nrow_A, ncol_A)
-                b = mzd_init(nrow_A, 1)
-                try:
-                    mzd_copy(A, A_base)
-                    for i in one_idx_b:
-                        mzd_write_bit(b, i, 0, 1)
-                    result = mzd_solve_left(A, b, 0, 1)
-                    if result == 0:
-                        sol = [mzd_read_bit(b, i, 0) for i in range(ncol_A)]
-                    else:
-                        sol = None
-                    results.append(result)
-                    sols.append(sol)
-                finally:
-                    mzd_free(A)
-                    mzd_free(b)
-        finally:
-            mzd_free(A_base)
-        return results, sols
+    # mzd_write_bit sets a bit, so repeated entries count once
+    entries = np.unique(
+        np.asarray(one_ridx_A, dtype=np.int64) * ncol_A
+        + np.asarray(one_cidx_A, dtype=np.int64)
+    )
+    ridx, cidx = entries // ncol_A, entries % ncol_A
+    b_list = [np.unique(np.asarray(b, dtype=np.int64)) for b in one_idx_b_list]
+
+    # drop rows that are zero in A and in every b; pad with zero rows to >= ncol_A
+    used = np.unique(np.concatenate([ridx, *b_list]))
+    m = max(used.size, ncol_A)
+    ridx = np.searchsorted(used, ridx)
+    b_list = [np.searchsorted(used, b) for b in b_list]
+
+    a_r = ridx.astype(np.intc)
+    a_c = cidx.astype(np.intc)
+    b_r = np.concatenate(b_list).astype(np.intc)
+    b_c = np.repeat(np.arange(n_systems), [b.size for b in b_list]).astype(np.intc)
+    x = np.zeros((n_systems, ncol_A), dtype=np.uint8)
+    x_view = x
+    m_c, ncol_c, k_c = m, ncol_A, n_systems
+
+    with nogil:
+        A = mzd_init(m_c, ncol_c)
+        B = mzd_init(m_c, k_c)
+        for i in range(a_r.shape[0]):
+            mzd_write_bit(A, a_r[i], a_c[i], 1)
+        for i in range(b_r.shape[0]):
+            mzd_write_bit(B, b_r[i], b_c[i], 1)
+        # m4ri's inconsistency check is all-or-nothing across columns of B;
+        # per-system consistency is checked below
+        mzd_solve_left(A, B, 0, 0)
+        for j in range(k_c):
+            for i in range(ncol_c):
+                x_view[j, i] = mzd_read_bit(B, i, j)
+        mzd_free(A)
+        mzd_free(B)
+
+    states, sols = [], []
+    for j in range(n_systems):
+        # exact residual: A x + b == 0 over GF2
+        residual = np.bincount(ridx[x[j, cidx] == 1], minlength=m) & 1
+        residual[b_list[j]] ^= 1
+        if residual.any():
+            states.append(-1)
+            sols.append(None)
+        else:
+            states.append(0)
+            sols.append(x[j].tolist())
+    return states, sols
