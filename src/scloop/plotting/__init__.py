@@ -5,6 +5,7 @@ from ._homology import (
     bar_lifetimes,
     hist_lifetimes,
     loop_embedding,
+    loop_rank,
     loops,
     persistence_diagram,
 )
@@ -14,6 +15,7 @@ __all__ = [
     "bar_lifetimes",
     "hist_lifetimes",
     "loop_embedding",
+    "loop_rank",
     "loops",
     "loop_edge_embedding",
     "loop_edge_overlay",

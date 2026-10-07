@@ -540,7 +540,7 @@ class HomologyData:
                 if i in self.bootstrap_data.loop_tracks:
                     for boot_id, loop_id in self.bootstrap_data.loop_tracks[
                         i
-                    ].track_ipairs:
+                    ].track_ipairs():
                         if boot_id < len(
                             self.bootstrap_data.selected_loop_classes
                         ) and loop_id < len(
@@ -660,31 +660,44 @@ class HomologyData:
             for i, loop_class in enumerate(loop_classes):
                 self.bootstrap_data.selected_loop_classes[idx_bootstrap][i] = loop_class
 
-    def _get_track_vertex_ids(
+    def get_loop_class(
         self,
-        idx_track: Index_t,
+        idx_loop_class: Index_t,
         include_bootstrap: bool = True,
-    ) -> list[list[int]]:
-        result: list[list[int]] = []
-        if idx_track < len(self.selected_loop_classes):
-            lc = self.selected_loop_classes[idx_track]
-            if lc is not None and lc.representatives is not None:
-                result.extend(lc.representatives)
+        **kwargs_match_filter,
+    ) -> list[LoopClass]:
+        result: list[LoopClass] = []
+        if idx_loop_class < len(self.selected_loop_classes):
+            lc = self.selected_loop_classes[idx_loop_class]
+            if lc is not None:
+                result.append(lc)
+            else:
+                return result
 
         if include_bootstrap and self.bootstrap_data is not None:
-            if idx_track in self.bootstrap_data.loop_tracks:
-                for boot_id, loop_id in self.bootstrap_data.loop_tracks[
-                    idx_track
-                ].track_ipairs:
-                    if boot_id < len(
-                        self.bootstrap_data.selected_loop_classes
-                    ) and loop_id < len(
-                        self.bootstrap_data.selected_loop_classes[boot_id]
-                    ):
-                        lc = self.bootstrap_data.selected_loop_classes[boot_id][loop_id]
-                        if lc is not None and lc.representatives is not None:
-                            result.extend(lc.representatives)
+            for boot_id, loop_id in self.bootstrap_data.loop_tracks[
+                idx_loop_class
+            ].track_ipairs(**kwargs_match_filter):
+                if boot_id < len(
+                    self.bootstrap_data.selected_loop_classes
+                ) and loop_id < len(self.bootstrap_data.selected_loop_classes[boot_id]):
+                    lc = self.bootstrap_data.selected_loop_classes[boot_id][loop_id]
+                    if lc is not None:
+                        result.append(lc)
         return result
+
+    def get_loop_class_persistence(
+        self,
+        idx_loop_class: Index_t,
+        include_bootstrap: bool = True,
+        **kwargs_match_filter,
+    ) -> list[PositiveFloat] | PositiveFloat:
+        loop_class = self.get_loop_class(
+            idx_loop_class=idx_loop_class,
+            include_bootstrap=include_bootstrap,
+            **kwargs_match_filter,
+        )
+        return [(c.death - c.birth) for c in loop_class]
 
     def _get_loop_embedding(
         self,

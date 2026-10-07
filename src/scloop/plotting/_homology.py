@@ -7,6 +7,7 @@ import glasbey
 import numpy as np
 from anndata import AnnData
 from matplotlib.axes import Axes
+from matplotlib.lines import Line2D
 from pydantic import ConfigDict, validate_call
 from scipy.linalg import svd
 
@@ -22,6 +23,7 @@ __all__ = [
     "persistence_diagram",
     "loop_embedding",
     "loops",
+    "loop_rank",
 ]
 
 DEFAULT_GLASBEY_BLOCK_SIZE = 5
@@ -581,11 +583,123 @@ def loops(
             ax.plot(
                 loop[:, components[0]],
                 loop[:, components[1]],
-                color=cmap[i][(block_size - 1) - j % block_size],
+                color=cmap[i][(int(np.floor(block_size / 2)) - j) % block_size],
                 **(kwargs_scatter or {}),
             )
 
     savefig_or_show(name="loops", show=show, save=save)
+    if show is False:
+        return ax
+    return None
+
+
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
+def loop_rank(
+    adata: AnnData,
+    key_homology: str = SCLOOP_UNS_KEY,
+    track_ids: list[Index_t] | None = None,
+    keep_matches: str = "equivalent",
+    ax: Axes | None = None,
+    *,
+    alpha: PositiveFloat = 0.05,
+    use_corrected: bool = True,
+    figsize: tuple[PositiveFloat, PositiveFloat] = DEFAULT_FIGSIZE,
+    dpi: PositiveFloat = DEFAULT_DPI,
+    kwargs_figure: dict | None = None,
+    kwargs_axes: dict | None = None,
+    kwargs_layout: dict | None = None,
+    show: bool | None = None,
+    save: str | bool | None = None,
+) -> Axes | None:
+    data = _get_homology_data(adata, key_homology)
+    assert data.bootstrap_data is not None
+    res = data.bootstrap_data.presence_test_result
+    assert res is not None
+    pvals = np.asarray(
+        res.pvalues_corrected if use_corrected else res.pvalues_raw, dtype=np.float64
+    )
+    all_tids = list(data.bootstrap_data.loop_tracks.keys())
+    boot = [
+        np.asarray(
+            data.get_loop_class_persistence(tid, keep=keep_matches), dtype=np.float64
+        )[1:]
+        for tid in all_tids
+    ]
+    med = np.array([np.median(b) if b.size else 0.0 for b in boot])
+    order = np.lexsort((-med, np.round(pvals, 12)))
+    ranks = np.arange(1, len(order) + 1)
+    sym = "q" if use_corrected else "p"
+
+    track_ids = all_tids if track_ids is None else track_ids
+    block_size = DEFAULT_GLASBEY_BLOCK_SIZE
+    cmap = glasbey.create_block_palette(block_sizes=[block_size] * len(track_ids))
+    cmap = [cmap[i : i + block_size] for i in range(0, len(cmap), block_size)]
+    color_of = {
+        tid: cmap[i][int(np.floor(block_size / 2))] for i, tid in enumerate(track_ids)
+    }
+
+    ax = (
+        _create_figure_standard(
+            figsize=figsize,
+            dpi=dpi,
+            kwargs_figure=kwargs_figure,
+            kwargs_axes=kwargs_axes,
+            kwargs_layout=kwargs_layout,
+        )
+        if ax is None
+        else ax
+    )
+    ax.set_box_aspect(1)
+    c_ink, c_rule = "#3c4043", "#a3a8ae"
+
+    has_boot = np.array([boot[k].size > 0 for k in order], dtype=bool)
+    ks = order[has_boot]
+    bp = ax.boxplot(
+        [boot[k] for k in ks],
+        positions=ranks[has_boot],
+        widths=0.6,
+        patch_artist=True,
+        flierprops=dict(marker="o", ms=3, mec="none", alpha=0.6),
+        medianprops=dict(color=c_ink, lw=1.5),
+        whiskerprops=dict(lw=1),
+        capprops=dict(lw=1),
+        zorder=2,
+    )
+    for k, box, flier in zip(ks, bp["boxes"], bp["fliers"]):
+        c = color_of.get(all_tids[k], "lightgray")
+        box.set(facecolor=c, edgecolor=c_ink, lw=0.8)
+        flier.set(markerfacecolor=c)
+    for rank, k in zip(ranks[has_boot], ks):
+        ax.annotate(
+            f"{all_tids[k]}",
+            (rank, boot[k].max()),
+            xytext=(0, 4),
+            textcoords="offset points",
+            ha="center",
+            va="bottom",
+            fontsize=7,
+            color=c_ink,
+        )
+
+    n_sig = int(np.sum(pvals < alpha))
+    if 0 < n_sig < len(order):
+        ax.axvline(n_sig + 0.5, color=c_rule, ls="--", lw=1, zorder=1)
+    ax.set_xticks(ranks)
+    ax.set_xticklabels([f"{pvals[k]:.1g}" for k in order], rotation=90, fontsize=7)
+    ax.set_xlim(0.4, len(order) + 0.6)
+    ax.set_xlabel(f"presence {sym}")
+    ax.set_ylabel("persistence")
+    ax.spines[["top", "right"]].set_visible(False)
+    ax.grid(axis="y", color="#e8eaed", lw=0.8)
+    ax.set_axisbelow(True)
+    ax.legend(
+        handles=[Line2D([], [], color=c_rule, ls="--", lw=1, label=f"{sym} = {alpha}")],
+        frameon=False,
+        fontsize=8,
+        loc="upper right",
+    )
+
+    savefig_or_show(name="loop_rank", show=show, save=save)
     if show is False:
         return ax
     return None

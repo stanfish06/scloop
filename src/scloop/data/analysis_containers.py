@@ -1,6 +1,7 @@
 # Copyright 2025 Zhiyuan Yu (Heemskerk's lab, University of Michigan)
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Literal, Optional
 
 import numpy as np
@@ -475,14 +476,18 @@ class LoopTrack:
         self,
         keep: Literal["all", "equivalent"] = "all",
         relax: bool = DEFAULT_WITH_RELAXATION_EQUIVALENCE,
+        **extra_filters: Callable[[LoopMatch], bool],
     ) -> list[LoopMatch]:
         if keep == "all":
             return list(self.matches)
         return [
             m
             for m in self.matches
-            if m.topological_equivalence is None
-            or m.topological_equivalence.is_equivalent(relax=relax)
+            if (
+                m.topological_equivalence is not None
+                and m.topological_equivalence.is_equivalent(relax=relax)
+            )
+            and all(f(m) for f in extra_filters.values())
         ]
 
     @property
@@ -490,11 +495,11 @@ class LoopTrack:
     def n_matches(self) -> Count_t:
         return len({m.idx_bootstrap for m in self.filter_matches(keep="equivalent")})
 
-    @property
-    def track_ipairs(self) -> list[tuple[Index_t, Index_t]]:
+    def track_ipairs(self, **kwargs_match_filter) -> list[tuple[Index_t, Index_t]]:
+        kwargs_match_filter = kwargs_match_filter or {"keep": "equivalent"}
         return [
             (m.idx_bootstrap, m.target_class_idx)
-            for m in self.filter_matches(keep="equivalent")
+            for m in self.filter_matches(**kwargs_match_filter)
         ]
 
     def summarize_homotopy_coherence(
