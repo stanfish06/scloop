@@ -30,7 +30,7 @@ def compute_boundary_matrix_d1(
     ) = compute_boundary_matrix_data(
         adata=adata, meta=meta, thresh=thresh, **nei_kwargs
     )
-    edge_ids_flat = np.array(edge_ids, dtype=np.int64).flatten()
+    edge_ids_flat = np.asarray(edge_ids, dtype=np.int64).ravel()
     edge_diams_flat = np.array(edge_diameters, dtype=float)
     edge_ids_1d, uniq_idx = np.unique(edge_ids_flat, return_index=True)
     row_simplex_diams = edge_diams_flat[uniq_idx]
@@ -49,7 +49,7 @@ def compute_boundary_matrix_d1(
         ),
         shape=(len(edge_ids_1d), num_triangles),
         row_simplex_ids=edge_ids_1d.tolist(),
-        col_simplex_ids=trig_ids,
+        col_simplex_ids=np.asarray(trig_ids, dtype=np.int64).tolist(),
         row_simplex_diams=row_simplex_diams.tolist(),
         col_simplex_diams=result.triangle_diameters,
     )

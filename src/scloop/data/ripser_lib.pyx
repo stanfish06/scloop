@@ -1,6 +1,7 @@
 # Copyright 2025 Zhiyuan Yu (Heemskerk's lab, University of Michigan)
 cimport cython
-from libcpp.vector cimport vector 
+from libcpp.vector cimport vector
+from libc.stdint cimport int64_t
 from scipy.sparse import coo_matrix
 import numpy as np
 import typing
@@ -41,11 +42,11 @@ class BoundaryMatrixResults:
     """Results from dimension 2 boundary matrix assembly.
 
     Attributes:
-        triangle_vertices: List of triangles, each represented as [v0, v1, v2]
-        triangle_diameters: List of diameters corresponding to each triangle
+        triangle_vertices: int64 array of shape (n_triangles, 3)
+        triangle_diameters: float32 array of shape (n_triangles,)
     """
-    triangle_vertices: list
-    triangle_diameters: list
+    triangle_vertices: np.ndarray
+    triangle_diameters: np.ndarray
 
 cdef list converting_cocycles_to_list(vector[vector[vector[int]]] cocycles_by_dim, int dim): 
     '''
@@ -219,16 +220,18 @@ def get_boundary_matrix(
     with nogil:
         res = get_boundary_matrix_sparse(I, J, V, NEdges, N, threshold)
 
-    cdef list triangle_vertices = []
-    cdef list triangle_diameters = []
-    cdef int n_triangles = res.triangle_vertices.size()
-
-    for i in range(n_triangles):
-        triangle = [int(res.triangle_vertices[i][0]),
-                   int(res.triangle_vertices[i][1]),
-                   int(res.triangle_vertices[i][2])]
-        triangle_vertices.append(triangle)
-        triangle_diameters.append(float(res.triangle_diameters[i]))
+    cdef Py_ssize_t n_triangles = res.triangle_vertices.size()
+    triangle_vertices = np.empty((n_triangles, 3), dtype=np.int64)
+    triangle_diameters = np.empty(n_triangles, dtype=np.float32)
+    cdef int64_t[:, ::1] _tv = triangle_vertices
+    cdef float[::1] _td = triangle_diameters
+    cdef Py_ssize_t i
+    with nogil:
+        for i in range(n_triangles):
+            _tv[i, 0] = res.triangle_vertices[i][0]
+            _tv[i, 1] = res.triangle_vertices[i][1]
+            _tv[i, 2] = res.triangle_vertices[i][2]
+            _td[i] = res.triangle_diameters[i]
 
     return BoundaryMatrixResults(
         triangle_vertices=triangle_vertices,

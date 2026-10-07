@@ -91,8 +91,8 @@ def _cap_infinite_deaths(diagrams: list, cap: float | None) -> list:
 def _persistence_pairs_from_ripser_result(
     result: object, dim: int = 1
 ) -> list[PersistencePair]:
-    births, deaths = result.births_and_deaths_by_dim[dim]
-    birth_simplices, death_simplices = result.births_and_deaths_simplex_by_dim[dim]
+    births, deaths = result.births_and_deaths_by_dim[dim]  # type: ignore[missing-attribute]
+    birth_simplices, death_simplices = result.births_and_deaths_simplex_by_dim[dim]  # type: ignore[missing-attribute]
     if not (len(births) == len(deaths) == len(birth_simplices) == len(death_simplices)):
         raise ValueError(
             "Ripser persistence pairs and critical simplices are misaligned"
@@ -557,33 +557,38 @@ def compute_boundary_matrix_data(
     sparse_pairwise_distance_matrix, vertex_indices = compute_sparse_pairwise_distance(
         adata=adata, meta=meta, bootstrap=False, thresh=thresh, **nei_kwargs
     )
-    result = get_boundary_matrix(sparse_pairwise_distance_matrix.tocoo(), thresh)
-    triangles_local = np.asarray(result.triangle_vertices, dtype=np.int64)
+    distance_coo = sparse_pairwise_distance_matrix.tocoo()
+    result = get_boundary_matrix(distance_coo, thresh)
+    triangles_local = result.triangle_vertices
     if len(triangles_local) == 0:
-        edge_ids, trig_ids, edge_diameters, vertex_indices_np = [], [], [], np.array([])
+        edge_ids, trig_ids, edge_diameters, vertex_indices_np = (
+            np.array([]),
+            np.array([]),
+            np.array([]),
+            np.array([]),
+        )
     else:
         if vertex_indices is None:
             assert sparse_pairwise_distance_matrix.shape is not None
             vertex_indices_np = np.arange(sparse_pairwise_distance_matrix.shape[0])
         else:
             vertex_indices_np = np.asarray(vertex_indices, dtype=np.int64)
-        triangles = vertex_indices_np[triangles_local]
-        order = np.argsort(triangles, axis=1)
-        triangles = np.take_along_axis(triangles, order, axis=1)
-        triangles_local = np.take_along_axis(triangles_local, order, axis=1)
+        num_vertices = meta.preprocess.num_vertices
         edge_ids, trig_ids = encode_triangles_and_edges(
-            triangles, meta.preprocess.num_vertices
+            vertex_indices_np[triangles_local], num_vertices
         )
-        edge_diameters = []
-        for tri_local in triangles_local:
-            i0, i1, i2 = int(tri_local[0]), int(tri_local[1]), int(tri_local[2])
-            edge_diameters.extend(
-                [
-                    sparse_pairwise_distance_matrix[i0, i1],
-                    sparse_pairwise_distance_matrix[i0, i2],
-                    sparse_pairwise_distance_matrix[i1, i2],
-                ]
-            )
+        rows = vertex_indices_np[distance_coo.row]
+        cols = vertex_indices_np[distance_coo.col]
+        upper = rows < cols
+        graph_edge_ids = rows[upper] * num_vertices + cols[upper]
+        order = np.argsort(graph_edge_ids)
+        graph_edge_ids = graph_edge_ids[order]
+        graph_edge_diams = distance_coo.data[upper][order]
+        pos = np.searchsorted(graph_edge_ids, edge_ids.ravel())
+        assert np.array_equal(graph_edge_ids[pos], edge_ids.ravel()), (
+            "triangle edge missing from distance graph"
+        )
+        edge_diameters = graph_edge_diams[pos]
     return (
         result,
         edge_ids,

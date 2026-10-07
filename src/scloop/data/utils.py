@@ -61,23 +61,15 @@ def signed_area_2d(coords: np.ndarray) -> float:
     return 0.5 * area
 
 
-@jit(nopython=True)
-def encode_triangles_and_edges(triangles, num_vertices):
-    trig_ids = []
-    edge_ids = []
-    for trig in triangles:
-        i0 = trig[0]
-        i1 = trig[1]
-        i2 = trig[2]
-        ids = [
-            edge_idx_encode(i=i0, j=i1, num_vertices=num_vertices),
-            edge_idx_encode(i=i0, j=i2, num_vertices=num_vertices),
-            edge_idx_encode(i=i1, j=i2, num_vertices=num_vertices),
-        ]
-        edge_ids.append(ids)
-        trig_ids.append(
-            triangle_idx_encode(i=i0, j=i1, k=i2, num_vertices=num_vertices)
-        )
+def encode_triangles_and_edges(
+    triangles: np.ndarray, num_vertices: Size_t
+) -> tuple[np.ndarray, np.ndarray]:
+    i0, i1, i2 = np.sort(np.asarray(triangles, dtype=np.int64), axis=1).T
+    edge_ids = np.stack(
+        [i0 * num_vertices + i1, i0 * num_vertices + i2, i1 * num_vertices + i2],
+        axis=1,
+    )
+    trig_ids = (i0 * num_vertices + i1) * num_vertices + i2
     return edge_ids, trig_ids
 
 
