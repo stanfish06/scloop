@@ -132,13 +132,14 @@ public:
 /* Modulo operator is expensive, using a mask when modulus is equal 2
  * is much less expesive and speed-ups where observed
  */
-const coefficient_t get_modulo(const coefficient_t val,
-                               const coefficient_t modulus)
+inline const coefficient_t get_modulo(const coefficient_t val,
+                                      const coefficient_t modulus)
 {
     return (modulus == 2) ? val & 1 : val % modulus;
 }
 
-coefficient_t normalize(const coefficient_t n, const coefficient_t modulus)
+inline coefficient_t normalize(const coefficient_t n,
+                               const coefficient_t modulus)
 {
     return n > modulus / 2 ? n - modulus : n;
 }
@@ -178,10 +179,13 @@ PACK(struct entry_t {
 static_assert(sizeof(entry_t) == sizeof(index_t),
               "size of entry_t is not the same as index_t");
 
-entry_t make_entry(index_t i, coefficient_t c) { return entry_t(i, c); }
-index_t get_index(const entry_t& e) { return e.index; }
-index_t get_coefficient(const entry_t& e) { return e.coefficient; }
-void set_coefficient(entry_t& e, const coefficient_t c) { e.coefficient = c; }
+inline entry_t make_entry(index_t i, coefficient_t c) { return entry_t(i, c); }
+inline index_t get_index(const entry_t& e) { return e.index; }
+inline index_t get_coefficient(const entry_t& e) { return e.coefficient; }
+inline void set_coefficient(entry_t& e, const coefficient_t c)
+{
+    e.coefficient = c;
+}
 
 std::ostream& operator<<(std::ostream& stream, const entry_t& e)
 {
@@ -192,17 +196,17 @@ std::ostream& operator<<(std::ostream& stream, const entry_t& e)
 #else
 
 typedef index_t entry_t;
-const index_t get_index(const entry_t& i) { return i; }
-index_t get_coefficient(const entry_t& i) { return 1; }
-entry_t make_entry(index_t _index, coefficient_t _value)
+inline const index_t get_index(const entry_t& i) { return i; }
+inline index_t get_coefficient(const entry_t& i) { return 1; }
+inline entry_t make_entry(index_t _index, coefficient_t _value)
 {
     return entry_t(_index);
 }
-void set_coefficient(entry_t& e, const coefficient_t c) {}
+inline void set_coefficient(entry_t& e, const coefficient_t c) {}
 
 #endif
 
-const entry_t& get_entry(const entry_t& e) { return e; }
+inline const entry_t& get_entry(const entry_t& e) { return e; }
 
 struct diameter_index_t {
     value_t diameter;
@@ -225,70 +229,80 @@ struct diameter_index_t {
     }
 };
 
-value_t get_diameter(const diameter_index_t& i) { return i.diameter; }
-value_t get_diameter_sub(const diameter_index_t& i) { return i.diameter_sub; }
-index_t get_index(const diameter_index_t& i) { return i.index; }
+inline value_t get_diameter(const diameter_index_t& i) { return i.diameter; }
+inline value_t get_diameter_sub(const diameter_index_t& i)
+{
+    return i.diameter_sub;
+}
+inline index_t get_index(const diameter_index_t& i) { return i.index; }
 
 typedef std::pair<index_t, value_t> index_diameter_t;
-index_t get_index(const index_diameter_t& i) { return i.first; }
-value_t get_diameter(const index_diameter_t& i) { return i.second; }
+inline index_t get_index(const index_diameter_t& i) { return i.first; }
+inline value_t get_diameter(const index_diameter_t& i) { return i.second; }
 
-struct diameter_entry_t : std::pair<value_t, entry_t> {
-    using Base = std::pair<value_t, entry_t>;
+struct diameter_entry_t {
+    value_t diameter;
     value_t diameter_sub;
+    entry_t entry;
 
-    diameter_entry_t()
-        : Base(), diameter_sub(0)
-    {
-    }
+    diameter_entry_t() : diameter(0), diameter_sub(0), entry() {}
 
     diameter_entry_t(value_t _diameter, entry_t _entry)
-        : Base(_diameter, _entry), diameter_sub(_diameter)
+        : diameter(_diameter), diameter_sub(_diameter), entry(_entry)
     {
     }
 
     diameter_entry_t(value_t _diameter, value_t _diameter_sub, index_t _index,
                      coefficient_t _coefficient)
-        : Base(_diameter, make_entry(_index, _coefficient)),
-          diameter_sub(_diameter_sub)
+        : diameter(_diameter), diameter_sub(_diameter_sub),
+          entry(make_entry(_index, _coefficient))
     {
     }
 
     diameter_entry_t(value_t _diameter, index_t _index,
                      coefficient_t _coefficient)
-        : Base(_diameter, make_entry(_index, _coefficient)),
-          diameter_sub(_diameter)
+        : diameter(_diameter), diameter_sub(_diameter),
+          entry(make_entry(_index, _coefficient))
     {
     }
 
     diameter_entry_t(const diameter_index_t& _diameter_index,
                      coefficient_t _coefficient)
-        : Base(get_diameter(_diameter_index),
-               make_entry(get_index(_diameter_index), _coefficient)),
-          diameter_sub(get_diameter_sub(_diameter_index))
+        : diameter(get_diameter(_diameter_index)),
+          diameter_sub(get_diameter_sub(_diameter_index)),
+          entry(make_entry(get_index(_diameter_index), _coefficient))
     {
     }
 
     diameter_entry_t(const index_t& _index)
-        : Base(0, make_entry(_index, 0)), diameter_sub(0)
+        : diameter(0), diameter_sub(0), entry(make_entry(_index, 0))
     {
     }
 };
 
-value_t get_diameter_sub(const diameter_entry_t& e) { return e.diameter_sub; }
+static_assert(sizeof(diameter_entry_t) == 16,
+              "size of diameter_entry_t is not 16 bytes");
 
-const entry_t& get_entry(const diameter_entry_t& p) { return p.second; }
-entry_t& get_entry(diameter_entry_t& p) { return p.second; }
-const index_t get_index(const diameter_entry_t& p)
+inline value_t get_diameter_sub(const diameter_entry_t& e)
+{
+    return e.diameter_sub;
+}
+
+inline const entry_t& get_entry(const diameter_entry_t& p) { return p.entry; }
+inline entry_t& get_entry(diameter_entry_t& p) { return p.entry; }
+inline const index_t get_index(const diameter_entry_t& p)
 {
     return get_index(get_entry(p));
 }
-const coefficient_t get_coefficient(const diameter_entry_t& p)
+inline const coefficient_t get_coefficient(const diameter_entry_t& p)
 {
     return get_coefficient(get_entry(p));
 }
-const value_t& get_diameter(const diameter_entry_t& p) { return p.first; }
-void set_coefficient(diameter_entry_t& p, const coefficient_t c)
+inline const value_t& get_diameter(const diameter_entry_t& p)
+{
+    return p.diameter;
+}
+inline void set_coefficient(diameter_entry_t& p, const coefficient_t c)
 {
     set_coefficient(get_entry(p), c);
 }
@@ -309,7 +323,7 @@ value_t get_coboundary_diameter(const Entry& entry, reduction_mode mode)
                                                   : get_diameter(entry);
 }
 
-bool pivots_use_sub_diameter(reduction_mode mode)
+inline bool pivots_use_sub_diameter(reduction_mode mode)
 {
     return mode == reduction_mode::subfiltration;
 }
@@ -325,10 +339,14 @@ struct greater_diameter_or_smaller_index {
 
     bool operator()(const Entry& a, const Entry& b)
     {
+        // break sub-diameter ties (inf for non-sub simplices) by ambient
+        // diameter so non-sub columns reduce in ambient order in image mode
         return use_diameter_sub
                    ? (get_diameter_sub(a) > get_diameter_sub(b)) ||
                          ((get_diameter_sub(a) == get_diameter_sub(b)) &&
-                          (get_index(a) < get_index(b)))
+                          ((get_diameter(a) > get_diameter(b)) ||
+                           ((get_diameter(a) == get_diameter(b)) &&
+                            (get_index(a) < get_index(b)))))
                    : (get_diameter(a) > get_diameter(b)) ||
                          ((get_diameter(a) == get_diameter(b)) &&
                           (get_index(a) < get_index(b)));
@@ -1127,6 +1145,9 @@ public:
             value_t diameter = get_birth_diameter(column_to_reduce, mode);
 
             reduction_matrix.append_column();
+            // non-sub columns have no cofacets within threshold here
+            if (mode == reduction_mode::subfiltration && diameter > threshold)
+                continue;
 
             greater_diameter_or_smaller_index<diameter_entry_t> comparator(
                 pivots_use_sub_diameter(mode));
