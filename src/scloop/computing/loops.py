@@ -625,7 +625,7 @@ def _densify_loops(
     def _target_length(a: int, b: int) -> float:
         return float(split_edge_length_mult * 0.5 * (local_scale[a] + local_scale[b]))
 
-    for u, v in zip(vertices[:-1], vertices[1:]):
+    for u, v in zip(vertices, vertices[1:] + vertices[:1]):
         poly = [u, v]
         lengths = [float(np.linalg.norm(embedding[u] - embedding[v]))]
         targets = [_target_length(u, v)]
@@ -703,6 +703,7 @@ def _densify_loops(
                 break
         refined.extend(poly[1:])
 
+    refined.pop()
     return refined
 
 

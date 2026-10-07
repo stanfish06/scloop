@@ -649,7 +649,6 @@ def loop_rank(
         if ax is None
         else ax
     )
-    ax.set_box_aspect(1)
     c_ink, c_rule = "#3c4043", "#a3a8ae"
 
     has_boot = np.array([boot[k].size > 0 for k in order], dtype=bool)
@@ -690,8 +689,8 @@ def loop_rank(
     ax.set_xlabel(f"presence {sym}")
     ax.set_ylabel("persistence")
     ax.spines[["top", "right"]].set_visible(False)
-    ax.grid(axis="y", color="#e8eaed", lw=0.8)
     ax.set_axisbelow(True)
+    ax.grid(False)
     ax.legend(
         handles=[Line2D([], [], color=c_rule, ls="--", lw=1, label=f"{sym} = {alpha}")],
         frameon=False,
