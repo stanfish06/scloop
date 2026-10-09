@@ -34,7 +34,7 @@ dependencies = [
   "pynndescent>=0.5.13",
   "pytest>=8.4",
   "pyyaml",
-  "rich==14.2",
+  "rich==15.0.0",
   "scanpy[leiden]>=1.11.2",
   "scikit-misc>=0.5.2",
   "statsmodels==0.14.4",
