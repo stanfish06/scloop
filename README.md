@@ -29,7 +29,7 @@ scLoop is a library to identify statistically significant loops in single-cell R
   </tr>
   <tr>
     <td align="center">
-      <img src="https://raw.githubusercontent.com/stanfish06/scloop/master/examples/landscape.png" width="400" alt="landscape">
+      <img src="https://raw.githubusercontent.com/stanfish06/scloop/master/examples/landscape.png" width="275" alt="landscape">
     </td>
     <td align="center">
       <img src="https://raw.githubusercontent.com/stanfish06/scloop/master/examples/loop_rank.png" width="400" alt="loop rank">
