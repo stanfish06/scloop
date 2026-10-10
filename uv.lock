@@ -4197,11 +4197,12 @@ wheels = [
 
 [[package]]
 name = "scvi-tools"
-version = "1.5.0.post1"
+version = "1.5.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anndata" },
     { name = "docrep" },
+    { name = "joblib" },
     { name = "lightning" },
     { name = "ml-collections" },
     { name = "mudata" },
@@ -4221,9 +4222,9 @@ dependencies = [
     { name = "tqdm" },
     { name = "xarray" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2d/5f/b64e37506e03d6d9e2965534371d36a3ccdaea8b1e0d141055c90d69d3a5/scvi_tools-1.5.0.post1.tar.gz", hash = "sha256:6f945e5b578a9229612d4b332a9b65dc08cb558343331d268956ddbf1f4ef9fa", size = 13354046, upload-time = "2026-07-09T17:34:49.949Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/be/63/fd51ab922d3f7a0363e0104babcc7ad0925947e716c75c717506eee3ddc6/scvi_tools-1.5.1.tar.gz", hash = "sha256:413cab3a8b8865bb42712c1239ab3b1e78960e0739df844128d3577c1556fb18", size = 13402937, upload-time = "2026-09-10T12:22:12.119Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/14/57/cadae518579a25ce6f68e71a9570c7063fc23b26d7e8c51f57f777713b85/scvi_tools-1.5.0.post1-py3-none-any.whl", hash = "sha256:d868c86332f819b8d79846ea0e36ec6eef26c3fafeb03ce7a239f1ddefb1c976", size = 711159, upload-time = "2026-07-09T17:34:46.962Z" },
+    { url = "https://files.pythonhosted.org/packages/5b/c1/e08e12a980981bac331883cd0c31a78a5b17edf6be5b0b15b4a27e8b0630/scvi_tools-1.5.1-py3-none-any.whl", hash = "sha256:89fcd8f1a8e19f1a1fbe1c409e1969a838f6b57b3dc032934836a31d5ef8b837", size = 731469, upload-time = "2026-09-10T12:22:09.704Z" },
 ]
 
 [[package]]
