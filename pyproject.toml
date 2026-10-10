@@ -37,7 +37,7 @@ dependencies = [
   "rich==15.0.0",
   "scanpy[leiden]>=1.11.2",
   "scikit-misc>=0.5.2",
-  "statsmodels==0.14.4",
+  "statsmodels==0.15.0",
   "tensorflow>=2.18.1",
   "torch",
   "torchdyn>=1.0.6",
