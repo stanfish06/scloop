@@ -34,12 +34,8 @@ dependencies = [
   "pynndescent>=0.5.13",
   "pytest>=8.4",
   "pyyaml",
-<<<<<<< HEAD
-  "rich==15.0.0",
-=======
-  "rich==14.2",
+  "rich==15",
   "sanity-py>=0.1.4",
->>>>>>> 25385ab (update sanity)
   "scanpy[leiden]>=1.11.2",
   "scikit-misc>=0.5.2",
   "statsmodels==0.14.4",
