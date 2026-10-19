@@ -29,7 +29,6 @@ run = [
     "rm -f uv.lock",
     "find ./src -name '*.so'  -type f -delete",
     "make build-m4ri",
-    "make build-sanity",
     "uv sync"
 ]
 

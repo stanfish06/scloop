@@ -3,6 +3,7 @@ from contextlib import nullcontext
 from typing import Any
 
 import numpy as np
+import pysanity
 import scanpy as sc
 from anndata import AnnData
 from loguru import logger
@@ -21,7 +22,6 @@ from ..data.types import (
     EmbeddingNeighbors,
     FeatureSelectionMethod,
 )
-from ..utils.denoise import compute_posterior_gene_noise_model
 from ..utils.logging import (
     LogDisplay,
     create_console,
@@ -280,12 +280,7 @@ def prepare_adata(
                 raise ValueError("counts layer is required for Sanity noise model")
             if verbose:
                 logger.info("Step 2/5: Computing Sanity noise model")
-            adata.obs["library_size_sanity"] = np.asarray(
-                adata.layers["counts"].sum(axis=1)
-            ).ravel()
-            compute_posterior_gene_noise_model(
-                adata=adata, use_layer="counts", **kwargs_sanity
-            )
+            pysanity.sanity(adata, layer="counts", **kwargs_sanity)
         elif verbose:
             logger.info("Step 2/5: Sanity noise model skipped")
 

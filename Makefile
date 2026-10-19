@@ -1,4 +1,4 @@
-.PHONY: build build-m4ri build-sanity sync clean
+.PHONY: build build-m4ri sync clean
 
 PROJECT_ROOT := $(shell pwd)
 
@@ -7,7 +7,6 @@ M4RI_PREFIX := $(PROJECT_ROOT)/src/scloop/utils/linear_algebra_gf2
 DM_PREFIX := $(PROJECT_ROOT)/src/scloop/utils/distance_metrics
 GF2TOOLKIT_SRC := $(PROJECT_ROOT)/src/scloop/utils/linear_algebra_gf2/GF2toolkit
 GF2TOOLKIT_PREFIX := $(PROJECT_ROOT)/src/scloop/utils/linear_algebra_gf2
-SANITY_SRC := $(PROJECT_ROOT)/src/scloop/utils/denoise/Sanity/src
 
 build-gf2toolkit: build-m4ri
 	cd $(GF2TOOLKIT_SRC) && \
@@ -24,20 +23,7 @@ build-m4ri:
 		$(MAKE) && \
 		$(MAKE) install
 
-SANITY_CFLAGS := -I. -O2 -ffast-math -O3 -std=c++11 -fPIC -D_USE_MATH_DEFINES
-ifeq ($(shell uname -s),Darwin)
-SANITY_LIBOMP := $(shell brew --prefix libomp 2>/dev/null || echo /opt/homebrew/opt/libomp)
-SANITY_CFLAGS += -Xpreprocessor -fopenmp -I$(SANITY_LIBOMP)/include
-else
-SANITY_CFLAGS += -fopenmp
-endif
-
-build-sanity:
-	cd $(SANITY_SRC) && \
-		$(MAKE) clean || true && \
-		$(MAKE) Sanity_lib CFLAGS="$(SANITY_CFLAGS)"
-
-build: build-m4ri build-sanity
+build: build-m4ri
 	CFLAGS="-I$(M4RI_PREFIX)/include" \
 	LDFLAGS="-L$(M4RI_PREFIX) -Wl,-rpath,$(M4RI_PREFIX)" \
 	CPLUS_INCLUDE_PATH=$(PROJECT_ROOT)/src/scloop/data:$(DM_PREFIX) \
@@ -46,11 +32,11 @@ build: build-m4ri build-sanity
 fresh-sync: build-m4ri
 	CPLUS_INCLUDE_PATH=$(PROJECT_ROOT)/src/scloop/data:$(DM_PREFIX)/discrete-frechet-distance uv sync
 
-sync: clean build-m4ri build-sanity
+sync: clean build-m4ri
 	python setup.py build_ext --inplace
 	CPLUS_INCLUDE_PATH=$(PROJECT_ROOT)/src/scloop/data:$(DM_PREFIX)/discrete-frechet-distance uv sync
 
-full-sync: build-m4ri build-sanity
+full-sync: build-m4ri
 	uv cache clean
 	uv cache prune
 	rm -rf .venv

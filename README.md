@@ -186,12 +186,6 @@ src/scloop/
 │   ├── __init__.py
 │   └── _loops.py
 └── utils
-    ├── denoise
-    │   ├── __init__.py
-    │   ├── Sanity
-    │   ├── Sanity.cpp
-    │   ├── Sanity_py.py
-    │   └── Sanity.pyx
     ├── distance_metrics
     │   ├── discrete-frechet-distance
     │   ├── frechet.cpp

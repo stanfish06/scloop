@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
+import pysanity
 from anndata import AnnData
 from numba import jit
 from scipy.sparse import csr_matrix
@@ -38,7 +39,6 @@ from ..preprocessing.downsample import (
     sample_farthest_points,
     sample_farthest_points_randomized,
 )
-from ..utils.denoise.Sanity_py import sample_posterior_predictive_counts
 from ..utils.distance_metrics.frechet_py import compute_pairwise_loop_frechet
 from ..utils.linear_algebra_gf2 import (  # type: ignore
     solve_multiple_gf2_m4ri,  # type: ignore[import-not-found]
@@ -127,7 +127,7 @@ def _sample_bootstrap_embedding(
     X = emb[source_indices]
     if bootstrap_noise_model == "sanity":
         if meta.preprocess.embedding_method == "pca":
-            X = sample_posterior_predictive_counts(
+            X = pysanity.sample(
                 adata=adata,
                 cell_idx=np.asarray(bootstrap_indices, dtype=np.int64),
                 scale_before_pca=meta.preprocess.scale_before_pca,
@@ -137,7 +137,7 @@ def _sample_bootstrap_embedding(
             )
         elif meta.preprocess.embedding_method == "diffmap":
             if meta.preprocess.embedding_neighbors == "pca":
-                X = sample_posterior_predictive_counts(
+                X = pysanity.sample(
                     adata=adata,
                     cell_idx=np.asarray(bootstrap_indices, dtype=np.int64),
                     scale_before_pca=meta.preprocess.scale_before_pca,
