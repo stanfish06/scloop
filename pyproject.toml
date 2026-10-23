@@ -19,7 +19,7 @@ classifiers = [
 dependencies = [
   "adjusttext>=1.4",
   "cython>=3.0.12",
-  "glasbey==0.3",
+  "glasbey==0.4.0",
   "huggingface-hub",
   "igraph>=0.11",
   "kmapper>=2.1",
