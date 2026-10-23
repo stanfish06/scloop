@@ -56,7 +56,7 @@ dev = [
   "magic-impute>=3",
   "notebook>=7.6",
   "phate>=2",
-  "pyright==1.1.406",
+  "pyright==1.1.414",
   "ruff>=0.15.5",
   "sctda>=0.97",
   "scvi-tools>=1.4.1",
