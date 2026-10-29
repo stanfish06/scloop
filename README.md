@@ -4,6 +4,7 @@
 [![Test Import](https://github.com/stanfish06/scLoop/actions/workflows/test-import.yml/badge.svg)](https://github.com/stanfish06/scLoop/actions/workflows/test-import.yml)
 [![Test Build](https://github.com/stanfish06/scLoop/actions/workflows/test-build.yml/badge.svg)](https://github.com/stanfish06/scLoop/actions/workflows/test-build.yml)
 [![PyPI](https://img.shields.io/pypi/v/scloop)](https://pypi.org/project/scloop)
+[![Docs](https://img.shields.io/badge/docs-docs.scloop.dev-blue)](https://docs.scloop.dev)
 
 **Note: this package is in early stages of development. (manuscript in prep)**
 
