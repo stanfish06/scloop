@@ -22,6 +22,7 @@ def loop_proximity_column_scores(
     embedding: np.ndarray,
     loop_coords: np.ndarray,
     n_neighbors: int,
+    used_vertices: np.ndarray | None = None,
 ) -> np.ndarray:
     n_tri = triangle_vertices.shape[0]
     n_loop = loop_coords.shape[0]
@@ -31,7 +32,8 @@ def loop_proximity_column_scores(
         return np.full(n_tri, np.inf, dtype=np.float32)
 
     k = max(1, min(n_neighbors, n_loop))
-    used = np.unique(triangle_vertices)
+    # sorted vertex ids present in triangle_vertices; pass a cached copy to skip the sort
+    used = np.unique(triangle_vertices) if used_vertices is None else used_vertices
     d = cdist(np.asarray(embedding)[used], loop_coords)
     if k == n_loop:
         per_vertex = d.mean(axis=1)
@@ -160,6 +162,7 @@ class LoopClass(BaseModel):
             embedding=embedding,
             loop_coords=np.asarray(embedding)[loop_ids].astype(np.float64, copy=False),
             n_neighbors=n_neighbors,
+            used_vertices=boundary_matrix_d1.col_vertex_ids,
         )
         return self._cached_column_scores
 

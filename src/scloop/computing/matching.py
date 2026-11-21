@@ -186,8 +186,10 @@ def check_homological_equivalence(
     )
     assert isinstance(mask_a, np.ndarray) and isinstance(mask_b, np.ndarray)
 
+    compute_filling = compute_homotopy_coherence or cocycle_basis_masks is None
     if (
-        column_scores is None
+        compute_filling
+        and column_scores is None
         and column_trim_method == "loop_proximity"
         and embedding is not None
     ):
@@ -202,6 +204,7 @@ def check_homological_equivalence(
             embedding=embedding,
             loop_coords=np.asarray(embedding)[loop_ids].astype(np.float64, copy=False),
             n_neighbors=n_neighbors_column_trim,
+            used_vertices=boundary_matrix_d1.col_vertex_ids,
         )
 
     result = compute_loop_homological_equivalence(
@@ -216,7 +219,7 @@ def check_homological_equivalence(
         cocycle_edge_mask=cocycle_edge_mask,
         column_trim_method=column_trim_method,
         column_scores=column_scores,
-        compute_filling=compute_homotopy_coherence or cocycle_basis_masks is None,
+        compute_filling=compute_filling,
         cocycle_basis_masks=cocycle_basis_masks,
     )
 

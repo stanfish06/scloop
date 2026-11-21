@@ -153,6 +153,11 @@ class BoundaryMatrixD1(BoundaryMatrix):
     def edge_row_lookup(self) -> dict[Index_t, Index_t]:
         return {edge_id: row for row, edge_id in enumerate(self.row_simplex_ids)}
 
+    @cached_property
+    def col_vertex_ids(self) -> np.ndarray:
+        """Sorted ids of the vertices used by any triangle column."""
+        return np.unique(self.compute_col_vertices())
+
     def compute_col_vertices(self) -> np.ndarray:
         if self._cached_col_vertices is not None:
             return self._cached_col_vertices
