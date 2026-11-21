@@ -701,9 +701,7 @@ def compute_loop_homological_equivalence(
             pairs_kept = [pairs_kept[i] for i in keep]
     n_pairs_check = min(n_pairs_check, loop_sums.shape[0])
     pairs_kept = pairs_kept[:n_pairs_check]
-    one_idx_b_list = [
-        np.flatnonzero(loop_sums[i]).astype(int).tolist() for i in range(n_pairs_check)
-    ]
+    one_idx_b_list = [np.flatnonzero(loop_sums[i]) for i in range(n_pairs_check)]
     result.n_loop_pairs_checked = n_pairs_check
 
     if not compute_filling:
@@ -715,24 +713,17 @@ def compute_loop_homological_equivalence(
         ) % 2
         is_boundary = ~parities.any(axis=1)
         if max_column_diameter is not None:
-            row_diams = np.asarray(boundary_matrix_d1.row_simplex_diams, dtype=float)
+            row_diams = boundary_matrix_d1.row_diams_array
             is_boundary &= ~(sums & (row_diams > max_column_diameter)).any(axis=1)
         result.loop_pairs_matched = [pairs_kept[i] for i in np.flatnonzero(is_boundary)]
         return result
 
-    one_ridx_A = np.asarray(boundary_matrix_d1.data[0], dtype=int)
-    one_cidx_A = np.asarray(boundary_matrix_d1.data[1], dtype=int)
     nrow_A = boundary_matrix_d1.shape[0]
     ncol_A = boundary_matrix_d1.shape[1]
-
-    col_diams = np.asarray(boundary_matrix_d1.col_simplex_diams, dtype=float)
-    col_simplex_ids = np.asarray(boundary_matrix_d1.col_simplex_ids, dtype=int)
-    row_simplex_ids = np.asarray(boundary_matrix_d1.row_simplex_ids, dtype=int)
-    if one_cidx_A.size != 3 * ncol_A or not np.all(
-        np.bincount(one_cidx_A, minlength=ncol_A) == 3
-    ):
-        raise ValueError("every D1 boundary-matrix column must contain three edges")
-    column_rows = one_ridx_A[np.argsort(one_cidx_A, kind="stable")].reshape(ncol_A, 3)
+    col_diams = boundary_matrix_d1.col_diams_array
+    col_simplex_ids = boundary_matrix_d1.col_ids_array
+    row_simplex_ids = boundary_matrix_d1.row_ids_array
+    column_rows = boundary_matrix_d1.column_rows
 
     cols_keep = np.arange(ncol_A, dtype=int)
     if max_column_diameter is not None:
@@ -765,12 +756,12 @@ def compute_loop_homological_equivalence(
     ncol_A = cols_keep.size
     one_ridx_A = column_rows[cols_keep].ravel()
     one_cidx_A = np.repeat(np.arange(ncol_A, dtype=int), 3)
-    solver_column_ids = [int(col_simplex_ids[i]) for i in cols_keep]
+    solver_column_ids = col_simplex_ids[cols_keep].tolist()
     solver_columns_are_triangles = [True] * ncol_A
 
     states, solutions = solve_multiple_gf2_m4ri(
-        one_ridx_A=one_ridx_A.tolist(),
-        one_cidx_A=one_cidx_A.tolist(),
+        one_ridx_A=one_ridx_A,
+        one_cidx_A=one_cidx_A,
         nrow_A=nrow_A,
         ncol_A=ncol_A,
         one_idx_b_list=one_idx_b_list,
@@ -814,8 +805,8 @@ def compute_loop_homological_equivalence(
                 solver_column_ids_relax[column] = edge_id
                 solver_columns_are_triangles_relax[column] = False
             states_relax, solutions_relax = solve_multiple_gf2_m4ri(
-                one_ridx_A=one_ridx_A.tolist(),
-                one_cidx_A=one_cidx_A.tolist(),
+                one_ridx_A=one_ridx_A,
+                one_cidx_A=one_cidx_A,
                 nrow_A=nrow_A,
                 ncol_A=ncol_A,
                 one_idx_b_list=one_idx_b_list,

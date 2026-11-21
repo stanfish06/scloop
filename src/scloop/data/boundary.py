@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from functools import cached_property
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -120,6 +121,38 @@ class BoundaryMatrixD1(BoundaryMatrix):
             self._cached_edge_set = set(self.row_simplex_decode)
         return self._cached_edge_set
 
+    @cached_property
+    def row_ids_array(self) -> np.ndarray:
+        return np.asarray(self.row_simplex_ids, dtype=np.int64)
+
+    @cached_property
+    def col_ids_array(self) -> np.ndarray:
+        return np.asarray(self.col_simplex_ids, dtype=np.int64)
+
+    @cached_property
+    def row_diams_array(self) -> np.ndarray:
+        return np.asarray(self.row_simplex_diams, dtype=np.float64)
+
+    @cached_property
+    def col_diams_array(self) -> np.ndarray:
+        return np.asarray(self.col_simplex_diams, dtype=np.float64)
+
+    @cached_property
+    def column_rows(self) -> np.ndarray:
+        """Edge-row indices of each triangle column, shape (n_cols, 3)."""
+        rows = np.asarray(self.data[0], dtype=np.int64)
+        cols = np.asarray(self.data[1], dtype=np.int64)
+        n_cols = self.shape[1]
+        if cols.size != 3 * n_cols or not np.all(
+            np.bincount(cols, minlength=n_cols) == 3
+        ):
+            raise ValueError("every D1 boundary-matrix column must contain three edges")
+        return rows[np.argsort(cols, kind="stable")].reshape(n_cols, 3)
+
+    @cached_property
+    def edge_row_lookup(self) -> dict[Index_t, Index_t]:
+        return {edge_id: row for row, edge_id in enumerate(self.row_simplex_ids)}
+
     def compute_col_vertices(self) -> np.ndarray:
         if self._cached_col_vertices is not None:
             return self._cached_col_vertices
@@ -142,11 +175,7 @@ class BoundaryMatrixD1(BoundaryMatrix):
         if self._cached_col_areas is not None:
             return self._cached_col_areas
 
-        row_indices = np.asarray(self.data[0], dtype=np.int64)
-        col_indices = np.asarray(self.data[1], dtype=np.int64)
-        sides = np.asarray(self.row_simplex_diams, dtype=np.float64)[
-            row_indices[np.argsort(col_indices, kind="stable")]
-        ].reshape(-1, 3)
+        sides = self.row_diams_array[self.column_rows]
         a, b, c = sides.T
         # Heron's formula
         heron = (a + b + c) * (-a + b + c) * (a - b + c) * (a + b - c)

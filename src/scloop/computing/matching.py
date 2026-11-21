@@ -40,10 +40,7 @@ def loops_to_edge_mask(
     num_vertices = boundary_matrix_d1.num_vertices
     n_edges = boundary_matrix_d1.shape[0]
 
-    edge_lookup = {
-        edge_id: row_idx
-        for row_idx, edge_id in enumerate(boundary_matrix_d1.row_simplex_ids)
-    }
+    edge_lookup = boundary_matrix_d1.edge_row_lookup
 
     dtype = np.int32 if use_order else bool
     mask = np.zeros((len(loops), n_edges), dtype=dtype)
@@ -93,10 +90,7 @@ def cocycle_to_edge_mask(
         return None
     num_vertices = boundary_matrix_d1.num_vertices
     n_edges = boundary_matrix_d1.shape[0]
-    edge_lookup = {
-        edge_id: row_idx
-        for row_idx, edge_id in enumerate(boundary_matrix_d1.row_simplex_ids)
-    }
+    edge_lookup = boundary_matrix_d1.edge_row_lookup
     mask = np.zeros(n_edges, dtype=bool)
     for simplex in cocycle:
         try:
