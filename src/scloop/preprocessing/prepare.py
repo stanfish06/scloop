@@ -188,6 +188,8 @@ def prepare_adata(
     )
     embedding_downsample = kwargs_downsample.get("embedding_downsample", None)
     density_exempt_groups = kwargs_downsample.get("density_exempt_groups", None)
+    percent_removal_lof = kwargs_downsample.get("percent_removal_lof", 0)
+    n_neighbors_removal_lof = kwargs_downsample.get("n_neighbors_removal_lof", 15)
 
     use_log_display = verbose and max_log_messages is not None
     if verbose:
@@ -372,6 +374,8 @@ def prepare_adata(
                 percent_removal_density=percent_removal_density,
                 n_neighbors_density=n_neighbors_removal_density,
                 density_exempt_groups=density_exempt_groups,
+                percent_removal_lof=percent_removal_lof,
+                n_neighbors_lof=n_neighbors_removal_lof,
             )
             if verbose:
                 logger.info(f"Selected {len(indices_downsample)} cells for analysis")
@@ -387,6 +391,8 @@ def prepare_adata(
             "percent_removal_density": percent_removal_density,
             "n_neighbors_density": n_neighbors_removal_density,
             "density_exempt_groups": density_exempt_groups,
+            "percent_removal_lof": percent_removal_lof,
+            "n_neighbors_lof": n_neighbors_removal_lof,
         }
 
         if progress is not None and task_prep is not None:

@@ -5,6 +5,7 @@ from anndata import AnnData
 from numba import jit
 from pydantic import validate_call
 from pynndescent import NNDescent
+from sklearn.neighbors import LocalOutlierFactor
 
 from ..data.types import EmbeddingMethod, IndexListDownSample, SizeDownSample
 
@@ -232,6 +233,8 @@ def sample(
     percent_removal_density: float = 0.025,
     n_neighbors_density: int = 50,
     density_exempt_groups: list[str] | None = None,
+    percent_removal_lof: float = 0,
+    n_neighbors_lof: int = 15,
 ) -> IndexListDownSample:
     """
     Topology-preserving downsampling using greedy farthest-point sampling.
@@ -242,6 +245,8 @@ def sample(
         embedding_method: which embedding to use from adata.obsm
         n: number of points to sample
         random_state: random seed for reproducibility
+        percent_removal_lof: fraction of cells with the highest local outlier factor removed before sampling (0 = off)
+        n_neighbors_lof: neighbours for the local outlier factor
 
     Returns:
         list of indices into adata.obs for the downsampled points
@@ -251,6 +256,7 @@ def sample(
     downsample_embedding = adata.obsm[f"X_{embedding_method}"]
     assert type(downsample_embedding) is np.ndarray
 
+    valid_mask = np.ones(adata.shape[0], dtype=bool)
     # TODO: try mellon for better density estimation
     if percent_removal_density > 0:
         index = NNDescent(downsample_embedding, n_neighbors=n_neighbors_density)
@@ -272,15 +278,24 @@ def sample(
                 break
             current_percentile *= 2
 
-        valid_mask = density >= threshold
-        if density_exempt_groups is not None and groupby is not None:
-            exempt_mask = adata.obs[groupby].isin(density_exempt_groups).to_numpy()
-            valid_mask = np.logical_or(valid_mask, exempt_mask)
-        local_indices = np.where(valid_mask)[0]
-        downsample_embedding_local = downsample_embedding[local_indices]
-    else:
-        local_indices = np.arange(adata.shape[0])
-        downsample_embedding_local = downsample_embedding
+        valid_mask &= density >= threshold
+
+    # local outlier factor (Breunig et al. 2000): density relative to the neighbours' density,
+    # so uniformly sparse regions (e.g. transitional cells) score ~1 and are kept
+    if percent_removal_lof > 0:
+        lof = (
+            -LocalOutlierFactor(n_neighbors=n_neighbors_lof, n_jobs=-1)
+            .fit(downsample_embedding)
+            .negative_outlier_factor_
+        )
+        n_remove = round(percent_removal_lof * len(lof))
+        valid_mask[np.argsort(lof)[::-1][:n_remove]] = False
+
+    if density_exempt_groups is not None and groupby is not None:
+        exempt_mask = adata.obs[groupby].isin(density_exempt_groups).to_numpy()
+        valid_mask = np.logical_or(valid_mask, exempt_mask)
+    local_indices = np.where(valid_mask)[0]
+    downsample_embedding_local = downsample_embedding[local_indices]
 
     if groupby is None:
         class_labels = np.zeros(len(local_indices), dtype=np.int64)
