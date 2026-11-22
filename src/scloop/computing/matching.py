@@ -192,6 +192,7 @@ def check_homological_equivalence(
         and column_scores is None
         and column_trim_method == "loop_proximity"
         and embedding is not None
+        and False
     ):
         ids: list[int] = []
         for loop in source_loops:

@@ -3,6 +3,7 @@ from .m4ri_lib import (
     solve_multiple_gf2 as solve_multiple_gf2_m4ri,  # type: ignore[import-not-found]
 )
 from .sparse_gf2 import solve_multiple_gf2 as solve_multiple_gf2_sparse
+from .sparse_gf2 import solve_on_reduction
 
 try:
     from .gf2toolkit_lib import (
@@ -19,6 +20,7 @@ __all__ = [
     "solve_gf2_m4ri",
     "solve_multiple_gf2_m4ri",
     "solve_multiple_gf2_sparse",
+    "solve_on_reduction",
     "solve_gf2_toolkit",
     "solve_multiple_gf2_toolkit",
 ]

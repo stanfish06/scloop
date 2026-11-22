@@ -126,7 +126,7 @@ def _attribute_to_loop_class(
             column_trim_method = kwargs_equivalence.get(
                 "column_trim_method", DEFAULT_COLUMN_TRIM_METHOD
             )
-            if column_trim_method == "loop_proximity":
+            if column_trim_method == "loop_proximity" and False:
                 column_scores = image_loop_class.column_proximity_scores(
                     side.boundary_matrix_d1,
                     side.embedding,

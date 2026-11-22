@@ -41,7 +41,7 @@ from ..preprocessing.downsample import (
 )
 from ..utils.distance_metrics.frechet_py import compute_pairwise_loop_frechet
 from ..utils.linear_algebra_gf2 import (  # type: ignore
-    solve_multiple_gf2_sparse,
+    solve_on_reduction,
 )
 
 if TYPE_CHECKING:
@@ -620,22 +620,14 @@ def find_incident_edges(
 
 
 def _decode_deformation(
-    solution: list[int], column_ids: list[int], columns_are_triangles: list[bool]
+    support: np.ndarray, column_ids: np.ndarray, n_triangle_columns: int
 ) -> dict[str, tuple[int, ...]]:
-    selected = [
-        (simplex_id, is_triangle)
-        for value, simplex_id, is_triangle in zip(
-            solution, column_ids, columns_are_triangles
-        )
-        if value % 2 == 1
-    ]
+    """Map solution column positions to simplex ids; positions from n_triangle_columns on are relaxation edges."""
+    selected = column_ids[support]
+    is_triangle = support < n_triangle_columns
     return {
-        "triangle_ids": tuple(
-            simplex_id for simplex_id, is_triangle in selected if is_triangle
-        ),
-        "relaxation_edge_ids": tuple(
-            simplex_id for simplex_id, is_triangle in selected if not is_triangle
-        ),
+        "triangle_ids": tuple(selected[is_triangle].tolist()),
+        "relaxation_edge_ids": tuple(selected[~is_triangle].tolist()),
     }
 
 
@@ -725,13 +717,16 @@ def compute_loop_homological_equivalence(
     row_simplex_ids = boundary_matrix_d1.row_ids_array
     column_rows = boundary_matrix_d1.column_rows
 
-    cols_keep = np.arange(ncol_A, dtype=int)
+    order, sorted_diams, reduction = boundary_matrix_d1.gf2_reduction
     if max_column_diameter is not None:
-        cols_keep = cols_keep[col_diams <= max_column_diameter]
-        if cols_keep.size == 0:
+        ncol_A = int(np.searchsorted(sorted_diams, max_column_diameter, side="right"))
+        if ncol_A == 0:
             return result
+    # columns by increasing diameter (relaxation replaces the largest tail)
+    cols_keep = order[:ncol_A]
 
-    if cols_keep.size > nrow_A:
+    # column trimming disabled: the cached reduction needs the whole diameter-sorted prefix
+    if cols_keep.size > nrow_A and False:
         if column_trim_method == "loop_proximity":
             if column_scores is None:
                 raise ValueError(
@@ -751,29 +746,16 @@ def compute_loop_homological_equivalence(
             keep_order = np.argsort(col_diams[cols_keep], kind="stable")[-nrow_A:]
             cols_keep = cols_keep[keep_order]
 
-    # order columns by increasing diameter (relaxation replaces the largest tail)
-    cols_keep = cols_keep[np.argsort(col_diams[cols_keep], kind="stable")]
-    ncol_A = cols_keep.size
     one_ridx_A = column_rows[cols_keep].ravel()
-    one_cidx_A = np.repeat(np.arange(ncol_A, dtype=int), 3)
-    solver_column_ids = col_simplex_ids[cols_keep].tolist()
-    solver_columns_are_triangles = [True] * ncol_A
+    column_ids = col_simplex_ids[cols_keep]
 
-    states, solutions = solve_multiple_gf2_sparse(
-        one_ridx_A=one_ridx_A,
-        one_cidx_A=one_cidx_A,
-        nrow_A=nrow_A,
-        ncol_A=ncol_A,
-        one_idx_b_list=one_idx_b_list,
-    )
+    no_edges = np.empty(0, dtype=np.int64)
+    states, solutions = solve_on_reduction(reduction, ncol_A, no_edges, one_idx_b_list)
     solved = [i for i, s in enumerate(states) if s == 0]
     if len(solved) > 0:
         result.loop_pairs_matched = [pairs_kept[i] for i in solved]
         result.mapping_deformation_matched = [
-            _decode_deformation(
-                solutions[i], solver_column_ids, solver_columns_are_triangles
-            )
-            for i in solved
+            _decode_deformation(solutions[i], column_ids, ncol_A) for i in solved
         ]
 
     states_relax, solutions_relax = None, None
@@ -796,29 +778,19 @@ def compute_loop_homological_equivalence(
         n_extra_edges = min(len(n_hubs_edges), max_n_edges_relaxation)
         if n_extra_edges > 0:
             replace_start = ncol_A - n_extra_edges
-            one_ridx_A[3 * replace_start :] = np.repeat(n_hubs_edges[:n_extra_edges], 3)
-            solver_column_ids_relax = list(solver_column_ids)
-            solver_columns_are_triangles_relax = list(solver_columns_are_triangles)
-            for offset, row in enumerate(n_hubs_edges[:n_extra_edges]):
-                edge_id = int(row_simplex_ids[row])
-                column = replace_start + offset
-                solver_column_ids_relax[column] = edge_id
-                solver_columns_are_triangles_relax[column] = False
-            states_relax, solutions_relax = solve_multiple_gf2_sparse(
-                one_ridx_A=one_ridx_A,
-                one_cidx_A=one_cidx_A,
-                nrow_A=nrow_A,
-                ncol_A=ncol_A,
-                one_idx_b_list=one_idx_b_list,
+            extra_rows = n_hubs_edges[:n_extra_edges].astype(np.int64)
+            column_ids_relax = np.concatenate(
+                [column_ids[:replace_start], row_simplex_ids[extra_rows]]
+            )
+            states_relax, solutions_relax = solve_on_reduction(
+                reduction, replace_start, extra_rows, one_idx_b_list
             )
             solved_relax = [i for i, s in enumerate(states_relax) if s == 0]
             if len(solved_relax) > 0:
                 result.loop_pairs_matched_relax = [pairs_kept[i] for i in solved_relax]
                 result.mapping_deformation_matched_relax = [
                     _decode_deformation(
-                        solutions_relax[i],
-                        solver_column_ids_relax,
-                        solver_columns_are_triangles_relax,
+                        solutions_relax[i], column_ids_relax, replace_start
                     )
                     for i in solved_relax
                 ]

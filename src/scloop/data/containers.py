@@ -909,6 +909,7 @@ class HomologyData:
             if column_trim_method == "loop_proximity"
             and embedding is not None
             and cocycle_basis_masks is None
+            and False
             else None
         )
         source_fillings = (

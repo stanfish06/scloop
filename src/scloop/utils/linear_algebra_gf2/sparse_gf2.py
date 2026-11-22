@@ -123,3 +123,123 @@ def solve_multiple_gf2(one_ridx_A, one_cidx_A, nrow_A, ncol_A, one_idx_b_list):
     return state_list, [
         solutions[j].tolist() if state_list[j] == 0 else None for j in range(n_systems)
     ]
+
+
+@njit(cache=True)
+def _reduce_columns(
+    indptr: np.ndarray, indices: np.ndarray, nrow: int, ncol: int
+) -> tuple:
+    pivot_of_row = np.full(nrow, -1, np.int64)
+    pivot_position = np.empty(min(nrow, ncol), np.int64)
+    reduced = List.empty_list(_INT_ARRAY)
+    combination = List.empty_list(_INT_ARRAY)
+    used = np.empty(nrow, np.int64)
+    for c in range(ncol):
+        col = indices[indptr[c] : indptr[c + 1]].copy()
+        n_used = 0
+        while col.size > 0:
+            p = pivot_of_row[col[-1]]
+            if p < 0:
+                # combination built only for columns that become pivots
+                comb = np.array([c], dtype=np.int64)
+                for u in range(n_used):
+                    comb = _symmetric_difference(comb, combination[used[u]])
+                pivot_position[len(reduced)] = c
+                pivot_of_row[col[-1]] = len(reduced)
+                reduced.append(col)
+                combination.append(comb)
+                break
+            used[n_used] = p
+            n_used += 1
+            col = _symmetric_difference(col, reduced[p])
+    return pivot_of_row, pivot_position[: len(reduced)].copy(), reduced, combination
+
+
+@njit(cache=True)
+def _solve_on_reduction(
+    pivot_of_row,
+    pivot_position,
+    reduced,
+    combination,
+    cutoff,
+    extra_rows,
+    b_indptr,
+    b_indices,
+    states,
+):
+    n_cached = len(reduced)
+    local = pivot_of_row.copy()
+    for r in range(local.size):
+        if local[r] >= 0 and pivot_position[local[r]] >= cutoff:
+            local[r] = -1
+    ext_reduced = List.empty_list(_INT_ARRAY)
+    ext_combination = List.empty_list(_INT_ARRAY)
+    for k in range(extra_rows.size):
+        col = np.array([extra_rows[k]], dtype=np.int64)
+        comb = np.array([cutoff + k], dtype=np.int64)
+        while col.size > 0:
+            p = local[col[-1]]
+            if p < 0:
+                local[col[-1]] = n_cached + len(ext_reduced)
+                ext_reduced.append(col)
+                ext_combination.append(comb)
+                break
+            if p < n_cached:
+                col = _symmetric_difference(col, reduced[p])
+                comb = _symmetric_difference(comb, combination[p])
+            else:
+                col = _symmetric_difference(col, ext_reduced[p - n_cached])
+                comb = _symmetric_difference(comb, ext_combination[p - n_cached])
+    supports = List.empty_list(_INT_ARRAY)
+    for j in range(b_indptr.size - 1):
+        rhs = b_indices[b_indptr[j] : b_indptr[j + 1]].copy()
+        x = np.empty(0, np.int64)
+        states[j] = 0
+        while rhs.size > 0:
+            p = local[rhs[-1]]
+            if p < 0:
+                states[j] = -1
+                break
+            if p < n_cached:
+                rhs = _symmetric_difference(rhs, reduced[p])
+                x = _symmetric_difference(x, combination[p])
+            else:
+                rhs = _symmetric_difference(rhs, ext_reduced[p - n_cached])
+                x = _symmetric_difference(x, ext_combination[p - n_cached])
+        supports.append(x)
+    return supports
+
+
+def reduce_columns(column_rows: np.ndarray, nrow: int) -> tuple:
+    """Reduce the columns of A (row indices per column, shape (ncol, k)) left to right once."""
+    ncol, k = column_rows.shape
+    indptr = np.arange(0, k * ncol + 1, k, dtype=np.int64)
+    indices = np.ascontiguousarray(np.sort(column_rows, axis=1), dtype=np.int64).ravel()
+    return _reduce_columns(indptr, indices, nrow, ncol)
+
+
+def solve_on_reduction(reduction, cutoff, extra_rows, one_idx_b_list):
+    """Solve A x = b where A = first cutoff reduced columns followed by one-entry columns at extra_rows.
+
+    Returns (states, supports): supports[j] holds the column positions with x = 1, None if unsolved.
+    """
+    n_systems = len(one_idx_b_list)
+    if n_systems == 0:
+        return [], []
+    b_list = [np.unique(np.asarray(b, dtype=np.int64)) for b in one_idx_b_list]
+    b_indptr = np.zeros(n_systems + 1, dtype=np.int64)
+    b_indptr[1:] = np.cumsum([b.size for b in b_list])
+    b_indices = np.concatenate(b_list).astype(np.int64)
+    states = np.zeros(n_systems, dtype=np.int64)
+    supports = _solve_on_reduction(
+        *reduction,
+        int(cutoff),
+        np.asarray(extra_rows, dtype=np.int64),
+        b_indptr,
+        b_indices,
+        states,
+    )
+    state_list = states.tolist()
+    return state_list, [
+        supports[j] if state_list[j] == 0 else None for j in range(n_systems)
+    ]

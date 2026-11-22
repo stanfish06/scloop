@@ -1,6 +1,7 @@
 # Copyright 2025 Zhiyuan Yu (Heemskerk's lab, University of Michigan)
 from __future__ import annotations
 
+import threading
 from abc import ABC, abstractmethod
 from functools import cached_property
 from typing import TYPE_CHECKING
@@ -13,6 +14,8 @@ from .utils import decode_edges, decode_triangles
 
 if TYPE_CHECKING:
     import h5py
+
+_GF2_REDUCTION_LOCK = threading.Lock()
 
 
 class BoundaryMatrix(BaseModel, ABC):
@@ -157,6 +160,25 @@ class BoundaryMatrixD1(BoundaryMatrix):
     def col_vertex_ids(self) -> np.ndarray:
         """Sorted ids of the vertices used by any triangle column."""
         return np.unique(self.compute_col_vertices())
+
+    @cached_property
+    def gf2_reduction(self) -> tuple:
+        """Column order by diameter (stable), the sorted diameters, and the GF2 reduction
+        of the columns in that order; a diameter cutoff selects a prefix of it."""
+        from ..utils.linear_algebra_gf2.sparse_gf2 import reduce_columns
+
+        # bootstrap threads share one matrix: reduce once
+        with _GF2_REDUCTION_LOCK:
+            if "gf2_reduction" in self.__dict__:
+                return self.__dict__["gf2_reduction"]
+            order = np.argsort(self.col_diams_array, kind="stable")
+            reduction = (
+                order,
+                self.col_diams_array[order],
+                reduce_columns(self.column_rows[order], self.shape[0]),
+            )
+            self.__dict__["gf2_reduction"] = reduction
+            return reduction
 
     def compute_col_vertices(self) -> np.ndarray:
         if self._cached_col_vertices is not None:

@@ -461,6 +461,7 @@ def run_single_bootstrap(
                 )
                 if column_trim_method == "loop_proximity"
                 and cocycle_basis_masks is None
+                and False
                 else None
             )
             source_fillings = (
@@ -553,7 +554,7 @@ def run_bootstrap_pipeline(
                 warm_embedding,
                 kwargs.get("n_neighbors_column_trim", DEFAULT_N_NEIGHBORS_COLUMN_TRIM),
             )
-            if warm_embedding is not None
+            if warm_embedding is not None and False
             else None
         )
         if warm_fillings:
