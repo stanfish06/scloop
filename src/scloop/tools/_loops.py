@@ -8,10 +8,9 @@ import numpy as np
 from anndata import AnnData
 from loguru import logger
 from pydantic import Field
-from scipy.spatial.distance import pdist
 
+from ..computing.threshold import choose_downsample_and_thresholds
 from ..data.constants import (
-    DEFAULT_AUTO_THRESHOLD_FACTOR,
     DEFAULT_CANDIDATE_METHOD,
     DEFAULT_K_NEIGHBORS_CHECK_EQUIVALENCE,
     DEFAULT_MAX_ROWS_BOUNDARY_MATRIX,
@@ -36,7 +35,6 @@ from ..data.types import (
     PresenceTestMethod,
     Size_t,
 )
-from ..preprocessing.downsample import sample
 from ..utils.logging import (
     LogDisplay,
     create_console,
@@ -76,7 +74,6 @@ def find_loops(
     n_check_per_candidate: NonZeroCount_t = 1,
     max_rows_boundary_matrix: NonZeroCount_t = DEFAULT_MAX_ROWS_BOUNDARY_MATRIX,
     auto_shrink_boundary_matrix: bool = True,
-    auto_shrink_factor: Percent_t = 0.5,
     n_max_workers: NonZeroCount_t = DEFAULT_N_MAX_WORKERS,
     use_parallel: bool = True,
     verbose: bool = False,
@@ -85,6 +82,7 @@ def find_loops(
     kwargs_loop_test: dict[str, Any] | None = None,
     kwargs_loop_representatives: dict[str, Any] | None = None,
     kwargs_loop_refinement: dict[str, Any] | None = None,
+    kwargs_threshold_search: dict[str, Any] | None = None,
 ) -> None:
     use_log_display = verbose and max_log_messages is not None
     if verbose:
@@ -113,93 +111,55 @@ def find_loops(
         meta.bootstrap.life_pct = tightness_loops
         hd: HomologyData = HomologyData(meta=meta)
         """
-        =============== Auto-choose PH threshold ===============
-        - upper bound would be the max pw dist
-        - choose a value such that all 1-loop dies
-        - todo: sometimes this approach is affected by outliers
-            - try percentile/truncated max over max_h1_death?
-        ========================================================
+        ========= Downsample size and PH thresholds =========
+        - grow the point set until the boundary matrix
+          no longer fits the budget
+        - calibrate a threshold that is not given on pilot resamples of the chosen set
+        =====================================================
         """
-        if threshold_homology is None:
-            assert meta.preprocess is not None
-            assert meta.preprocess.embedding_method is not None
-            emb = adata.obsm[f"X_{meta.preprocess.embedding_method}"]
-            selected_indices = (
-                meta.preprocess.indices_downsample
-                if meta.preprocess.indices_downsample is not None
-                else list(range(emb.shape[0]))
-            )
-            max_pw_dist = float(pdist(emb[selected_indices]).max())
-            if verbose:
-                logger.info(
-                    f"Auto-threshold: max pairwise distance = {max_pw_dist:.4f}"
-                )
-            hd._compute_homology(adata=adata, thresh=max_pw_dist)
-            # need some room for bootstrap, loops will die later for fewer points
-            auto_factor = (kwargs_bootstrap or {}).get(
-                "auto_threshold_factor", DEFAULT_AUTO_THRESHOLD_FACTOR
-            )
-            max_h1_death = float(np.max(hd.persistence_diagram[1][1]))
-            threshold_homology = max_h1_death * auto_factor
-            if verbose:
-                logger.info(
-                    f"Auto-threshold: max H1 death = {max_h1_death:.4f}, "
-                    f"using threshold = {threshold_homology:.4f} (factor={auto_factor})"
-                )
-
+        assert meta.preprocess is not None
+        choice, indices_chosen = choose_downsample_and_thresholds(
+            adata=adata,
+            meta=meta,
+            max_edges=max_rows_boundary_matrix,
+            n_top=n_candidates,
+            threshold_homology=threshold_homology,
+            threshold_boundary=threshold_boundary,
+            auto_size=auto_shrink_boundary_matrix,
+            verbose=verbose,
+            sampling_kwargs={
+                "bootstrap_sampling": bootstrap_sampling,
+                "bootstrap_downsample_fraction": bootstrap_downsample_fraction,
+                "bootstrap_fps_top_k": bootstrap_fps_top_k,
+                "bootstrap_fps_alpha": bootstrap_fps_alpha,
+                "bootstrap_herding_n_features": bootstrap_herding_n_features,
+                "bootstrap_herding_seed": bootstrap_herding_seed,
+            },
+            **(kwargs_threshold_search or {}),
+        )
+        if indices_chosen != meta.preprocess.indices_downsample:
+            meta.preprocess.indices_downsample = indices_chosen
+            meta.preprocess.kwargs_downsample = {
+                **(meta.preprocess.kwargs_downsample or {}),
+                "n": choice.n,
+            }
+        threshold_homology = choice.threshold_homology
+        boundary_thresh = choice.threshold_boundary
+        meta.bootstrap.threshold_homology = threshold_homology
+        meta.bootstrap.threshold_boundary = boundary_thresh
         if verbose:
+            logger.info(
+                f"Using {choice.n} cells, threshold_homology={threshold_homology:.4f}, "
+                f"threshold_boundary={boundary_thresh:.4f}"
+            )
             logger.info("Computing persistence homology")
         sparse_dist_mat = hd._compute_homology(adata=adata, thresh=threshold_homology)
-        boundary_thresh = threshold_boundary
-        if boundary_thresh is None:
-            boundary_thresh = threshold_homology
-        meta.bootstrap.threshold_homology = threshold_homology
-        meta.bootstrap.threshold_boundary = threshold_boundary
         hd._compute_boundary_matrix_d1(
             adata=adata, thresh=boundary_thresh, verbose=verbose
         )
         if verbose:
             logger.info(f"Boundary matrix computed with threshold {boundary_thresh}")
         assert hd.boundary_matrix_d1 is not None
-        assert meta.preprocess is not None
-        if hd.boundary_matrix_d1.shape[0] > max_rows_boundary_matrix:
-            logger.warning(
-                f"Boundary matrix has more than {max_rows_boundary_matrix} rows. Downstream computation could be slow"
-            )
-            if auto_shrink_boundary_matrix:
-                logger.info(
-                    f"Autoshrink boundary matrix by re-downsample the data: dropping {(1 - auto_shrink_factor) * 100:.1f}% cells each attempt"
-                )
-                assert meta.preprocess.kwargs_downsample is not None
-                kwargs_downsample = meta.preprocess.kwargs_downsample.copy()
-                n_current = kwargs_downsample.pop("n")
-                embedding_downsample = kwargs_downsample.get("embedding_method")
-                assert n_current is not None
-                if meta.preprocess.indices_downsample is not None:
-                    n_current = int(n_current * auto_shrink_factor)
-                n_downsample_final = n_current
-                while (
-                    hd.boundary_matrix_d1.shape[0] > max_rows_boundary_matrix
-                    and n_current > 0
-                ):
-                    logger.info(
-                        f"Downsampling to {n_current} cells using {embedding_downsample} embedding"
-                    )
-                    indices_downsample = sample(
-                        adata=adata, n=n_current, **kwargs_downsample
-                    )
-                    meta.preprocess.indices_downsample = indices_downsample
-                    hd._compute_boundary_matrix_d1(
-                        adata=adata, thresh=boundary_thresh, verbose=verbose
-                    )
-                    n_downsample_final = n_current
-                    n_current = int(n_current * auto_shrink_factor)
-                kwargs_downsample["n"] = n_downsample_final
-                meta.preprocess.kwargs_downsample = kwargs_downsample
-                # re-compute homology with the new downsample indices
-                sparse_dist_mat = hd._compute_homology(
-                    adata=adata, thresh=threshold_homology
-                )
 
         assert meta.preprocess.embedding_method is not None
 

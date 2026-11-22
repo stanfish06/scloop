@@ -38,6 +38,11 @@ DEFAULT_CANDIDATE_METHOD: CandidateMethod = "image"
 DEFAULT_PRESENCE_METHOD: PresenceTestMethod = "chi2"
 
 DEFAULT_AUTO_THRESHOLD_FACTOR: float = 1.75
+# size and threshold search before the full PH (computing/threshold.py)
+DEFAULT_SEARCH_N_START: int = 500
+DEFAULT_SEARCH_N_PILOT: int = 5
+DEFAULT_PILOT_DEATH_QUANTILE: float = 1.0
+DEFAULT_PILOT_THRESHOLD_MARGIN: float = 1.25
 
 DEFAULT_NOISE_SCALE: float = 1e-6
 DEFAULT_N_REPS_PER_LOOP: int = 4

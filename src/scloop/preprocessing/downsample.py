@@ -280,8 +280,7 @@ def sample(
 
         valid_mask &= density >= threshold
 
-    # local outlier factor (Breunig et al. 2000): density relative to the neighbours' density,
-    # so uniformly sparse regions (e.g. transitional cells) score ~1 and are kept
+    # local outlier factor: density relative to the neighbours' density,
     if percent_removal_lof > 0:
         lof = (
             -LocalOutlierFactor(n_neighbors=n_neighbors_lof, n_jobs=-1)
