@@ -41,12 +41,16 @@ def correct_pvalues(
         original_dtype = pvalues.dtype
         shape = pvalues.shape
         p_flat = np.asarray(pvalues, dtype=float).ravel()
-        n_tests = len(p_flat)
+        # NaN marks an untested entry: it stays NaN and is not counted as a test
+        tested = ~np.isnan(p_flat)
+        p_tested = p_flat[tested]
+        corrected = np.full_like(p_flat, np.nan)
         match method:
             case "bonferroni":
-                corrected = np.clip(p_flat * n_tests, 0.0, 1.0)
+                corrected[tested] = np.clip(p_tested * p_tested.size, 0.0, 1.0)
             case "benjamini-hochberg":
-                corrected = false_discovery_control(p_flat, method="bh")
+                if p_tested.size > 0:
+                    corrected[tested] = false_discovery_control(p_tested, method="bh")
             case _:
                 raise ValueError(f"{method} unsupported")
         corrected = corrected.reshape(shape)
@@ -57,15 +61,8 @@ def correct_pvalues(
     if isinstance(pvalues, Sequence):
         if len(pvalues) == 0:
             return list(pvalues)
-        p_flat = np.asarray(list(pvalues), dtype=float)
-        n_tests = len(p_flat)
-        match method:
-            case "bonferroni":
-                corrected = np.clip(p_flat * n_tests, 0.0, 1.0)
-            case "benjamini-hochberg":
-                corrected = false_discovery_control(p_flat, method="bh")
-            case _:
-                raise ValueError(f"{method} unsupported")
-        return corrected.tolist()
+        return correct_pvalues(
+            np.asarray(list(pvalues), dtype=float), method=method
+        ).tolist()
 
     raise TypeError(f"Unsupported pvalues type: {type(pvalues)!r}")

@@ -363,16 +363,55 @@ class LoopClass(BaseModel):
 # TODO: could consider define a class for a single loop
 
 
+def _check_track_aligned(track_ids: list[Index_t], **columns: list) -> None:
+    if len(set(track_ids)) != len(track_ids):
+        raise ValueError(f"duplicate track ids: {track_ids}")
+    for name, values in columns.items():
+        if len(values) != len(track_ids):
+            raise ValueError(
+                f"{name} has {len(values)} entries for {len(track_ids)} track ids"
+            )
+
+
+# entry i of every per-loop list belongs to loop track track_ids[i]
 @dataclass
 class PresenceTestResult:
+    track_ids: list[Index_t]
     probabilities: list[PositiveFloat]
     odds_ratios: list[PositiveFloat]
-    pvalues_raw: list[PositiveFloat]
-    pvalues_corrected: list[PositiveFloat]
+    pvalues_raw: list[float]
+    pvalues_corrected: list[float]
+    method: str | None = None
+
+    def __post_init__(self) -> None:
+        # wilcoxon leaves probabilities and odds_ratios empty
+        optional = {
+            name: values
+            for name, values in (
+                ("probabilities", self.probabilities),
+                ("odds_ratios", self.odds_ratios),
+            )
+            if values
+        }
+        _check_track_aligned(
+            self.track_ids,
+            pvalues_raw=self.pvalues_raw,
+            pvalues_corrected=self.pvalues_corrected,
+            **optional,
+        )
+
+    def pvalues_by_track(self, corrected: bool = True) -> dict[Index_t, float]:
+        pvalues = self.pvalues_corrected if corrected else self.pvalues_raw
+        return dict(zip(self.track_ids, pvalues))
 
     def to_hdf5_group(self, group: h5py.Group, compress: bool = True) -> None:
         group.attrs["_type"] = "PresenceTestResult"
+        if self.method is not None:
+            group.attrs["method"] = self.method
         kw = {"compression": "gzip"} if compress else {}
+        group.create_dataset(
+            "track_ids", data=np.array(self.track_ids, dtype=np.int64), **kw
+        )
         group.create_dataset(
             "probabilities", data=np.array(self.probabilities, dtype=np.float64), **kw
         )
@@ -390,23 +429,42 @@ class PresenceTestResult:
 
     @classmethod
     def from_hdf5_group(cls, group: h5py.Group) -> PresenceTestResult:
+        method = group.attrs.get("method")
         return cls(
+            track_ids=np.asarray(group["track_ids"]).tolist(),
             probabilities=np.asarray(group["probabilities"]).tolist(),
             odds_ratios=np.asarray(group["odds_ratios"]).tolist(),
             pvalues_raw=np.asarray(group["pvalues_raw"]).tolist(),
             pvalues_corrected=np.asarray(group["pvalues_corrected"]).tolist(),
+            method=None if method is None else str(method),
         )
 
 
+# pvalue is NaN for a track whose source loop class is missing
 @dataclass
 class PersistenceTestResult:
-    pvalues_raw: list[PositiveFloat]
-    pvalues_corrected: list[PositiveFloat]
+    track_ids: list[Index_t]
+    pvalues_raw: list[float]
+    pvalues_corrected: list[float]
     gamma_null_params: tuple[PositiveFloat, PositiveFloat, PositiveFloat] | None = None
+
+    def __post_init__(self) -> None:
+        _check_track_aligned(
+            self.track_ids,
+            pvalues_raw=self.pvalues_raw,
+            pvalues_corrected=self.pvalues_corrected,
+        )
+
+    def pvalues_by_track(self, corrected: bool = True) -> dict[Index_t, float]:
+        pvalues = self.pvalues_corrected if corrected else self.pvalues_raw
+        return dict(zip(self.track_ids, pvalues))
 
     def to_hdf5_group(self, group: h5py.Group, compress: bool = True) -> None:
         group.attrs["_type"] = "PersistenceTestResult"
         kw = {"compression": "gzip"} if compress else {}
+        group.create_dataset(
+            "track_ids", data=np.array(self.track_ids, dtype=np.int64), **kw
+        )
         group.create_dataset(
             "pvalues_raw", data=np.array(self.pvalues_raw, dtype=np.float64), **kw
         )
@@ -428,6 +486,7 @@ class PersistenceTestResult:
             params = np.asarray(group["gamma_null_params"])
             gamma_null_params = (float(params[0]), float(params[1]), float(params[2]))
         return cls(
+            track_ids=np.asarray(group["track_ids"]).tolist(),
             pvalues_raw=np.asarray(group["pvalues_raw"]).tolist(),
             pvalues_corrected=np.asarray(group["pvalues_corrected"]).tolist(),
             gamma_null_params=gamma_null_params,

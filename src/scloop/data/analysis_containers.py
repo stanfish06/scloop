@@ -5,6 +5,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING, Literal, Optional
 
 import numpy as np
+from loguru import logger
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.dataclasses import dataclass
 from pynndescent import NNDescent
@@ -32,7 +33,6 @@ from .types import (
     Index_t,
     MultipleTestCorrectionMethod,
     Percent_t,
-    PositiveFloat,
     Size_t,
 )
 from .utils import (
@@ -704,7 +704,8 @@ class BootstrapAnalysis:
         probs_presence = []
         odds_ratio_presence = []
         pvalues_raw_presence = []
-        for tid in self.loop_tracks.keys():
+        track_ids = sorted(self.loop_tracks)
+        for tid in track_ids:
             tbl = self._contingency_table_track_to_rest(tid)
             probs_presence.append(
                 float(tbl[0][0]) / (float(tbl[0][0]) + float(tbl[1][0]))
@@ -718,10 +719,12 @@ class BootstrapAnalysis:
         )
 
         return PresenceTestResult(
+            track_ids=track_ids,
             probabilities=probs_presence,
             odds_ratios=odds_ratio_presence,
             pvalues_raw=pvalues_raw_presence,
             pvalues_corrected=pvalues_corrected_presence,
+            method="fisher",
         )
 
     def chi2_test_presence(
@@ -731,7 +734,8 @@ class BootstrapAnalysis:
         probs_presence = []
         odds_ratio_presence = []
         pvalues_raw_presence = []
-        for tid in self.loop_tracks.keys():
+        track_ids = sorted(self.loop_tracks)
+        for tid in track_ids:
             tbl = self._contingency_table_track_to_rest(tid)
             probs_presence.append(
                 float(tbl[0][0]) / (float(tbl[0][0]) + float(tbl[1][0]))
@@ -762,10 +766,12 @@ class BootstrapAnalysis:
         )
 
         return PresenceTestResult(
+            track_ids=track_ids,
             probabilities=probs_presence,
             odds_ratios=odds_ratio_presence,
             pvalues_raw=pvalues_raw_presence,
             pvalues_corrected=pvalues_corrected_presence,
+            method="chi2",
         )
 
     def wilcoxon_test_presence(
@@ -805,10 +811,12 @@ class BootstrapAnalysis:
             pvalues_raw_presence, method=method_pval_correction
         )
         return PresenceTestResult(
+            track_ids=track_ids,
             probabilities=[],
             odds_ratios=[],
             pvalues_raw=pvalues_raw_presence,
             pvalues_corrected=pvalues_corrected_presence,
+            method="wilcoxon",
         )
 
     def gamma_test_persistence(
@@ -818,7 +826,10 @@ class BootstrapAnalysis:
     ) -> PersistenceTestResult:
         if len(self.persistence_diagrams) == 0:
             return PersistenceTestResult(
-                pvalues_raw=[], pvalues_corrected=[], gamma_null_params=None
+                track_ids=[],
+                pvalues_raw=[],
+                pvalues_corrected=[],
+                gamma_null_params=None,
             )
 
         lifetimes_bootstrap = []
@@ -831,7 +842,10 @@ class BootstrapAnalysis:
 
         if len(lifetimes_bootstrap) == 0:
             return PersistenceTestResult(
-                pvalues_raw=[], pvalues_corrected=[], gamma_null_params=None
+                track_ids=[],
+                pvalues_raw=[],
+                pvalues_corrected=[],
+                gamma_null_params=None,
             )
 
         lifetimes_bootstrap_arr = np.concatenate(lifetimes_bootstrap)
@@ -840,25 +854,32 @@ class BootstrapAnalysis:
         ]
         if lifetimes_bootstrap_arr.size == 0:
             return PersistenceTestResult(
-                pvalues_raw=[], pvalues_corrected=[], gamma_null_params=None
+                track_ids=[],
+                pvalues_raw=[],
+                pvalues_corrected=[],
+                gamma_null_params=None,
             )
 
         params = gamma.fit(lifetimes_bootstrap_arr, floc=0)
 
-        pvalues_raw_persistence: list[PositiveFloat] = []
-        for loop_track in self.loop_tracks.values():
-            source_idx = loop_track.source_class_idx
-            if source_idx < len(selected_loop_classes):
-                loop_class = selected_loop_classes[source_idx]
-                if loop_class is not None:
-                    lifetime = float(loop_class.lifetime)
-                    p_val = float(
-                        1
-                        - gamma.cdf(
-                            lifetime, a=params[0], loc=params[1], scale=params[2]
-                        )
-                    )
-                    pvalues_raw_persistence.append(p_val)
+        track_ids = sorted(self.loop_tracks)
+        pvalues_raw_persistence: list[float] = []
+        for tid in track_ids:
+            source_idx = self.loop_tracks[tid].source_class_idx
+            loop_class = (
+                selected_loop_classes[source_idx]
+                if source_idx < len(selected_loop_classes)
+                else None
+            )
+            # NaN keeps the row aligned and leaves the track out of the correction
+            if loop_class is None:
+                pvalues_raw_persistence.append(np.nan)
+                continue
+            lifetime = float(loop_class.lifetime)
+            p_val = float(
+                1 - gamma.cdf(lifetime, a=params[0], loc=params[1], scale=params[2])
+            )
+            pvalues_raw_persistence.append(p_val)
 
         pvalues_corrected_persistence = correct_pvalues(
             pvalues_raw_persistence, method=method_pval_correction
@@ -870,6 +891,7 @@ class BootstrapAnalysis:
             float(params[2]),
         )
         self.persistence_test_result = PersistenceTestResult(
+            track_ids=track_ids,
             pvalues_raw=pvalues_raw_persistence,
             pvalues_corrected=pvalues_corrected_persistence,
             gamma_null_params=self.gamma_null_params,
@@ -978,22 +1000,35 @@ class BootstrapAnalysis:
         # loop_tracks
         loop_tracks: dict[int, LoopTrack] = {}
         tracks_grp: h5py.Group = group["loop_tracks"]  # type: ignore[assignment]
-        for track_id_str in tracks_grp.keys():
+        for track_id_str in sorted(tracks_grp.keys(), key=int):
             track_grp: h5py.Group = tracks_grp[track_id_str]  # type: ignore[assignment]
             loop_tracks[int(track_id_str)] = LoopTrack.from_hdf5_group(track_grp)
 
-        # test results
+        # test results; files written before track_ids existed cannot be re-paired
+        # with loops, so those results are dropped
         presence_test_result = None
         if "presence_test_result" in group:
             presence_grp: h5py.Group = group["presence_test_result"]  # type: ignore[assignment]
-            presence_test_result = PresenceTestResult.from_hdf5_group(presence_grp)
+            if "track_ids" in presence_grp:
+                presence_test_result = PresenceTestResult.from_hdf5_group(presence_grp)
+            else:
+                logger.warning(
+                    "Dropping saved presence test result without track ids; "
+                    "re-run HomologyData._test_loops to recompute it"
+                )
 
         persistence_test_result = None
         if "persistence_test_result" in group:
             persistence_grp: h5py.Group = group["persistence_test_result"]  # type: ignore[assignment]
-            persistence_test_result = PersistenceTestResult.from_hdf5_group(
-                persistence_grp
-            )
+            if "track_ids" in persistence_grp:
+                persistence_test_result = PersistenceTestResult.from_hdf5_group(
+                    persistence_grp
+                )
+            else:
+                logger.warning(
+                    "Dropping saved persistence test result without track ids; "
+                    "re-run HomologyData._test_loops to recompute it"
+                )
 
         persistence_diagrams = _read_bootstrap_list(
             group, "persistence_diagrams", _read_diagram

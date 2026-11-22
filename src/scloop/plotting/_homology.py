@@ -615,10 +615,9 @@ def loop_rank(
     assert data.bootstrap_data is not None
     res = data.bootstrap_data.presence_test_result
     assert res is not None
-    pvals = np.asarray(
-        res.pvalues_corrected if use_corrected else res.pvalues_raw, dtype=np.float64
-    )
-    all_tids = list(data.bootstrap_data.loop_tracks.keys())
+    all_tids = sorted(data.bootstrap_data.loop_tracks)
+    pval_of = res.pvalues_by_track(corrected=use_corrected)
+    pvals = np.array([pval_of.get(tid, np.nan) for tid in all_tids], dtype=np.float64)
     boot = [
         np.asarray(
             data.get_loop_class_persistence(tid, keep=keep_matches), dtype=np.float64
