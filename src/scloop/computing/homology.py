@@ -41,7 +41,7 @@ from ..preprocessing.downsample import (
 )
 from ..utils.distance_metrics.frechet_py import compute_pairwise_loop_frechet
 from ..utils.linear_algebra_gf2 import (  # type: ignore
-    solve_multiple_gf2_m4ri,  # type: ignore[import-not-found]
+    solve_multiple_gf2_sparse,
 )
 
 if TYPE_CHECKING:
@@ -759,7 +759,7 @@ def compute_loop_homological_equivalence(
     solver_column_ids = col_simplex_ids[cols_keep].tolist()
     solver_columns_are_triangles = [True] * ncol_A
 
-    states, solutions = solve_multiple_gf2_m4ri(
+    states, solutions = solve_multiple_gf2_sparse(
         one_ridx_A=one_ridx_A,
         one_cidx_A=one_cidx_A,
         nrow_A=nrow_A,
@@ -804,7 +804,7 @@ def compute_loop_homological_equivalence(
                 column = replace_start + offset
                 solver_column_ids_relax[column] = edge_id
                 solver_columns_are_triangles_relax[column] = False
-            states_relax, solutions_relax = solve_multiple_gf2_m4ri(
+            states_relax, solutions_relax = solve_multiple_gf2_sparse(
                 one_ridx_A=one_ridx_A,
                 one_cidx_A=one_cidx_A,
                 nrow_A=nrow_A,
