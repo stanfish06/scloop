@@ -181,6 +181,20 @@ def compute_loop_representatives(
 
     boundary_edge_set = boundary_matrix_d1.edge_set
 
+    # graph edges usable for paths: rows of the boundary matrix, plus self-edges
+    # between duplicated bootstrap vertices; same for every loop class
+    vertex_ids_array = np.asarray(vertex_ids, dtype=np.int64)
+    u_global = vertex_ids_array[edges_array[:, 0]]
+    v_global = vertex_ids_array[edges_array[:, 1]]
+    edge_ids_global = np.minimum(
+        u_global, v_global
+    ) * boundary_matrix_d1.num_vertices + np.maximum(u_global, v_global)
+    valid_edge_mask = np.isin(edge_ids_global, boundary_matrix_d1.row_ids_array)
+    if bootstrap:
+        valid_edge_mask |= u_global == v_global
+    edges_array_filtered = edges_array[valid_edge_mask]
+    edge_diameters_filtered = edge_diameters[valid_edge_mask]
+
     results: list[LoopClass | None] = [None] * len(indices_top_k)
 
     build_foreign = foreign_chord_mult > 1.0
@@ -242,21 +256,6 @@ def compute_loop_representatives(
                 f"Loop class {i + rank_offset}: Filtered {n_cocycles_original - len(valid_cocycles)}/"
                 f"{n_cocycles_original} cocycle edges not in boundary matrix"
             )
-
-        valid_edge_mask = []
-        for edge_local in edges_array:
-            u_global = vertex_ids[int(edge_local[0])]
-            v_global = vertex_ids[int(edge_local[1])]
-            edge_global = (min(u_global, v_global), max(u_global, v_global))
-            if bootstrap:
-                valid = (edge_global in boundary_edge_set) or (u_global == v_global)
-            else:
-                valid = edge_global in boundary_edge_set
-            valid_edge_mask.append(valid)
-
-        valid_edge_mask = np.array(valid_edge_mask, dtype=bool)
-        edges_array_filtered = edges_array[valid_edge_mask]
-        edge_diameters_filtered = edge_diameters[valid_edge_mask]
 
         foreign_cocycle_edges: list[tuple[int, int]] | None = None
         if build_foreign:
