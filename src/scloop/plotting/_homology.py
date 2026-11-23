@@ -12,7 +12,12 @@ from pydantic import ConfigDict, validate_call
 from scipy.linalg import svd
 
 from ..data.analysis_containers import BootstrapAnalysis
-from ..data.constants import DEFAULT_DPI, DEFAULT_FIGSIZE, SCLOOP_UNS_KEY
+from ..data.constants import (
+    DEFAULT_DPI,
+    DEFAULT_FIGSIZE,
+    SCLOOP_MEMBERSHIP_OBSM_KEY,
+    SCLOOP_UNS_KEY,
+)
 from ..data.containers import HomologyData
 from ..data.types import Index_t, PositiveFloat
 from ._utils import _create_figure_standard, _get_homology_data, savefig_or_show
@@ -76,7 +81,14 @@ def loop_embedding(
     hdata: HomologyData = adata.uns[key_homology]
     emb = np.asarray(adata.obsm[basis])
     track_list = [track_ids] if isinstance(track_ids, int) else list(track_ids)
+    plane, score = _loop_plane(hdata, emb, track_list, ndims)
+    adata.obsm[f"X_{key_added}"] = (emb - emb.mean(axis=0, keepdims=True)) @ plane
+    adata.uns[f"{key_added}_loop_embedding"] = {"plane": plane, "score": score}
 
+
+def _loop_plane(
+    hdata: HomologyData, emb: np.ndarray, track_list: list[int], ndims: int
+) -> tuple[np.ndarray, float]:
     planes = []
     for tid in track_list:
         X = np.concatenate(
@@ -106,9 +118,7 @@ def loop_embedding(
         evals, evecs = np.linalg.eigh(M)  # ascending
         plane = evecs[:, ::-1][:, :ndims]  # top ndims, descending
         score = float(evals[::-1][:ndims].sum() / (ndims * len(planes)))
-
-    adata.obsm[f"X_{key_added}"] = (emb - emb.mean(axis=0, keepdims=True)) @ plane
-    adata.uns[f"{key_added}_loop_embedding"] = {"plane": plane, "score": score}
+    return plane, score
 
 
 @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
@@ -453,6 +463,8 @@ def loops(
     ax: Axes | None = None,
     *,
     use_refined: bool = False,
+    membership: Index_t | None = None,
+    cmap_membership: str = "viridis",
     pointsize: PositiveFloat = 1,
     figsize: tuple[PositiveFloat, PositiveFloat] = DEFAULT_FIGSIZE,
     dpi: PositiveFloat = DEFAULT_DPI,
@@ -502,19 +514,38 @@ def loops(
         else ax
     )
 
-    if data.meta.preprocess is not None and data.meta.preprocess.indices_downsample:
-        vertex_indices = data.meta.preprocess.indices_downsample
+    if membership is not None:
+        if SCLOOP_MEMBERSHIP_OBSM_KEY not in adata.obsm:
+            raise KeyError(
+                f"{SCLOOP_MEMBERSHIP_OBSM_KEY} not found in adata.obsm. Run find_loops first."
+            )
+        values = np.asarray(adata.obsm[SCLOOP_MEMBERSHIP_OBSM_KEY])[:, membership]
+        order = np.argsort(values)
+        sc = ax.scatter(
+            emb[order, components[0]],
+            emb[order, components[1]],
+            c=values[order],
+            cmap=cmap_membership,
+            vmin=0,
+            vmax=1,
+            s=pointsize,
+            **(kwargs_scatter or {}),
+        )
+        ax.figure.colorbar(sc, ax=ax, shrink=0.6, label=f"membership {membership}")
     else:
-        vertex_indices = list(range(emb.shape[0]))
-    emb_background = emb[vertex_indices]
+        if data.meta.preprocess is not None and data.meta.preprocess.indices_downsample:
+            vertex_indices = data.meta.preprocess.indices_downsample
+        else:
+            vertex_indices = list(range(emb.shape[0]))
+        emb_background = emb[vertex_indices]
 
-    ax.scatter(
-        emb_background[:, components[0]],
-        emb_background[:, components[1]],
-        color="lightgray",
-        s=pointsize,
-        **(kwargs_scatter or {}),
-    )
+        ax.scatter(
+            emb_background[:, components[0]],
+            emb_background[:, components[1]],
+            color="lightgray",
+            s=pointsize,
+            **(kwargs_scatter or {}),
+        )
 
     def _loops_for_selector(
         selector: IdxTrack

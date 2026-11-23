@@ -15,6 +15,7 @@ from .types import (
 
 CROSS_MATCH_KEY = "X_scloop_aligned"
 CROSS_MATCH_RESULT_KEY = "scloop_cross_match"
+SCLOOP_MEMBERSHIP_OBSM_KEY = "scloop_loop_membership"
 
 DEFAULT_FIGSIZE: tuple[PositiveFloat, PositiveFloat] = (5, 5)
 DEFAULT_DPI: PositiveFloat = 300
@@ -25,6 +26,8 @@ DEFAULT_N_NEIGHBORS_EDGE_EMBEDDING: int = 10
 DEFAULT_LOOP_DIST_METHOD: LoopDistMethod = "frechet"
 DEFAULT_TIMEOUT_EIGENDECOMPOSITION: float = 60.0
 DEFAULT_MAXITER_EIGENDECOMPOSITION: int = 10000
+DEFAULT_N_NEIGHBORS_MEMBERSHIP: int = 50
+DEFAULT_ALPHA_MEMBERSHIP: float = 0.05
 
 NUMERIC_EPSILON: float = 1e-10
 
@@ -43,6 +46,12 @@ DEFAULT_SEARCH_N_START: int = 500
 DEFAULT_SEARCH_N_PILOT: int = 5
 DEFAULT_PILOT_DEATH_QUANTILE: float = 1.0
 DEFAULT_PILOT_THRESHOLD_MARGIN: float = 1.25
+# quantile of k-NN distances (k = ceil(log n)) that sets the first pilot PH radius
+DEFAULT_PILOT_SEED_QUANTILE: float = 0.75
+# pilot PH radius as fractions of the cone radius (eccentricity of the centroid-nearest
+# point): max caps the search (1.0 = full cone radius); early stopping needs at least min
+DEFAULT_MAX_PCT_ECC_RADIUS: float = 1.0
+DEFAULT_MIN_PCT_ECC_RADIUS: float = 0.5
 
 DEFAULT_NOISE_SCALE: float = 1e-6
 DEFAULT_N_REPS_PER_LOOP: int = 4

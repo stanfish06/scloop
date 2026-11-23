@@ -28,6 +28,10 @@ class NeuralODEregressor(pl.LightningModule):
     weight_decay: float
     trainer: pl.Trainer | None
     check_val_every_n_epoch: int
+    x_mean: torch.Tensor
+    x_scale: torch.Tensor
+    y_mean: torch.Tensor
+    y_scale: torch.Tensor
 
     def __init__(
         self,
@@ -64,6 +68,13 @@ class NeuralODEregressor(pl.LightningModule):
         self.weight_decay = weight_decay
         self.trainer = None
         self.check_val_every_n_epoch = check_val_every_n_epoch
+        # the flow runs on centred, isotropically scaled coordinates so training does not
+        # depend on embedding scale; a similarity transform keeps the map's topology
+        for name, values in (("x", data.x), ("y", data.y)):
+            values = np.asarray(values, dtype=np.float32)
+            scale = max(float(np.sqrt(values.var(axis=0).sum())), 1e-12)
+            self.register_buffer(f"{name}_mean", torch.from_numpy(values.mean(axis=0)))
+            self.register_buffer(f"{name}_scale", torch.tensor(scale))
 
         self.save_hyperparameters("n_hidden", "n_layers")
 
@@ -97,33 +108,28 @@ class NeuralODEregressor(pl.LightningModule):
     def forward(self, x, t_span):
         return self.model(x, t_span)
 
+    def _standardized(self, x):
+        return self.forward((x - self.x_mean) / self.x_scale, self.t_span)[1][-1]
+
     def compute_loss(self, y_hat, y):
-        mse_loss = F.mse_loss(y_hat, y)
-        return mse_loss
+        return F.mse_loss(y_hat, (y - self.y_mean) / self.y_scale)
 
     def training_step(self, batch, batch_idx):
         x, y = batch
-        _, y_hat = self.forward(x, self.t_span)
-        # select last point of solution trajectory
-        y_hat = y_hat[-1]
-        loss = self.compute_loss(y_hat, y)
+        loss = self.compute_loss(self._standardized(x), y)
         self.log("train_loss", loss, on_step=True, on_epoch=True, prog_bar=True)
         return {"loss": loss}
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
-        _, y_hat = self.forward(x, self.t_span)
-        y_hat = y_hat[-1]  # select last point of solution trajectory
-        loss = self.compute_loss(y_hat, y)
+        loss = self.compute_loss(self._standardized(x), y)
 
         self.log("val_loss", loss, on_step=False, on_epoch=True, prog_bar=True)
         return loss
 
     def test_step(self, batch, batch_idx):
         x, y = batch
-        _, y_hat = self.forward(x, self.t_span)
-        y_hat = y_hat[-1]  # select last point of solution trajectory
-        loss = self.compute_loss(y_hat, y)
+        loss = self.compute_loss(self._standardized(x), y)
 
         self.log("test_loss", loss, on_step=False, on_epoch=True)
         return loss
@@ -151,7 +157,8 @@ class NeuralODEregressor(pl.LightningModule):
 
     def predict_step(self, batch, batch_idx):
         x = batch if not isinstance(batch, (tuple, list)) else batch[0]
-        return self.forward(x, self.t_span)
+        t_eval, trajectory = self.forward((x - self.x_mean) / self.x_scale, self.t_span)
+        return t_eval, trajectory * self.y_scale + self.y_mean
 
     def fit(self, max_epochs: int = 100):
         self.trainer = pl.Trainer(
@@ -187,6 +194,5 @@ class NeuralODEregressor(pl.LightningModule):
         x_tensor = torch.from_numpy(x.astype(np.float32))
         self.eval()
         with torch.no_grad():
-            _, trajectory = self.forward(x_tensor, self.t_span)
-            y_pred = trajectory[-1]
+            y_pred = self._standardized(x_tensor) * self.y_scale + self.y_mean
         return y_pred.detach().cpu().numpy()

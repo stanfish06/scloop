@@ -9,6 +9,7 @@ from anndata import AnnData
 from loguru import logger
 from pydantic import Field
 
+from ..computing.membership import compute_loop_membership
 from ..computing.threshold import choose_downsample_and_thresholds
 from ..data.constants import (
     DEFAULT_CANDIDATE_METHOD,
@@ -21,6 +22,7 @@ from ..data.constants import (
     DEFAULT_N_NEIGHBORS_EDGE_EMBEDDING,
     DEFAULT_PRESENCE_METHOD,
     DEFAULT_TIMEOUT_EIGENDECOMPOSITION,
+    SCLOOP_MEMBERSHIP_OBSM_KEY,
     SCLOOP_META_UNS_KEY,
     SCLOOP_UNS_KEY,
 )
@@ -62,7 +64,7 @@ def find_loops(
     tightness_loops: Percent_t = 0,
     n_candidates: NonZeroCount_t = 1,
     n_bootstrap: Size_t = DEFAULT_N_BOOTSTRAP,
-    bootstrap_sampling: str = "fps_random",
+    bootstrap_sampling: str = "downsample",
     bootstrap_downsample_fraction: Percent_t = 2 / 3,
     bootstrap_fps_top_k: int = 5,
     bootstrap_fps_alpha: float = 1.0,
@@ -82,6 +84,7 @@ def find_loops(
     kwargs_loop_test: dict[str, Any] | None = None,
     kwargs_loop_representatives: dict[str, Any] | None = None,
     kwargs_loop_refinement: dict[str, Any] | None = None,
+    kwargs_loop_membership: dict[str, Any] | None = None,
     kwargs_threshold_search: dict[str, Any] | None = None,
 ) -> None:
     use_log_display = verbose and max_log_messages is not None
@@ -240,6 +243,32 @@ def find_loops(
             embedding=embedding,
             include_bootstrap=True,
             **(kwargs_loop_refinement or {}),
+        )
+
+        """
+        ========= loop membership =========
+        - personalized pagerank to reps
+        ===================================
+        """
+        if verbose:
+            logger.info("Computing loop membership on full data")
+        adata.obsm[SCLOOP_MEMBERSHIP_OBSM_KEY] = compute_loop_membership(
+            embedding=embedding,
+            representatives=[
+                None
+                if loop_class is None
+                else loop_class.filter_valid(
+                    loop_class.representatives_refined
+                    or loop_class.representatives
+                    or []
+                )
+                for loop_class in hd.selected_loop_classes
+            ],
+            scales=[
+                0.0 if loop_class is None else loop_class.death
+                for loop_class in hd.selected_loop_classes
+            ],
+            **(kwargs_loop_membership or {}),
         )
 
         """

@@ -9,12 +9,14 @@ from ._homology import (
     loops,
     persistence_diagram,
 )
+from ._landscape import loop_landscape
 from ._trajectory import plot_gene_trends, plot_trajectory
 
 __all__ = [
     "bar_lifetimes",
     "hist_lifetimes",
     "loop_embedding",
+    "loop_landscape",
     "loop_rank",
     "loops",
     "loop_edge_embedding",

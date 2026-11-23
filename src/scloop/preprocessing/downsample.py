@@ -7,7 +7,12 @@ from pydantic import validate_call
 from pynndescent import NNDescent
 from sklearn.neighbors import LocalOutlierFactor
 
-from ..data.types import EmbeddingMethod, IndexListDownSample, SizeDownSample
+from ..data.types import (
+    EmbeddingMethod,
+    IndexListDownSample,
+    Percent_t,
+    SizeDownSample,
+)
 
 __all__ = ["sample", "sample_farthest_points", "sample_farthest_points_randomized"]
 
@@ -224,35 +229,24 @@ def sample_farthest_points_randomized(
 
 
 @validate_call(config={"arbitrary_types_allowed": True})
-def sample(
+def eligible_indices(
     adata: AnnData,
     groupby: str | None,
     embedding_method: EmbeddingMethod,
-    n: SizeDownSample,
-    random_state: int = 0,
     percent_removal_density: float = 0.025,
     n_neighbors_density: int = 50,
     density_exempt_groups: list[str] | None = None,
-    percent_removal_lof: float = 0,
+    percent_removal_lof: Percent_t = 0,
     n_neighbors_lof: int = 15,
-) -> IndexListDownSample:
-    """
-    Topology-preserving downsampling using greedy farthest-point sampling.
-
-    Args:
-        adata: AnnData object containing the data
-        groupby: column in adata.obs for class-balanced sampling, or None
-        embedding_method: which embedding to use from adata.obsm
-        n: number of points to sample
-        random_state: random seed for reproducibility
-        percent_removal_lof: fraction of cells with the highest local outlier factor removed before sampling (0 = off)
-        n_neighbors_lof: neighbours for the local outlier factor
-
-    Returns:
-        list of indices into adata.obs for the downsampled points
-    """
-    assert n <= adata.shape[0]
-    assert f"X_{embedding_method}" in adata.obsm
+) -> np.ndarray:
+    """Indices of the cells left after density and local-outlier-factor filtering."""
+    for name, value in (
+        ("percent_removal_density", percent_removal_density),
+        ("percent_removal_lof", percent_removal_lof),
+    ):
+        # also rejects NaN; 1.0 would remove every cell
+        if not 0.0 <= value < 1.0:
+            raise ValueError(f"{name} must be in [0, 1), got {value}")
     downsample_embedding = adata.obsm[f"X_{embedding_method}"]
     assert type(downsample_embedding) is np.ndarray
 
@@ -294,6 +288,68 @@ def sample(
         exempt_mask = adata.obs[groupby].isin(density_exempt_groups).to_numpy()
         valid_mask = np.logical_or(valid_mask, exempt_mask)
     local_indices = np.where(valid_mask)[0]
+    return local_indices
+
+
+@validate_call(config={"arbitrary_types_allowed": True})
+def sample(
+    adata: AnnData,
+    groupby: str | None,
+    embedding_method: EmbeddingMethod,
+    n: SizeDownSample,
+    random_state: int = 0,
+    percent_removal_density: float = 0.025,
+    n_neighbors_density: int = 50,
+    density_exempt_groups: list[str] | None = None,
+    percent_removal_lof: Percent_t = 0,
+    n_neighbors_lof: int = 15,
+    eligible: list[int] | None = None,
+) -> IndexListDownSample:
+    """
+    Topology-preserving downsampling using greedy farthest-point sampling.
+
+    Args:
+        adata: AnnData object containing the data
+        groupby: column in adata.obs for class-balanced sampling, or None
+        embedding_method: which embedding to use from adata.obsm
+        n: number of points to sample
+        random_state: random seed for reproducibility
+        percent_removal_lof: fraction of cells with the highest local outlier factor removed before sampling (0 = off)
+        n_neighbors_lof: neighbours for the local outlier factor
+        eligible: precomputed eligible_indices to sample from; skips the filtering
+            (density filtering is not deterministic across calls)
+
+    Returns:
+        list of indices into adata.obs for the downsampled points
+    """
+    assert n <= adata.shape[0]
+    assert f"X_{embedding_method}" in adata.obsm
+    downsample_embedding = adata.obsm[f"X_{embedding_method}"]
+    assert type(downsample_embedding) is np.ndarray
+
+    if eligible is not None:
+        local_indices = np.asarray(eligible, dtype=np.int64)
+        if len(np.unique(local_indices)) != len(local_indices) or (
+            local_indices.size
+            and (local_indices.min() < 0 or local_indices.max() >= adata.shape[0])
+        ):
+            raise ValueError("eligible must be distinct row positions in [0, n_obs)")
+    else:
+        local_indices = eligible_indices(
+            adata,
+            groupby=groupby,
+            embedding_method=embedding_method,
+            percent_removal_density=percent_removal_density,
+            n_neighbors_density=n_neighbors_density,
+            density_exempt_groups=density_exempt_groups,
+            percent_removal_lof=percent_removal_lof,
+            n_neighbors_lof=n_neighbors_lof,
+        )
+    # farthest-point sampling repeats indices once the candidates run out
+    if n > len(local_indices):
+        raise ValueError(
+            f"Requested {n} cells but only {len(local_indices)} remain after density/LOF filtering"
+        )
     downsample_embedding_local = downsample_embedding[local_indices]
 
     if groupby is None:
